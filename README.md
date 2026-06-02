@@ -75,4 +75,4 @@ liblor-owned code is licensed under the MIT License. Reference material is not
 automatically part of liblor; copied or closely adapted third-party code must be
 audited and keep required notices. See [Third Party](./docs/THIRD_PARTY.md).
 
-Start with [ROADMAP](docs/ROADMAP.md) when continuing development.
+Start with [Roadmap](docs/ROADMAP.md) when continuing development.
