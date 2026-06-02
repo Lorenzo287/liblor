@@ -65,7 +65,6 @@ CLAUDE.md
 bin/
 obj/
 out/
-dist/
 Debug/
 Release/
 x64/

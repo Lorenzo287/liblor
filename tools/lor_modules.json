@@ -1,0 +1,33 @@
+{
+    "modules": [
+        {
+            "name": "arena",
+            "enable_macro": "LOR_ENABLE_ARENA",
+            "header": "include/lor/arena.h",
+            "source": "src/arena.c",
+            "symbols": {
+                "functions": [
+                    ["lor_arena_init", "arena_init"],
+                    ["lor_arena_deinit", "arena_deinit"],
+                    ["lor_arena_reset", "arena_reset"],
+                    ["lor_arena_alloc", "arena_alloc"],
+                    ["lor_arena_alloc_zero", "arena_alloc_zero"],
+                    ["lor_arena_alloc_aligned", "arena_alloc_aligned"],
+                    ["lor_arena_alloc_array", "arena_alloc_array"],
+                    ["lor_arena_alloc_array_zero", "arena_alloc_array_zero"],
+                    ["lor_arena_strdup", "arena_strdup"],
+                    ["lor_arena_used", "arena_used"],
+                    ["lor_arena_capacity", "arena_capacity"]
+                ],
+                "types": [
+                    ["LorArena", "Arena"],
+                    ["LorArenaBlock", "ArenaBlock"]
+                ],
+                "macros": [
+                    ["LOR_ARENA_DEFAULT_BLOCK_SIZE", "ARENA_DEFAULT_BLOCK_SIZE"],
+                    ["LOR_ARENA_INIT", "ARENA_INIT"]
+                ]
+            }
+        }
+    ]
+}

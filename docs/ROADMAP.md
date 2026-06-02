@@ -18,13 +18,17 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 
 - [x] Bootstrap README, AGENTS, ROADMAP, MIT license, and `.gitignore`.
 - [x] Move reference material under `references/`.
-- [x] Add `THIRD_PARTY.md` for audit tracking.
+- [x] Add `docs/THIRD_PARTY.md` for audit tracking.
 - [x] Choose normal multi-file source layout: `include/lor/` plus `src/`.
 - [x] Add Makefile-based local build/test workflow.
 - [x] Add `compile_flags.txt` for clangd include resolution.
 - [x] Implement first module: `LorArena`.
 - [x] Add focused arena tests and a small arena example.
 - [x] Add `docs/build-system.md` for the future `lor` tool direction.
+- [x] Add `docs/api-design.md` for naming, aliasing, and single-header notes.
+- [x] Add generated `dist/lor.h` workflow.
+- [x] Consolidate public API naming: `lor_module_action`, `LorName`,
+  `LOR_NAME`.
 
 ## Open Decisions
 
@@ -33,7 +37,7 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 - Reusable test harness shape.
 - Leak-checking strategy.
 - Next module: string view or dynamic array.
-- Whether and when to generate a single-header distribution.
+- Single-header generator hardening as more modules are added.
 
 ## Backlog
 
@@ -65,7 +69,7 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 
 - [ ] `lor run` / `lor build` design and prototype;
 - [ ] compile-backed C REPL design and prototype;
-- [ ] optional single-header generation.
+- [x] optional single-header generation.
 
 ### Platform
 

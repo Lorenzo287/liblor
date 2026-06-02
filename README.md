@@ -24,6 +24,7 @@ Useful targets:
 
 - `make test`: build and run tests.
 - `make example`: build examples.
+- `make single-header`: generate `dist/lor.h`.
 - `make clean`: remove `.build/`.
 
 If `make` is not available on Windows, `mingw32-make` can be used with the same
@@ -37,7 +38,9 @@ targets.
 - `examples/`: small usage examples.
 - `docs/`: design notes.
 - `references/`: third-party libraries, snippets, and experiments for study.
-- `THIRD_PARTY.md`: attribution and license tracking.
+- `tools/`: project tools, including the single-header generator.
+- `dist/lor.h`: generated single-header distribution.
+- `docs/THIRD_PARTY.md`: attribution and license tracking.
 - `compile_flags.txt`: clangd flags for resolving includes.
 
 Public headers live under `include/lor/` so users can add `include/` to their
@@ -54,6 +57,29 @@ This avoids collisions with generic names like `arena.h`, `string.h`, or
 
 liblor is a normal multi-file library first. A generated single-header release
 may be added later if it proves useful.
+
+See `docs/api-design.md` for naming and aliasing notes.
+
+## Single Header
+
+Generate `dist/lor.h` with:
+
+```powershell
+make single-header
+```
+
+Basic use:
+
+```c
+#define LOR_IMPLEMENTATION
+#include "lor.h"
+```
+
+Optional module and alias controls:
+
+- `LOR_ENABLE_ARENA`: include only the arena module.
+- `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
+- `LOR_CUSTOM_PREFIX my_`: compile function symbols as `my_arena_alloc`, etc.
 
 ## First Module
 
@@ -75,6 +101,6 @@ lor_arena_deinit(&arena);
 
 liblor-owned code is licensed under the MIT License. Reference material is not
 automatically part of liblor; copied or closely adapted third-party code must be
-audited and keep required notices. See `THIRD_PARTY.md`.
+audited and keep required notices. See `docs/THIRD_PARTY.md`.
 
-Start with `ROADMAP.md` when continuing development.
+Start with `docs/ROADMAP.md` when continuing development.
