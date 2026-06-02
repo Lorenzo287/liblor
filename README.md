@@ -24,7 +24,6 @@ Useful targets:
 
 - `make test`: build and run tests.
 - `make example`: build examples.
-- `make format`: format liblor-owned C files with `.clang-format`.
 - `make clean`: remove `.build/`.
 
 If `make` is not available on Windows, `mingw32-make` can be used with the same
@@ -39,6 +38,7 @@ targets.
 - `docs/`: design notes.
 - `references/`: third-party libraries, snippets, and experiments for study.
 - `THIRD_PARTY.md`: attribution and license tracking.
+- `compile_flags.txt`: clangd flags for resolving includes.
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/arena.h"`.

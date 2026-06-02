@@ -9,7 +9,7 @@ study material, not liblor-owned source.
 - `ROADMAP.md`: current work and next decisions.
 - `THIRD_PARTY.md`: attribution and license audit tracking.
 - `Makefile`: local development build/test entry point.
-- `.clang-format`: formatting policy for liblor-owned C files.
+- `compile_flags.txt`: clangd include/diagnostic flags.
 - `docs/build-system.md`: future `lor run` / `lor build` / REPL direction.
 - `include/lor/`, `src/`, `tests/`, `examples/`: liblor-owned source.
 - `references/`: third-party libraries, snippets, and experiments.
@@ -21,13 +21,13 @@ study material, not liblor-owned source.
 - Read `ROADMAP.md` before choosing the next task.
 - Search with `rg` or `rg --files` when available.
 - Build with `make all`; use `make CC=gcc all` for GCC.
-- Run `make format` after editing liblor-owned C files.
 - Before using anything from `references/`, inspect its README/license and
   record the decision in `THIRD_PARTY.md`.
 
 ## C Style
 
-- Follow `.clang-format`.
+- A local `.clang-format` may be used as a formatting reference, but it is not a
+  tracked project requirement.
 - Prefer C99/C11-compatible code unless a module documents otherwise.
 - Use `snake_case` for functions, variables, and fields.
 - Public functions use `lor_`; public types use `LorName`; public constants and

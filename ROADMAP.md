@@ -21,6 +21,7 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 - [x] Add `THIRD_PARTY.md` for audit tracking.
 - [x] Choose normal multi-file source layout: `include/lor/` plus `src/`.
 - [x] Add Makefile-based local build/test workflow.
+- [x] Add `compile_flags.txt` for clangd include resolution.
 - [x] Implement first module: `LorArena`.
 - [x] Add focused arena tests and a small arena example.
 - [x] Add `docs/build-system.md` for the future `lor` tool direction.

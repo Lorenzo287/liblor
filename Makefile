@@ -20,7 +20,7 @@ MKDIR_BUILD = mkdir -p $(BUILD_DIR)
 RUN_TEST_ARENA = ./$(TEST_ARENA)
 RM_BUILD = rm -rf $(BUILD_DIR)
 
-.PHONY: all test example clean format
+.PHONY: all test example clean
 
 all: test example
 
@@ -40,9 +40,6 @@ $(TEST_ARENA): tests/test_arena.c $(LIB_OBJS) include/lor/arena.h | $(BUILD_DIR)
 
 $(EXAMPLE_ARENA): examples/arena_basic.c $(LIB_OBJS) include/lor/lor.h include/lor/arena.h | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LIB_OBJS) examples/arena_basic.c -o $@
-
-format:
-	clang-format -i include/lor/arena.h include/lor/lor.h src/arena.c tests/test_arena.c examples/arena_basic.c
 
 clean:
 	$(RM_BUILD)
