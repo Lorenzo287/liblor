@@ -73,6 +73,6 @@ Optional module and alias controls:
 
 liblor-owned code is licensed under the MIT License. Reference material is not
 automatically part of liblor; copied or closely adapted third-party code must be
-audited and keep required notices. See `docs/THIRD_PARTY.md`.
+audited and keep required notices. See [Third Party](./docs/THIRD_PARTY.md).
 
-Start with `docs/ROADMAP.md` when continuing development.
+Start with [ROADMAP](docs/ROADMAP.md) when continuing development.
