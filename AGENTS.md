@@ -98,13 +98,17 @@ Expected future project layout:
 
 ## Licensing Rules
 
+- liblor-owned code is MIT-licensed.
+- New liblor-owned source files may use `// SPDX-License-Identifier: MIT`
+  instead of copying the full MIT license block.
 - Do not copy code from inspiration folders until its license has been checked.
 - Do not remove upstream copyright notices.
 - If code is copied or closely adapted, preserve required license text and note
   the source.
 - If only an idea is used, still record design credit when the influence is
   meaningful.
-- Be cautious with Apache-2.0 sources if the project license is not finalized.
+- Be cautious with Apache-2.0 sources: copied or adapted Apache-2.0 code keeps
+  Apache-2.0 notice obligations even when liblor's own code is MIT.
 - Add or update an attribution file before the first real release.
 
 ## Documentation Rules

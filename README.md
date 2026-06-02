@@ -92,15 +92,24 @@ first, with an optional generated amalgamated header later if it proves useful.
 
 ## Licensing And Attribution
 
-liblor is intended to be permissive open-source software that can be used almost
-anywhere. The exact project license still needs to be selected before the first
-public release.
+liblor is licensed under the MIT License. The intent is permissive open-source
+software that can be used almost anywhere.
 
 Do not copy code from the reference folders into liblor until the source license
 has been checked and recorded. Local references currently include MIT,
 BSD-style, Apache-2.0, and public-domain or dual-license material. Compatible
 code still needs attribution when required by its license and credit when it
 meaningfully influenced the design.
+
+New liblor-owned source files may use a short SPDX header instead of copying the
+full MIT text into every file:
+
+```c
+// SPDX-License-Identifier: MIT
+```
+
+Copied or closely adapted third-party files are different: preserve the upstream
+copyright and license notices required by that source.
 
 An attribution file should be added before the first real import or rewrite from
 external code. Expected credits include people and projects such as Antirez,

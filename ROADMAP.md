@@ -10,9 +10,10 @@ reference folders.
 
 Immediate next step:
 
-1. Decide the initial source layout and project license.
-2. Create the first minimal liblor skeleton.
-3. Implement one small foundational module with tests.
+1. Add attribution/license tracking.
+2. Decide the initial source layout.
+3. Create the first minimal liblor skeleton.
+4. Implement one small foundational module with tests.
 
 Recommended first module: arena allocator. It is foundational, small enough to
 shape the style, and useful for later strings, arrays, maps, and parsing.
@@ -22,7 +23,7 @@ shape the style, and useful for later strings, arrays, maps, and parsing.
 - [x] Create public README.
 - [x] Create agent manual.
 - [x] Create initial roadmap.
-- [ ] Choose project license.
+- [x] Choose project license: MIT.
 - [ ] Add attribution/license tracking file.
 - [ ] Choose final source layout.
 - [ ] Add minimal build system.
@@ -34,17 +35,13 @@ shape the style, and useful for later strings, arrays, maps, and parsing.
 
 ### Project license
 
-Target: permissive and usable almost everywhere.
+Decision: liblor-owned code is MIT-licensed.
 
-Candidates to evaluate:
-
-- MIT: familiar, widely accepted, compatible with many references.
-- BSD-2-Clause or BSD-3-Clause: also permissive, matches some references.
-- 0BSD: very permissive, but not all copied dependencies can be relicensed.
-
-Important: choosing liblor's license does not remove obligations from copied or
+Important: choosing MIT for liblor does not remove obligations from copied or
 adapted third-party code. External code still needs attribution and license text
-when required.
+when required. For new liblor-owned files, prefer a short SPDX header such as
+`// SPDX-License-Identifier: MIT` instead of copying the full license block into
+every file.
 
 ### Source shape
 
@@ -161,10 +158,9 @@ Use this checklist when continuing work:
 
 When ready to write code:
 
-1. Choose the project license and create `LICENSE`.
-2. Create `ATTRIBUTIONS.md` or `THIRD_PARTY.md`.
-3. Create the proposed layout.
-4. Add a minimal build command that works from PowerShell.
-5. Implement `LorArena` with focused tests.
-6. Add an example showing allocation, reset, and cleanup.
-7. Update README with the first real usage example.
+1. Create `ATTRIBUTIONS.md` or `THIRD_PARTY.md`.
+2. Create the proposed layout.
+3. Add a minimal build command that works from PowerShell.
+4. Implement `LorArena` with focused tests.
+5. Add an example showing allocation, reset, and cleanup.
+6. Update README with the first real usage example.
