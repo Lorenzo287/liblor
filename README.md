@@ -26,9 +26,13 @@ targets:
 liblor is a normal multi-file library first. A generated single-header release
 is present as an alternative.
 
+The first implementation area is memory: `LorArena`, `LorAllocator`,
+cleanup/defer, leak checking, and later ownership helpers. Include
+`lor/memory.h` for the current memory APIs. See [Memory](docs/memory.md).
+
 Public headers live under `include/lor/` so users can add `include/` to their
-compiler path and write namespaced includes such as `#include "lor/arena.h"`.
-This avoids collisions with generic names like `arena.h`, `string.h`, or
+compiler path and write namespaced includes such as `#include "lor/memory.h"`.
+This avoids collisions with generic names like `memory.h`, `string.h`, or
 `error.h`.
 
 ## Conventions
@@ -54,7 +58,7 @@ Basic use:
 
 Optional module and alias controls:
 
-- `LOR_ENABLE_ARENA`: include only the arena module.
+- `LOR_ENABLE_MEMORY`: include only the memory module.
 - `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
 - `LOR_CUSTOM_PREFIX my_`: compile function symbols as `my_arena_alloc`, etc.
 

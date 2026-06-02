@@ -1,12 +1,21 @@
 {
     "modules": [
         {
-            "name": "arena",
-            "enable_macro": "LOR_ENABLE_ARENA",
-            "header": "include/lor/arena.h",
-            "source": "src/arena.c",
+            "name": "memory",
+            "enable_macro": "LOR_ENABLE_MEMORY",
+            "header": "include/lor/memory.h",
+            "source": "src/memory.c",
             "symbols": {
                 "functions": [
+                    ["lor_allocator_heap", "allocator_heap"],
+                    ["lor_allocator_is_valid", "allocator_is_valid"],
+                    ["lor_allocator_realloc", "allocator_realloc"],
+                    ["lor_allocator_alloc", "allocator_alloc"],
+                    ["lor_allocator_alloc_zero", "allocator_alloc_zero"],
+                    ["lor_allocator_free", "allocator_free"],
+                    ["lor_allocator_alloc_array", "allocator_alloc_array"],
+                    ["lor_allocator_alloc_array_zero", "allocator_alloc_array_zero"],
+                    ["lor_allocator_realloc_array", "allocator_realloc_array"],
                     ["lor_arena_init", "arena_init"],
                     ["lor_arena_deinit", "arena_deinit"],
                     ["lor_arena_reset", "arena_reset"],
@@ -20,10 +29,13 @@
                     ["lor_arena_capacity", "arena_capacity"]
                 ],
                 "types": [
+                    ["LorAllocator", "Allocator"],
+                    ["LorAllocatorReallocFn", "AllocatorReallocFn"],
                     ["LorArena", "Arena"],
                     ["LorArenaBlock", "ArenaBlock"]
                 ],
                 "macros": [
+                    ["LOR_ALLOCATOR_INIT", "ALLOCATOR_INIT"],
                     ["LOR_ARENA_DEFAULT_BLOCK_SIZE", "ARENA_DEFAULT_BLOCK_SIZE"],
                     ["LOR_ARENA_INIT", "ARENA_INIT"]
                 ]

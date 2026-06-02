@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-#include "lor/arena.h"
+#include "lor/lor.h"
 
 #include <stdio.h>
 

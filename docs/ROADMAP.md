@@ -4,19 +4,20 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Stabilize the foundation after the first module.
+Build the memory subsystem foundation. See `docs/memory.md`.
 
-1. Review `LorArena` after using it in examples.
-2. Decide the project-wide allocator interface.
-3. Define the initial error/result convention.
-4. Choose the next small data module: string view or dynamic array.
+1. Decide how `LorArena` exposes or documents allocator compatibility.
+2. Define the initial error/result convention for memory failures.
+3. Add cleanup/defer primitives.
+4. Add opt-in leak checking on top of `LorAllocator`.
+5. Revisit reference counting only after a real shared-ownership use case exists.
 
-The future build/run/REPL tool is a design target, but it should wait until the
-library has allocator, error, string/path, dynamic array, and process helpers.
+Reference counting and garbage collection are later memory features. They need
+real use cases before implementation.
 
 ## Open Decisions
 
-- Allocator interface for data structures.
+- Arena allocator adapter decision.
 - Error/result convention.
 - Reusable test harness shape.
 - Leak-checking strategy.
@@ -36,14 +37,19 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 - [x] Add `docs/build-system.md` for the future `lor` tool direction.
 - [x] Add generated `lor.h` workflow.
 - [x] Consolidate public API naming: `lor_module_action`, `LorName`, `LOR_NAME`.
+- [x] Add memory subsystem implementation path.
+- [x] Add consolidated memory module with arena and allocator foundation.
+- [x] Simplify Makefile source, test, example, and header discovery.
 
 ## Backlog
 
 ### Foundation
 
 - [x] arena allocator;
-- [ ] allocator interface;
+- [x] allocator interface and heap allocator;
 - [ ] error/result conventions;
+- [x] consolidated memory module;
+- [ ] cleanup/defer scope;
 - [ ] reusable test harness;
 - [ ] leak-checking strategy.
 
