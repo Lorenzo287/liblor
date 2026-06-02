@@ -34,6 +34,8 @@ def strip_local_includes(lines: list[str]) -> list[str]:
         stripped = line.strip()
         if stripped.startswith('#include "lor/') or stripped == '#include "lor.h"':
             continue
+        if stripped == "#define LOR_MEMORY_NO_STDLIB_MACROS":
+            continue
         result.append(line)
     return result
 
@@ -57,6 +59,27 @@ def strip_header_guard(lines: list[str], guard: str) -> list[str]:
     return result
 
 
+def strip_single_header_late_macros(lines: list[str]) -> list[str]:
+    result = []
+    skipping = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if stripped.startswith("/* Optional macro mode."):
+            skipping = True
+            continue
+
+        if skipping:
+            if stripped == "#endif":
+                skipping = False
+            continue
+
+        result.append(line)
+
+    return result
+
+
 def clean_header(path: Path) -> str:
     guard = path.stem.upper().replace("-", "_") + "_H"
     if path.stem == "lor":
@@ -67,6 +90,7 @@ def clean_header(path: Path) -> str:
     lines = read_text(path).splitlines()
     lines = strip_spdx(lines)
     lines = strip_local_includes(lines)
+    lines = strip_single_header_late_macros(lines)
     lines = strip_header_guard(lines, guard)
     return "\n".join(lines).strip() + "\n"
 
@@ -168,6 +192,22 @@ def emit_strip_prefix_aliases(modules: list[dict]) -> str:
     return "\n".join(out) + "\n"
 
 
+def emit_stdlib_leakcheck_macros() -> str:
+    out = []
+    out.append("/* Optional stdlib heap interception")
+    out.append("   Define LOR_LEAKCHECK_STDLIB before including this header to route")
+    out.append("   malloc/calloc/realloc/free/strdup through liblor leak tracking. */")
+    out.append("#if defined(LOR_LEAKCHECK_STDLIB) && !defined(LOR_MEMORY_NO_STDLIB_MACROS)")
+    out.append("#define malloc(size) lor_malloc_debug((size), __FILE__, __LINE__)")
+    out.append("#define calloc(count, elem_size) \\")
+    out.append("    lor_calloc_debug((count), (elem_size), __FILE__, __LINE__)")
+    out.append("#define realloc(ptr, size) lor_realloc_debug((ptr), (size), __FILE__, __LINE__)")
+    out.append("#define free(ptr) lor_free_debug((ptr), __FILE__, __LINE__)")
+    out.append("#define strdup(text) lor_strdup_debug((text), __FILE__, __LINE__)")
+    out.append("#endif")
+    return "\n".join(out) + "\n"
+
+
 def generate(manifest_path: Path) -> str:
     manifest = json.loads(read_text(manifest_path))
     modules = manifest["modules"]
@@ -181,6 +221,7 @@ def generate(manifest_path: Path) -> str:
     out.append("")
     out.append("#ifndef LOR_SINGLE_HEADER_H")
     out.append("#define LOR_SINGLE_HEADER_H")
+    out.append("#define LOR_SINGLE_HEADER_BUILD")
     out.append("")
     out.append(emit_module_selection(modules).rstrip())
     out.append("")
@@ -189,6 +230,9 @@ def generate(manifest_path: Path) -> str:
     out.append(emit_declarations(modules).rstrip())
     out.append(emit_implementations(modules).rstrip())
     out.append(emit_strip_prefix_aliases(modules).rstrip())
+    out.append("")
+    out.append("#undef LOR_SINGLE_HEADER_BUILD")
+    out.append(emit_stdlib_leakcheck_macros().rstrip())
     out.append("")
     out.append("#endif /* LOR_SINGLE_HEADER_H */")
     out.append("")

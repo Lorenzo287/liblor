@@ -38,7 +38,7 @@ RM_BUILD = rm -rf $(BUILD_DIR)
 all: test example single-header
 
 test: $(TEST_BINS)
-	@for test in $(TEST_BINS); do ./$$test; done
+	@for test in $(TEST_BINS); do ./$$test || exit $$?; done
 
 example: $(EXAMPLE_BINS)
 

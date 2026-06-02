@@ -6,21 +6,18 @@ This file tracks current direction and the next concrete development steps.
 
 Build the memory subsystem foundation. See `docs/memory.md`.
 
-1. Decide how `LorArena` exposes or documents allocator compatibility.
-2. Define the initial error/result convention for memory failures.
-3. Add cleanup/defer primitives.
-4. Add opt-in leak checking on top of `LorAllocator`.
-5. Revisit reference counting only after a real shared-ownership use case exists.
+1. Harden Unix virtual-memory behavior on a Unix host.
+2. Decide the first container memory policy when dynamic arrays/hash maps begin.
+3. Define the initial error/result convention for memory failures.
+4. Revisit reference counting only after a real shared-ownership use case exists.
 
 Reference counting and garbage collection are later memory features. They need
 real use cases before implementation.
 
 ## Open Decisions
 
-- Arena allocator adapter decision.
 - Error/result convention.
 - Reusable test harness shape.
-- Leak-checking strategy.
 - Next module: string view or dynamic array.
 - Single-header generator hardening as more modules are added.
 
@@ -38,7 +35,8 @@ real use cases before implementation.
 - [x] Add generated `lor.h` workflow.
 - [x] Consolidate public API naming: `lor_module_action`, `LorName`, `LOR_NAME`.
 - [x] Add memory subsystem implementation path.
-- [x] Add consolidated memory module with arena and allocator foundation.
+- [x] Add consolidated memory module with arenas, virtual memory, mmap, cleanup
+      helpers, and opt-in leak checking.
 - [x] Simplify Makefile source, test, example, and header discovery.
 
 ## Backlog
@@ -46,12 +44,15 @@ real use cases before implementation.
 ### Foundation
 
 - [x] arena allocator;
-- [x] allocator interface and heap allocator;
+- [x] arena temp/mark scopes;
+- [x] scratch arenas;
+- [x] virtual memory reserve/commit/release;
+- [x] mmap file mapping;
+- [x] opt-in leak checking;
 - [ ] error/result conventions;
 - [x] consolidated memory module;
-- [ ] cleanup/defer scope;
+- [x] cleanup helpers;
 - [ ] reusable test harness;
-- [ ] leak-checking strategy.
 
 ### Data
 
@@ -63,8 +64,7 @@ real use cases before implementation.
 
 ### Ergonomics
 
-- [ ] defer helper;
-- [ ] automatic cleanup helper;
+- [x] automatic cleanup helper;
 - [ ] CLI argument parser;
 - [ ] generic print helpers;
 - [ ] type helper macros.
@@ -77,6 +77,6 @@ real use cases before implementation.
 
 ### Platform
 
-- [ ] mmap abstraction;
+- [x] mmap abstraction;
 - [ ] concurrency primitives;
 - [ ] custom entry-point helpers.

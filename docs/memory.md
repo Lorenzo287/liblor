@@ -1,42 +1,50 @@
 # Memory
 
-Memory is the first liblor subsystem. Keep arena allocation, allocator
-interfaces, cleanup/defer, leak checking, and later ownership helpers together
-in `include/lor/memory.h` and `src/memory.c` until the code clearly needs a
-split.
+Memory is the first liblor subsystem. Keep arenas, scratch scopes, virtual
+memory, mmap, cleanup helpers, and leak checking together in
+`include/lor/memory.h` and `src/memory.c` until the code clearly needs a split.
 
-## Current Status
+## Current Shape
 
-- Implemented: `LorArena`, `LorAllocator`, and `lor_allocator_heap`.
-- Public include: `#include "lor/memory.h"`.
-- Single-header module macro: `LOR_ENABLE_MEMORY`.
-- Next: settle arena/allocator compatibility, then add cleanup/defer.
+- `LorArena`: heap-backed by default, with optional virtual-memory backend.
+- `LorArenaMark` / `LorArenaTemp`: rewind temporary allocations.
+- `lor_scratch_begin`: per-thread temporary scratch arenas.
+- `LorVirtualMemory`: anonymous reserve/commit/release memory.
+- `LorMmap`: file mapping by path.
+- `lor_malloc` / `lor_free` helpers: present for leakcheck, not as a generic
+  allocator abstraction.
+- `LOR_LEAKCHECK_STDLIB`: optional macro mode for stdlib heap calls.
+
+There is no public `LorAllocator`. Reintroduce an allocator interface only when
+a concrete container or subsystem needs user-supplied allocation behavior.
 
 ## Principles
 
+- Prefer useful features over wrapper APIs.
 - Keep ownership explicit in names or docs.
 - Prefer deterministic cleanup over hidden global behavior.
-- Do not replace `malloc` globally.
-- Keep debug memory tools opt-in.
+- Do not replace `malloc` globally unless the user opts into macro mode.
+- Treat arena allocations as bulk-owned by the arena, not individually freeable.
 - Do not attempt generic GC for arbitrary C pointers.
 
-## Allocator Contract
+## Leak Checking
 
-`LorAllocator` stores a context pointer plus a realloc-style callback.
+Leakcheck is off by default. When enabled with `lor_leakcheck_enable(1)`, liblor
+tracks allocations made through liblor heap helpers, active arenas, virtual
+reservations, and active mmap mappings.
 
-- `new_size == 0` frees and returns `NULL`.
-- allocation failure returns `NULL` and leaves the old pointer valid.
-- zero-count and overflowed array allocations return `NULL`.
-- alignment is normal `malloc` alignment; over-aligned memory stays in APIs like
-  `lor_arena_alloc_aligned`.
+For stdlib heap calls in one translation unit:
 
-Arena allocation does not currently satisfy the full allocator contract because
-arenas cannot free or reallocate individual allocations.
+```c
+#define LOR_LEAKCHECK_STDLIB
+#include "lor/memory.h"
+```
 
-## Implementation Order
+Then `malloc`, `calloc`, `realloc`, `free`, and `strdup` route through liblor's
+tracker in that translation unit.
 
-1. explicit allocation model;
-2. deterministic cleanup/defer helpers;
-3. opt-in debug leak checking;
-4. optional reference counting when a real shared-ownership use case exists;
-5. garbage collection only if a later object model justifies it.
+## Next Work
+
+- Harden Unix virtual-memory behavior on a Unix host.
+- Decide the first container memory policy when dynamic arrays/hash maps begin.
+- Add richer leak reports only if the current report format is insufficient.
