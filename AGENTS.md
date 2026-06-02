@@ -11,35 +11,24 @@ development rules, and agent expectations.
 
 - `README.md`: public-facing project overview.
 - `ROADMAP.md`: current plan, priorities, and progress tracking.
-- `arena/`: arena allocator ideas.
-- `build/`: build-system ideas, especially `nob`.
-- `cleanup (auto free)/`: automatic cleanup and leak-checking experiments.
-- `cli_args_parser/`: command-line parser ideas.
-- `concurrency/`: coroutine/concurrency references.
-- `custom_main/`: custom `main` experiments.
-- `default_parameters/`: default-parameter macro experiments.
-- `defer/`: defer helper experiments.
-- `dynamic_array/`: dynamic array references.
-- `error/`: error-reporting experiments.
-- `generic (print + typeof)/`: generic print and type helpers.
-- `hash_table/`: hash table references.
-- `leakcheck/`: leak-checking experiments.
-- `libCello/`: higher-level C inspiration.
-- `mman (mmap)/`: Windows mmap compatibility reference.
-- `rand/`: random-number reference.
-- `stb_misc/`: large `stb.h` utility reference; avoid reading unless the task
-  specifically needs it.
-- `strings/`: string manipulation references, including SDS and string views.
-- `x_macro/`: X-macro experiments.
+- `THIRD_PARTY.md`: license and attribution tracking.
+- `dev.c`: tiny development helper for building/testing liblor itself.
+- `docs/build-system.md`: direction for the future liblor build/run/REPL tool.
+- `include/lor/`: public liblor headers.
+- `src/`: liblor implementations.
+- `tests/`: focused module tests.
+- `examples/`: small runnable examples.
+- `references/`: third-party libraries, snippets, and experiments used only for
+  study and audit until explicitly moved into liblor-owned source.
 
-Expected future project layout:
+Current liblor-owned source layout:
 
 - `include/lor/`: public headers.
 - `src/`: implementation files.
 - `tests/`: module tests.
 - `examples/`: small usage examples.
-- `tools/`: project-local tooling.
 - `docs/`: design notes.
+- Future `tools/`: project-local tooling.
 
 ## Fast Context
 
@@ -51,6 +40,10 @@ Expected future project layout:
   small files first.
 - The current folder is not necessarily a Git repository. Try
   `git status --short`; if it fails, continue without Git assumptions.
+- Development helper bootstrap: `clang -std=c11 -Wall -Wextra -Wpedantic dev.c
+  -o liblor-dev.exe`.
+- Run tests: `.\liblor-dev.exe all`.
+- Use `$env:CC = 'gcc'` before running the helper to compile liblor with GCC.
 
 ## Workflow
 
@@ -62,7 +55,7 @@ Expected future project layout:
 - Before adding a new liblor module, define its public API, ownership rules, and
   error behavior.
 - For each imported or rewritten idea, record its source and license status in
-  the roadmap until a dedicated attribution/license file exists.
+  `THIRD_PARTY.md`.
 - Keep README public-facing, AGENTS operational, and ROADMAP tactical.
 
 ## C Style

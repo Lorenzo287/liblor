@@ -30,14 +30,15 @@ The working public API convention is:
 - `lor_name` for private or internal helpers when they are not file-local;
 - file-local helpers should be `static` and may use simple module-local names.
 
-This convention is provisional until the first real API lands.
+This convention is active for new liblor-owned code, but APIs may still change
+while the project is young.
 
 ## Planned Components
 
 The current idea list includes:
 
 - arena allocator;
-- build system and integrated build helpers;
+- project runner, build helper, and optional REPL tooling;
 - automatic cleanup and defer-style helpers;
 - command-line argument parsing;
 - concurrency primitives;
@@ -55,40 +56,89 @@ current session plan.
 
 ## Repository Layout
 
-The current top-level folders are reference material and experiments:
+Reference material and experiments live under `references/`:
 
-- `arena/`: arena allocator ideas, including Tsoding-inspired code.
-- `build/`: build-system ideas, including `nob`.
-- `cleanup (auto free)/`: automatic cleanup and leak-checking experiments.
-- `cli_args_parser/`: command-line parsing ideas.
-- `concurrency/`: coroutine/concurrency references.
-- `custom_main/`: custom entry-point experiments.
-- `default_parameters/`: default-parameter macro experiments.
-- `defer/`: defer-style cleanup snippets.
-- `dynamic_array/`: dynamic array references and experiments.
-- `error/`: error-reporting experiments.
-- `generic (print + typeof)/`: generic printing and type-detection ideas.
-- `hash_table/`: hash table references.
-- `leakcheck/`: leak-checking experiments.
-- `libCello/`: higher-level C programming inspiration.
-- `mman (mmap)/`: Windows mmap compatibility reference.
-- `rand/`: random-number utility reference.
-- `stb_misc/`: large utility reference; read only when needed.
-- `strings/`: string libraries and string-view references.
-- `x_macro/`: X-macro experiments.
+- `references/arena/`: arena allocator ideas.
+- `references/build/`: build-system ideas, including `nob`.
+- `references/cleanup (auto free)/`: automatic cleanup and leak-checking
+  experiments.
+- `references/cli_args_parser/`: command-line parsing ideas.
+- `references/concurrency/`: coroutine/concurrency references.
+- `references/custom_main/`: custom entry-point experiments.
+- `references/default_parameters/`: default-parameter macro experiments.
+- `references/defer/`: defer-style cleanup snippets.
+- `references/dynamic_array/`: dynamic array references and experiments.
+- `references/error/`: error-reporting experiments.
+- `references/generic (print + typeof)/`: generic printing and type-detection
+  ideas.
+- `references/hash_table/`: hash table references.
+- `references/leakcheck/`: leak-checking experiments.
+- `references/libCello/`: higher-level C programming inspiration.
+- `references/mman (mmap)/`: Windows mmap compatibility reference.
+- `references/rand/`: random-number utility reference.
+- `references/stb_misc/`: large utility reference; read only when needed.
+- `references/strings/`: string libraries and string-view references.
+- `references/x_macro/`: X-macro experiments.
 
-The intended future source layout is:
+The liblor-owned source layout is:
 
+- `dev.c`: tiny development helper for building and testing liblor itself.
 - `include/lor/`: public headers.
 - `src/`: implementation files.
 - `tests/`: focused tests for each module.
 - `examples/`: small runnable examples.
+- `THIRD_PARTY.md`: license and inspiration tracking.
+
+Expected future additions:
+
 - `tools/`: project-local tooling.
 - `docs/`: design notes and deeper module documentation.
 
-Whether liblor becomes a normal multi-file library, an `stb`-style single-header
-library, or both is still open. The conservative target is a normal source tree
-first, with an optional generated amalgamated header later if it proves useful.
+liblor is a normal multi-file library first. An optional generated
+`stb`-style amalgamated header may be added later if it proves useful.
+
+Public headers live under `include/lor/` so users can add `include/` to their
+compiler search path and write namespaced includes such as `#include
+"lor/arena.h"`. This avoids collisions with generic names like `arena.h`,
+`string.h`, or `error.h`, and it maps cleanly to future installation layouts.
+
+## Build And Test
+
+The current development helper expects Clang or GCC. From PowerShell:
+
+```powershell
+clang -std=c11 -Wall -Wextra -Wpedantic dev.c -o liblor-dev.exe
+.\liblor-dev.exe all
+```
+
+To use GCC instead:
+
+```powershell
+$env:CC = 'gcc'
+.\liblor-dev.exe all
+Remove-Item Env:CC
+```
+
+Build outputs go into `.build/`.
+
+The future liblor build/run/REPL feature is separate from this helper. See
+`docs/build-system.md`.
+
+## First Module
+
+`LorArena` is the first liblor module. It supports arena initialization,
+bulk reset, deinitialization, aligned allocation, zeroed allocation, array
+allocation, string duplication, and usage/capacity inspection.
+
+```c
+#include "lor/lor.h"
+
+LorArena arena = LOR_ARENA_INIT;
+int *values = lor_arena_alloc_array_zero(&arena, 4, sizeof(*values));
+char *label = lor_arena_strdup(&arena, "arena example");
+
+lor_arena_deinit(&arena);
+```
 
 ## Licensing And Attribution
 
@@ -111,13 +161,10 @@ full MIT text into every file:
 Copied or closely adapted third-party files are different: preserve the upstream
 copyright and license notices required by that source.
 
-An attribution file should be added before the first real import or rewrite from
-external code. Expected credits include people and projects such as Antirez,
-Tsoding, MagicalBait, stb, libCello, and any other source that influences the
-library.
+See `THIRD_PARTY.md` for the current reference and attribution inventory.
 
 ## Status
 
-Bootstrap phase. No stable API exists yet.
+Early development. The first module exists, but the API is not stable yet.
 
 Start with `ROADMAP.md` when continuing development.
