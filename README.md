@@ -23,17 +23,6 @@ targets:
 
 ## Layout
 
-- `include/lor/`: public headers.
-- `src/`: implementations.
-- `tests/`: focused tests.
-- `examples/`: small usage examples.
-- `docs/`: design notes.
-- `references/`: third-party libraries, snippets, and experiments for study.
-- `tools/`: project tools, including the single-header generator.
-- `lor.h`: generated single-header liblor.
-- `docs/THIRD_PARTY.md`: attribution and license tracking.
-- `compile_flags.txt`: clangd flags for resolving includes.
-
 liblor is a normal multi-file library first. A generated single-header release
 is present as an alternative.
 
