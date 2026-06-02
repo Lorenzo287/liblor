@@ -11,6 +11,8 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # Editor and IDE local state
+GEMINI.md
+CLAUDE.md
 .vs/
 .vscode/
 .idea/
