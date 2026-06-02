@@ -1,7 +1,7 @@
 # liblor gitignore
 #
-# Keep this file conservative. The repository currently has source/reference
-# directories such as `build/`, so do not add broad ignores like `/build/`.
+# Keep this file conservative. Reference material lives under `references/`, so
+# do not add broad ignores that hide source folders.
 
 # OS files
 .DS_Store
@@ -14,7 +14,6 @@ $RECYCLE.BIN/
 .vs/
 .vscode/
 .idea/
-.clang-format
 *.suo
 *.user
 *.userosscache

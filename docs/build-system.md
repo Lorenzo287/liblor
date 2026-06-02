@@ -1,23 +1,20 @@
 # Build System Direction
 
-This note is about the future liblor build/run tooling, not about `dev.c`.
-`dev.c` is only a small helper for developing liblor itself.
+This note is about the future liblor build/run tooling. It is separate from the
+repository Makefile, which only builds liblor during development.
 
 ## Goal
 
-The long-term goal is to make small C projects feel closer to:
+Make small C projects feel closer to:
 
-- `python main.py`: run the program without thinking about build output;
+- `python main.py`: run without thinking about build output;
 - `go run .`: compile, cache, and run in one command;
 - `go build`: produce a final executable with predictable defaults.
 
-C cannot truly behave like Python without either compiling or using an
-interpreter/JIT. The practical target is a liblor command-line tool that hides
-the compile/link/cache steps for normal projects.
+C still has to compile or use an interpreter/JIT. The practical target is a
+`lor` command that hides compile/link/cache details for common projects.
 
 ## Possible Commands
-
-Working name: `lor`.
 
 ```powershell
 lor init
@@ -29,48 +26,37 @@ lor clean
 lor repl
 ```
 
-For simple projects, `lor run .` should work by convention: find source files,
-include directories, compiler, output directory, and executable name. For
-complex projects, the user should be able to provide an explicit C build script
-or small config file.
+Simple projects should work by convention. Complex projects can opt into a
+small config file or C build script.
 
 ## Relationship To nob
 
-`nob` is a strong inspiration because it keeps build logic in C. The likely
-shape is:
+`nob` is useful inspiration because it keeps build logic in C. A likely shape:
 
-- default convention-based builder for simple projects;
-- optional `lor.build.c` or similar for custom builds;
-- reusable build API inside liblor for command execution, paths, files,
-  dependency checks, and compiler invocation.
-
-This means liblor can expose build-system utilities without forcing every
-project to use the same build description.
+- convention-based defaults;
+- optional `lor.build.c` for custom projects;
+- reusable liblor APIs for paths, files, process execution, dependency checks,
+  and compiler invocation.
 
 ## REPL Direction
 
-A C REPL is possible, but it should be treated as a staged project.
+The first practical C REPL should be compile-backed:
 
-The first practical version should be compile-backed:
-
-1. keep a temporary generated C file for the session;
-2. append declarations, helper functions, or expressions;
+1. maintain a temporary generated C file for the session;
+2. append declarations, helpers, or expressions;
 3. compile and run snippets through the selected compiler;
 4. cache results where possible.
 
-This is not a true Lisp-style live image. Persistent state and hot code reload
-are harder in C. A later version could investigate dynamic-library loading,
-TinyCC/libtcc, Clang tooling, or another JIT/interpreter approach, but those
-choices need careful license and portability audits.
+A later version can investigate dynamic-library loading, TinyCC/libtcc, Clang
+tooling, or another JIT/interpreter path. Those choices need license and
+portability audits.
 
-## Near-Term Plan
+## Prerequisites
 
-Do not build this before the library foundation is clearer. First define:
+Do not build this before the library foundation is clearer. Needed first:
 
 - allocator interface;
 - error/result conventions;
-- path/string utilities;
+- string/path utilities;
 - dynamic arrays;
 - process execution helpers.
-
-Those modules are the natural substrate for a useful `lor` tool.
