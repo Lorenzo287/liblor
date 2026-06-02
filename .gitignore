@@ -1,0 +1,108 @@
+# liblor gitignore
+#
+# Keep this file conservative. The repository currently has source/reference
+# directories such as `build/`, so do not add broad ignores like `/build/`.
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor and IDE local state
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# C/C++ object files and generated dependency files
+*.o
+*.obj
+*.lo
+*.d
+*.gcno
+*.gcda
+*.gcov
+
+# Static and dynamic libraries
+*.a
+*.lib
+*.so
+*.so.*
+*.dll
+*.dylib
+
+# Executables and linker/debug outputs
+*.exe
+*.out
+*.app
+*.ilk
+*.pdb
+*.idb
+*.exp
+*.map
+
+# Common compiler, linker, and test output directories
+bin/
+obj/
+out/
+dist/
+Debug/
+Release/
+x64/
+x86/
+
+# CMake-generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
+compile_commands.json
+
+# Visual Studio/MSBuild generated files
+*.VC.db
+*.VC.VC.opendb
+*.opensdf
+*.sdf
+*.ipch
+*.tlog
+*.lastbuildstate
+*.recipe
+*.vcxproj.user
+
+# Ninja/Make generated state
+.ninja_deps
+.ninja_log
+Makefile.local
+
+# Sanitizer, profiler, and coverage reports
+asan.log*
+ubsan.log*
+lsan.log*
+callgrind.out.*
+gmon.out
+coverage/
+
+# Tool caches
+.cache/
+.clangd/
+.ccls-cache/
+__pycache__/
+*.pyc
