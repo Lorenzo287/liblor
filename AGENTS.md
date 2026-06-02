@@ -8,13 +8,12 @@ study material, not liblor-owned source.
 - `README.md`: public project overview.
 - `docs/ROADMAP.md`: current work and next decisions.
 - `docs/THIRD_PARTY.md`: attribution and license audit tracking.
-- `docs/api-design.md`: naming, aliasing, and single-header direction.
 - `Makefile`: local development build/test entry point.
 - `compile_flags.txt`: clangd include/diagnostic flags.
 - `docs/build-system.md`: future `lor run` / `lor build` / REPL direction.
-- `tools/gen_single_header.py`: generates `dist/lor.h`.
+- `tools/gen_single_header.py`: generates `lor.h`.
 - `tools/lor_modules.json`: module manifest for single-header generation.
-- `dist/lor.h`: generated single-header distribution; do not edit by hand.
+- `lor.h`: generated single-header liblor; do not edit by hand.
 - `include/lor/`, `src/`, `tests/`, `examples/`: liblor-owned source.
 - `references/`: third-party libraries, snippets, and experiments.
 
@@ -35,12 +34,10 @@ study material, not liblor-owned source.
 - A local `.clang-format` may be used as a formatting reference, but it is not a
   tracked project requirement.
 - Prefer C99/C11-compatible code unless a module documents otherwise.
-- Follow `docs/api-design.md` for public naming decisions.
 - Use `snake_case` for functions, variables, and fields.
 - File-local helpers should be `static`.
 - Braces may be omitted for simple single-line `if`, `while`, and similar
   statements.
-- Keep macros simple and documented. Prefer direct C over clever macro systems.
 - Comments should explain intent, invariants, ownership, or portability issues.
 
 ## API Rules

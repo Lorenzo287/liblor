@@ -3,7 +3,7 @@
 #define LOR_IMPLEMENTATION
 #define LOR_ENABLE_ARENA
 #define LOR_CUSTOM_PREFIX my_
-#include "lor.h"
+#include "../lor.h"
 
 #include <stdio.h>
 

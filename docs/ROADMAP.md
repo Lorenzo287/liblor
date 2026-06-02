@@ -14,6 +14,15 @@ Stabilize the foundation after the first module.
 The future build/run/REPL tool is a design target, but it should wait until the
 library has allocator, error, string/path, dynamic array, and process helpers.
 
+## Open Decisions
+
+- Allocator interface for data structures.
+- Error/result convention.
+- Reusable test harness shape.
+- Leak-checking strategy.
+- Next module: string view or dynamic array.
+- Single-header generator hardening as more modules are added.
+
 ## Done
 
 - [x] Bootstrap README, AGENTS, ROADMAP, MIT license, and `.gitignore`.
@@ -25,19 +34,8 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 - [x] Implement first module: `LorArena`.
 - [x] Add focused arena tests and a small arena example.
 - [x] Add `docs/build-system.md` for the future `lor` tool direction.
-- [x] Add `docs/api-design.md` for naming, aliasing, and single-header notes.
-- [x] Add generated `dist/lor.h` workflow.
-- [x] Consolidate public API naming: `lor_module_action`, `LorName`,
-  `LOR_NAME`.
-
-## Open Decisions
-
-- Allocator interface for data structures.
-- Error/result convention.
-- Reusable test harness shape.
-- Leak-checking strategy.
-- Next module: string view or dynamic array.
-- Single-header generator hardening as more modules are added.
+- [x] Add generated `lor.h` workflow.
+- [x] Consolidate public API naming: `lor_module_action`, `LorName`, `LOR_NAME`.
 
 ## Backlog
 
@@ -76,11 +74,3 @@ library has allocator, error, string/path, dynamic array, and process helpers.
 - [ ] mmap abstraction;
 - [ ] concurrency primitives;
 - [ ] custom entry-point helpers.
-
-## Session Checklist
-
-1. Read `README.md`, `AGENTS.md`, and this file.
-2. Check `git status --short`.
-3. Pick the next item from `Current Focus`.
-4. Audit reference material before copying or closely adapting code.
-5. Run `make all` and update this file after finishing a step.

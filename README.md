@@ -1,8 +1,7 @@
 # liblor
 
-liblor is a personal C library for bringing higher-level programming tools to C
-without hiding the language. The goal is a cohesive set of small, readable,
-portable utilities for everyday C code.
+liblor is a personal C library for bringing higher-level programming tools to C.
+The goal is a cohesive set of small, readable, portable utilities for everyday C code.
 
 The project is early. APIs may change.
 
@@ -12,23 +11,15 @@ Use the Makefile for local development:
 
 ```powershell
 make all
-```
-
-To build with GCC:
-
-```powershell
 make CC=gcc all
 ```
 
-Useful targets:
+targets:
 
 - `make test`: build and run tests.
 - `make example`: build examples.
-- `make single-header`: generate `dist/lor.h`.
+- `make single-header`: generate `lor.h`.
 - `make clean`: remove `.build/`.
-
-If `make` is not available on Windows, `mingw32-make` can be used with the same
-targets.
 
 ## Layout
 
@@ -39,9 +30,12 @@ targets.
 - `docs/`: design notes.
 - `references/`: third-party libraries, snippets, and experiments for study.
 - `tools/`: project tools, including the single-header generator.
-- `dist/lor.h`: generated single-header distribution.
+- `lor.h`: generated single-header liblor.
 - `docs/THIRD_PARTY.md`: attribution and license tracking.
 - `compile_flags.txt`: clangd flags for resolving includes.
+
+liblor is a normal multi-file library first. A generated single-header release
+is present as an alternative.
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/arena.h"`.
@@ -53,16 +47,10 @@ This avoids collisions with generic names like `arena.h`, `string.h`, or
 - `lor_` for public functions.
 - `LorName` for public types.
 - `LOR_NAME` for public constants and feature macros.
-- `static` for file-local helpers.
-
-liblor is a normal multi-file library first. A generated single-header release
-may be added later if it proves useful.
-
-See `docs/api-design.md` for naming and aliasing notes.
 
 ## Single Header
 
-Generate `dist/lor.h` with:
+Generate `lor.h` with:
 
 ```powershell
 make single-header
@@ -80,22 +68,6 @@ Optional module and alias controls:
 - `LOR_ENABLE_ARENA`: include only the arena module.
 - `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
 - `LOR_CUSTOM_PREFIX my_`: compile function symbols as `my_arena_alloc`, etc.
-
-## First Module
-
-`LorArena` supports arena initialization, reset, deinitialization, aligned
-allocation, zeroed allocation, array allocation, string duplication, and
-usage/capacity inspection.
-
-```c
-#include "lor/lor.h"
-
-LorArena arena = LOR_ARENA_INIT;
-int *values = lor_arena_alloc_array_zero(&arena, 4, sizeof(*values));
-char *label = lor_arena_strdup(&arena, "arena example");
-
-lor_arena_deinit(&arena);
-```
 
 ## License
 
