@@ -1,7 +1,4 @@
-// SPDX-License-Identifier: MIT
-
-#include "lor/lor.h"
-
+#include "lor/memory.h"
 #include <stdio.h>
 
 int main(void) {

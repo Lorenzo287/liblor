@@ -26,21 +26,25 @@ SINGLE_HEADER_TEST_BINS := $(patsubst tests/%.c,$(BUILD_DIR)/%$(EXE),$(SINGLE_HE
 TEST_BINS := $(LIB_TEST_BINS) $(SINGLE_HEADER_TEST_BINS)
 
 EXAMPLE_SRCS := $(wildcard examples/*.c)
+EXAMPLE_SH_SRCS := $(wildcard examples_sh/*.c)
 EXAMPLE_BINS := $(patsubst examples/%.c,$(BUILD_DIR)/example_%$(EXE),$(EXAMPLE_SRCS))
+EXAMPLE_SH_BINS := $(patsubst examples_sh/%.c,$(BUILD_DIR)/example_sh_%$(EXE),$(EXAMPLE_SH_SRCS))
 SINGLE_HEADER := lor.h
 SINGLE_HEADER_INPUTS := tools/gen_single_header.py tools/lor_modules.json $(PUBLIC_HEADERS) $(LIB_SRCS)
 
 MKDIR_BUILD = mkdir -p $(BUILD_DIR)
 RM_BUILD = rm -rf $(BUILD_DIR)
 
-.PHONY: all test example single-header clean
+.PHONY: all test example example-sh single-header clean
 
-all: test example single-header
+all: test example example-sh single-header
 
 test: $(TEST_BINS)
 	@for test in $(TEST_BINS); do ./$$test || exit $$?; done
 
 example: $(EXAMPLE_BINS)
+
+example-sh: $(EXAMPLE_SH_BINS)
 
 single-header: $(SINGLE_HEADER)
 
@@ -58,6 +62,9 @@ $(LIB_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) 
 
 $(EXAMPLE_BINS): $(BUILD_DIR)/example_%$(EXE): examples/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LIB_OBJS) $< -o $@
+
+$(EXAMPLE_SH_BINS): $(BUILD_DIR)/example_sh_%$(EXE): examples_sh/%.c $(SINGLE_HEADER) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $< -o $@
 
 $(SINGLE_HEADER): $(SINGLE_HEADER_INPUTS)
 	$(PYTHON) tools/gen_single_header.py --output $(SINGLE_HEADER)

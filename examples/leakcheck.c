@@ -1,9 +1,6 @@
-// SPDX-License-Identifier: MIT
-
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "lor/lor.h"
+#include "lor/memory.h"
 
 int main(void) {
     LorArena arena = LOR_ARENA_INIT;

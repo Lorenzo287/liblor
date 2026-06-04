@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: MIT
-
 #define _CRT_SECURE_NO_WARNINGS
-
-#include "lor/lor.h"
-
+#include "lor/memory.h"
 #include <stdio.h>
 
 int main(void) {

@@ -60,6 +60,10 @@ When active, leakcheck tracks liblor heap helpers, active arenas, virtual
 arena lifetimes, and active mmap mappings. It does not own or clean up
 resources; it only reports resources whose matching release/deinit/free/unmap
 call was not made.
+Arena leak reports use the arena's current committed backing bytes.
+
+Leakcheck tracking uses a process-global unsynchronized list. Treat it as
+single-threaded unless the caller protects all tracked memory calls externally.
 
 ## Arenas, Temps, And Scratch
 
@@ -68,8 +72,14 @@ allocations are not freed; the whole arena is reset, rewound, or deinitialized.
 This is useful for parsers, request/job-local state, temporary formatting, and
 batch construction.
 
+`lor_arena_reset` and rewinding to a zero mark clear allocation usage but keep
+the arena's allocated blocks for reuse. This is a throughput-oriented high-water
+policy. Use `lor_arena_deinit` when storage should be returned to the system.
+
 Arena allocation calls accept optional designated arguments for allocation
 behavior. Use `.zero = true` when the returned memory should be zeroed.
+There are no separate zero-allocation entry points; the optional argument form
+is the canonical spelling.
 
 ```c
 int *values = lor_arena_alloc_array(&arena, count, sizeof(*values),
@@ -117,6 +127,10 @@ if (!lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL,
     /* invalid config or initialization failed */
 }
 ```
+
+For virtual arenas, `lor_arena_capacity` reports reserved usable capacity and
+`lor_arena_committed` reports committed backing memory. Capacity can therefore
+be much larger than committed memory.
 
 Choose `malloc` when an object has an independent lifetime or must be freed
 separately. Choose an arena/temp/scratch scope when the lifetime is grouped and

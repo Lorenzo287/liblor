@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #define LOR_IMPLEMENTATION
 #define LOR_ENABLE_MEMORY
 #define LOR_LEAKCHECK
@@ -7,6 +9,7 @@
 #include "../lor.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #define CHECK(expr)                            \
     do {                                       \
@@ -15,6 +18,36 @@
             return 1;                          \
         }                                      \
     } while (0)
+
+static int test_lazy_arena_leak_location(void) {
+    Arena arena = ARENA_INIT;
+    FILE *report = NULL;
+    char text[512] = {0};
+    char expected_size[64] = {0};
+    size_t nread = 0;
+
+    CHECK(arena_alloc(&arena, 32) != NULL);
+    CHECK(snprintf(expected_size, sizeof(expected_size), "LEAK arena: %zu bytes",
+                   ARENA_DEFAULT_BLOCK_SIZE) > 0);
+    report = fopen(".build/lor_single_header_leak_report.txt", "wb+");
+    CHECK(report != NULL);
+    CHECK(leakcheck_report(report) >= 1);
+    CHECK(fflush(report) == 0);
+    CHECK(fseek(report, 0, SEEK_SET) == 0);
+    nread = fread(text, 1, sizeof(text) - 1u, report);
+    CHECK(ferror(report) == 0);
+    text[nread] = '\0';
+    CHECK(fclose(report) == 0);
+
+    CHECK(strstr(text, "?:0") == NULL);
+    CHECK(strstr(text, "LEAK arena: 0 bytes") == NULL);
+    CHECK(strstr(text, expected_size) != NULL);
+    CHECK(strstr(text, "test_single_header.c") != NULL);
+
+    arena_deinit(&arena);
+    CHECK(leakcheck_count() == 0);
+    return 0;
+}
 
 int main(void) {
     Arena arena = ARENA_INIT;
@@ -47,6 +80,8 @@ int main(void) {
     CHECK(leakcheck_count() == 1);
     free(heap);
     CHECK(leakcheck_count() == 0);
+
+    CHECK(test_lazy_arena_leak_location() == 0);
 
     puts("test_single_header: ok");
     return 0;

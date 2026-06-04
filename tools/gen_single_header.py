@@ -11,6 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "tools" / "lor_modules.json"
 DEFAULT_OUTPUT = ROOT / "lor.h"
+LATE_MACROS_BEGIN = "/* LOR_SINGLE_HEADER_LATE_MACROS_BEGIN */"
+LATE_MACROS_END = "/* LOR_SINGLE_HEADER_LATE_MACROS_END */"
 
 
 def read_text(path: Path) -> str:
@@ -63,25 +65,59 @@ def strip_header_guard(lines: list[str], guard: str) -> list[str]:
     return result
 
 
-def strip_single_header_late_macros(lines: list[str]) -> list[str]:
+def strip_marked_blocks(lines: list[str], begin: str, end: str) -> list[str]:
     result = []
     skipping = False
 
     for line in lines:
         stripped = line.strip()
 
-        if stripped.startswith("/* Optional macro mode."):
+        if stripped == begin:
+            if skipping:
+                raise ValueError(f"nested marker: {begin}")
             skipping = True
             continue
 
         if skipping:
-            if stripped == "#endif":
+            if stripped == end:
                 skipping = False
             continue
 
         result.append(line)
 
+    if skipping:
+        raise ValueError(f"missing marker: {end}")
+
     return result
+
+
+def extract_marked_blocks(path: Path, begin: str, end: str) -> list[str]:
+    blocks = []
+    current: list[str] | None = None
+
+    for line in read_text(path).splitlines():
+        stripped = line.strip()
+
+        if stripped == begin:
+            if current is not None:
+                raise ValueError(f"{path}: nested marker: {begin}")
+            current = []
+            continue
+
+        if stripped == end:
+            if current is None:
+                raise ValueError(f"{path}: unmatched marker: {end}")
+            blocks.append("\n".join(current).strip() + "\n")
+            current = None
+            continue
+
+        if current is not None:
+            current.append(line)
+
+    if current is not None:
+        raise ValueError(f"{path}: missing marker: {end}")
+
+    return blocks
 
 
 def clean_header(path: Path) -> str:
@@ -94,7 +130,7 @@ def clean_header(path: Path) -> str:
     lines = read_text(path).splitlines()
     lines = strip_spdx(lines)
     lines = strip_local_includes(lines)
-    lines = strip_single_header_late_macros(lines)
+    lines = strip_marked_blocks(lines, LATE_MACROS_BEGIN, LATE_MACROS_END)
     lines = strip_header_guard(lines, guard)
     return "\n".join(lines).strip() + "\n"
 
@@ -136,9 +172,11 @@ def emit_module_selection(modules: list[dict]) -> str:
 
 def emit_custom_prefix(modules: list[dict]) -> str:
     out = []
-    out.append("/* Optional compiled function prefix")
+    out.append("/* Optional compiled symbol prefix")
     out.append("   Example: #define LOR_CUSTOM_PREFIX my_")
-    out.append("   turns lor_arena_init_config into my_arena_init_config in this translation unit.")
+    out.append("   turns lor_arena_deinit into my_arena_deinit in this translation unit.")
+    out.append("   Macro facades such as lor_arena_alloc keep their source-level names;")
+    out.append("   the C preprocessor cannot synthesize new macro names from this prefix.")
     out.append("   This affects declarations and definitions, so all translation units")
     out.append("   using the generated header must use the same custom prefix. */")
     out.append("#ifdef LOR_CUSTOM_PREFIX")
@@ -146,7 +184,11 @@ def emit_custom_prefix(modules: list[dict]) -> str:
     out.append("#define LOR__JOIN(a, b) LOR__JOIN2(a, b)")
     for module in modules:
         out.append(f"#ifdef {module_enabled_condition(module)}")
-        for canonical, alias in module["symbols"].get("functions", []):
+        compiled_symbols = (
+            module["symbols"].get("internal_functions", [])
+            + module["symbols"].get("functions", [])
+        )
+        for canonical, alias in compiled_symbols:
             out.append(f"#define {canonical} LOR__JOIN(LOR_CUSTOM_PREFIX, {function_suffix(alias)})")
         out.append("#endif")
     out.append("#endif")
@@ -196,121 +238,20 @@ def emit_strip_prefix_aliases(modules: list[dict]) -> str:
     return "\n".join(out) + "\n"
 
 
-def emit_late_macros() -> str:
+def emit_late_macros(modules: list[dict]) -> str:
     out = []
-    out.append("/* Optional macro mode")
-    out.append("   Provides designated-argument convenience wrappers after")
-    out.append("   the implementation body has been emitted. */")
-    out.append("#if !defined(LOR_MEMORY_INTERNAL) && !defined(LOR_MEMORY_NO_OPTION_MACROS)")
-    out.append("#define LOR_MEMORY_SELECT_INIT_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME")
-    out.append("#define LOR_MEMORY_ARENA_INIT_DEFAULT_(arena) \\")
-    out.append("    lor_arena_init_config((arena), NULL)")
-    out.append("#define LOR_MEMORY_ARENA_INIT_OPTIONS_(arena, ...) \\")
-    out.append("    lor_arena_init_config((arena), &(LorArenaConfig){__VA_ARGS__})")
-    out.append("#define LOR_MEMORY_ARENA_INIT_DEBUG_DEFAULT_(arena) \\")
-    out.append("    lor_arena_init_config_debug((arena), NULL, __FILE__, __LINE__)")
-    out.append("#define LOR_MEMORY_ARENA_INIT_DEBUG_OPTIONS_(arena, ...) \\")
-    out.append("    lor_arena_init_config_debug((arena), &(LorArenaConfig){__VA_ARGS__}, \\")
-    out.append("                                __FILE__, __LINE__)")
-    out.append("")
-    out.append("#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)")
-    out.append("#define LOR_MEMORY_ARENA_INIT_DEFAULT LOR_MEMORY_ARENA_INIT_DEBUG_DEFAULT_")
-    out.append("#define LOR_MEMORY_ARENA_INIT_OPTIONS LOR_MEMORY_ARENA_INIT_DEBUG_OPTIONS_")
-    out.append("#else")
-    out.append("#define LOR_MEMORY_ARENA_INIT_DEFAULT LOR_MEMORY_ARENA_INIT_DEFAULT_")
-    out.append("#define LOR_MEMORY_ARENA_INIT_OPTIONS LOR_MEMORY_ARENA_INIT_OPTIONS_")
-    out.append("#endif")
-    out.append("")
-    out.append("#define LOR_MEMORY_ARENA_INIT_(...)                                      \\")
-    out.append("    LOR_MEMORY_SELECT_INIT_(__VA_ARGS__, LOR_MEMORY_ARENA_INIT_OPTIONS,   \\")
-    out.append("                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \\")
-    out.append("                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \\")
-    out.append("                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \\")
-    out.append("                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \\")
-    out.append("                            LOR_MEMORY_ARENA_INIT_DEFAULT, unused)        \\")
-    out.append("    (__VA_ARGS__)")
-    out.append("")
-    out.append("/** Initializes an arena from optional designated configuration arguments.")
-    out.append(" *")
-    out.append(" * Supported forms:")
-    out.append(" * `lor_arena_init(&arena)`")
-    out.append(" * `lor_arena_init(&arena, .block_size = 128)`")
-    out.append(" * `lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL)`")
-    out.append(" */")
-    out.append("#undef lor_arena_init")
-    out.append("#define lor_arena_init(...) LOR_MEMORY_ARENA_INIT_(__VA_ARGS__)")
-    out.append("")
-    out.append("#define LOR_MEMORY_SELECT_ALLOC_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME")
-    out.append("#define LOR_MEMORY_ARENA_ALLOC_DEFAULT_(arena, size) \\")
-    out.append("    lor_arena_alloc_ex((arena), (size), (LorArenaAllocOptions)LOR_ARENA_ALLOC_OPTIONS_INIT)")
-    out.append("#define LOR_MEMORY_ARENA_ALLOC_OPTIONS_(arena, size, ...) \\")
-    out.append("    lor_arena_alloc_ex((arena), (size), (LorArenaAllocOptions){__VA_ARGS__})")
-    out.append("")
-    out.append("#define LOR_MEMORY_ARENA_ALLOC_(...)                                      \\")
-    out.append("    LOR_MEMORY_SELECT_ALLOC_(__VA_ARGS__, LOR_MEMORY_ARENA_ALLOC_OPTIONS_, \\")
-    out.append("                             LOR_MEMORY_ARENA_ALLOC_OPTIONS_,              \\")
-    out.append("                             LOR_MEMORY_ARENA_ALLOC_OPTIONS_,              \\")
-    out.append("                             LOR_MEMORY_ARENA_ALLOC_OPTIONS_,              \\")
-    out.append("                             LOR_MEMORY_ARENA_ALLOC_DEFAULT_, unused)      \\")
-    out.append("    (__VA_ARGS__)")
-    out.append("")
-    out.append("/** Allocates from an arena with optional designated allocation arguments.")
-    out.append(" *")
-    out.append(" * Supported forms:")
-    out.append(" * `lor_arena_alloc(&arena, size)`")
-    out.append(" * `lor_arena_alloc(&arena, size, .zero = true)`")
-    out.append(" */")
-    out.append("#undef lor_arena_alloc")
-    out.append("#define lor_arena_alloc(...) LOR_MEMORY_ARENA_ALLOC_(__VA_ARGS__)")
-    out.append("")
-    out.append("#define LOR_MEMORY_SELECT_ALLOC_ARRAY_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME")
-    out.append("#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT_(arena, count, elem_size)       \\")
-    out.append("    lor_arena_alloc_array_ex((arena), (count), (elem_size),                  \\")
-    out.append("                             (LorArenaAllocOptions)LOR_ARENA_ALLOC_OPTIONS_INIT)")
-    out.append("#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_(arena, count, elem_size, ...) \\")
-    out.append("    lor_arena_alloc_array_ex((arena), (count), (elem_size),                 \\")
-    out.append("                             (LorArenaAllocOptions){__VA_ARGS__})")
-    out.append("")
-    out.append("#define LOR_MEMORY_ARENA_ALLOC_ARRAY_(...)                                  \\")
-    out.append("    LOR_MEMORY_SELECT_ALLOC_ARRAY_(__VA_ARGS__,                             \\")
-    out.append("                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_,   \\")
-    out.append("                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_,   \\")
-    out.append("                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_,   \\")
-    out.append("                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT_,   \\")
-    out.append("                                   unused)                                  \\")
-    out.append("    (__VA_ARGS__)")
-    out.append("")
-    out.append("/** Allocates an array from an arena with optional designated arguments.")
-    out.append(" *")
-    out.append(" * Supported forms:")
-    out.append(" * `lor_arena_alloc_array(&arena, count, sizeof(*items))`")
-    out.append(" * `lor_arena_alloc_array(&arena, count, sizeof(*items), .zero = true)`")
-    out.append(" */")
-    out.append("#undef lor_arena_alloc_array")
-    out.append("#define lor_arena_alloc_array(...) LOR_MEMORY_ARENA_ALLOC_ARRAY_(__VA_ARGS__)")
-    out.append("#endif")
-    out.append("")
-    out.append("/* Leakcheck build mode")
-    out.append("   Define LOR_LEAKCHECK for the whole build to route liblor memory")
-    out.append("   calls and stdlib heap calls through location-aware tracking. */")
-    out.append("#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)")
-    out.append("#undef lor_arena_init_config")
-    out.append("#define lor_arena_init_config(arena, config) \\")
-    out.append("    lor_arena_init_config_debug((arena), (config), __FILE__, __LINE__)")
-    out.append("#undef lor_mmap_file")
-    out.append("#define lor_mmap_file(path, mode) \\")
-    out.append("    lor_mmap_file_debug((path), (mode), __FILE__, __LINE__)")
-    out.append("#endif")
-    out.append("")
-    out.append("#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_STDLIB_MACROS)")
-    out.append("#define malloc(size) lor_malloc_debug((size), __FILE__, __LINE__)")
-    out.append("#define calloc(count, elem_size) \\")
-    out.append("    lor_calloc_debug((count), (elem_size), __FILE__, __LINE__)")
-    out.append("#define realloc(ptr, size) lor_realloc_debug((ptr), (size), __FILE__, __LINE__)")
-    out.append("#define free(ptr) lor_free_debug((ptr), __FILE__, __LINE__)")
-    out.append("#define strdup(text) lor_strdup_debug((text), __FILE__, __LINE__)")
-    out.append("#endif")
-    return "\n".join(out) + "\n"
+
+    for module in modules:
+        path = ROOT / module["header"]
+        blocks = extract_marked_blocks(path, LATE_MACROS_BEGIN, LATE_MACROS_END)
+        for block in blocks:
+            out.append(f"/* === {module['name']}: post-implementation macros === */")
+            out.append(f"#ifdef {module_enabled_condition(module)}")
+            out.append(block.rstrip())
+            out.append("#endif")
+            out.append("")
+
+    return "\n".join(out).rstrip() + "\n" if out else ""
 
 
 def generate(manifest_path: Path) -> str:
@@ -337,8 +278,12 @@ def generate(manifest_path: Path) -> str:
     out.append(emit_strip_prefix_aliases(modules).rstrip())
     out.append("")
     out.append("#undef LOR_SINGLE_HEADER_BUILD")
-    out.append(emit_late_macros().rstrip())
-    out.append("")
+
+    late_macros = emit_late_macros(modules).rstrip()
+    if late_macros:
+        out.append(late_macros)
+        out.append("")
+
     out.append("#endif /* LOR_SINGLE_HEADER_H */")
     out.append("")
     return "\n".join(out)
