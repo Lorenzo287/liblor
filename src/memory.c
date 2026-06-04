@@ -879,7 +879,7 @@ void lor_scratch_end(LorScratch scratch) {
     lor_arena__rewind_to(scratch.arena, scratch.block, scratch.used);
 }
 
-void lor_scratch_cleanup_current_thread(void) {
+void lor_scratch_cleanup(void) {
     size_t i = 0;
 
     for (i = 0; i < 2u; ++i) {

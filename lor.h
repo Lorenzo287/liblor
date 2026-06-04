@@ -45,7 +45,7 @@
 #define lor_arena_committed LOR__JOIN(LOR_CUSTOM_PREFIX, arena_committed)
 #define lor_scratch_begin LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_begin)
 #define lor_scratch_end LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_end)
-#define lor_scratch_cleanup_current_thread LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_cleanup_current_thread)
+#define lor_scratch_cleanup LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_cleanup)
 #define lor_page_size LOR__JOIN(LOR_CUSTOM_PREFIX, page_size)
 #define lor_mmap_file LOR__JOIN(LOR_CUSTOM_PREFIX, mmap_file)
 #define lor_mmap_unmap LOR__JOIN(LOR_CUSTOM_PREFIX, mmap_unmap)
@@ -115,10 +115,8 @@ void lor_arena_rewind(LorArena *arena);
 
 void *lor_arena_alloc(LorArena *arena, size_t size);
 void *lor_arena_alloc_zero(LorArena *arena, size_t size);
-
 void *lor_arena_alloc_array(LorArena *arena, size_t count, size_t elem_size);
 void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size);
-
 char *lor_arena_strdup(LorArena *arena, const char *text);
 
 size_t lor_arena_used(const LorArena *arena);
@@ -127,7 +125,7 @@ size_t lor_arena_committed(const LorArena *arena);
 
 LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count);
 void lor_scratch_end(LorScratch scratch);
-void lor_scratch_cleanup_current_thread(void);
+void lor_scratch_cleanup(void);
 
 size_t lor_page_size(void);
 
@@ -174,12 +172,14 @@ LorMmap lor_mmap_file_debug(const char *path, LorMmapMode mode, const char *file
 #if defined(__GNUC__) || defined(__clang__)
 #define LOR_CLEANUP_SUPPORTED 1
 #define LOR_CLEANUP(fn) __attribute__((cleanup(fn)))
+#define LOR_MAYBE_UNUSED __attribute__((unused))
 #else
 #define LOR_CLEANUP_SUPPORTED 0
 #define LOR_CLEANUP(fn)
+#define LOR_MAYBE_UNUSED
 #endif
 
-static inline void lor_memory_cleanup_free_(void *ptr) {
+static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_free_(void *ptr) {
     void **value = (void **)ptr;
     if (value == NULL || *value == NULL) { return; }
 #if defined(LOR_LEAKCHECK)
@@ -190,22 +190,22 @@ static inline void lor_memory_cleanup_free_(void *ptr) {
     *value = NULL;
 }
 
-static inline void lor_memory_cleanup_arena_(void *arena) {
+static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_arena_(void *arena) {
     lor_arena_deinit((LorArena *)arena);
 }
 
-static inline void lor_memory_cleanup_scratch_(void *scratch) {
+static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_scratch_(void *scratch) {
     LorScratch *value = (LorScratch *)scratch;
     if (value == NULL || value->arena == NULL) { return; }
     lor_scratch_end(*value);
     value->arena = NULL;
 }
 
-static inline void lor_memory_cleanup_mmap_(void *map) {
+static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_mmap_(void *map) {
     lor_mmap_unmap((LorMmap *)map);
 }
 
-static inline void lor_memory_cleanup_file_(void *file) {
+static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_file_(void *file) {
     FILE **value = (FILE **)file;
     if (value == NULL || *value == NULL) { return; }
     (void)fclose(*value);
@@ -1121,7 +1121,7 @@ void lor_scratch_end(LorScratch scratch) {
     lor_arena__rewind_to(scratch.arena, scratch.block, scratch.used);
 }
 
-void lor_scratch_cleanup_current_thread(void) {
+void lor_scratch_cleanup(void) {
     size_t i = 0;
 
     for (i = 0; i < 2u; ++i) {
@@ -1301,7 +1301,7 @@ void lor_mmap_unmap(LorMmap *map) {
 #define arena_committed lor_arena_committed
 #define scratch_begin lor_scratch_begin
 #define scratch_end lor_scratch_end
-#define scratch_cleanup_current_thread lor_scratch_cleanup_current_thread
+#define scratch_cleanup lor_scratch_cleanup
 #define page_size lor_page_size
 #define mmap_file lor_mmap_file
 #define mmap_unmap lor_mmap_unmap

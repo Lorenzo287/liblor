@@ -180,7 +180,7 @@ static int test_scratch_arena(void) {
 
     lor_scratch_end(other);
     lor_scratch_end(scratch);
-    lor_scratch_cleanup_current_thread();
+    lor_scratch_cleanup();
     return 0;
 }
 

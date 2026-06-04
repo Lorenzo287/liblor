@@ -34,6 +34,6 @@ int main(void) {
 
     lor_scratch_end(scratch2);
     lor_scratch_end(scratch1);
-    lor_scratch_cleanup_current_thread();
+    lor_scratch_cleanup();
     return 0;
 }

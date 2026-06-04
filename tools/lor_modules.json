@@ -23,7 +23,7 @@
                     ["lor_arena_committed", "arena_committed"],
                     ["lor_scratch_begin", "scratch_begin"],
                     ["lor_scratch_end", "scratch_end"],
-                    ["lor_scratch_cleanup_current_thread", "scratch_cleanup_current_thread"],
+                    ["lor_scratch_cleanup", "scratch_cleanup"],
                     ["lor_page_size", "page_size"],
                     ["lor_mmap_file", "mmap_file"],
                     ["lor_mmap_unmap", "mmap_unmap"],
