@@ -34,7 +34,11 @@ def strip_local_includes(lines: list[str]) -> list[str]:
         stripped = line.strip()
         if stripped.startswith('#include "lor/') or stripped == '#include "lor.h"':
             continue
-        if stripped == "#define LOR_MEMORY_NO_STDLIB_MACROS":
+        if stripped in {
+            "#define LOR_MEMORY_NO_STDLIB_MACROS",
+            "#define LOR_MEMORY_NO_LOCATION_MACROS",
+            "#define LOR_MEMORY_INTERNAL",
+        }:
             continue
         result.append(line)
     return result
@@ -192,12 +196,21 @@ def emit_strip_prefix_aliases(modules: list[dict]) -> str:
     return "\n".join(out) + "\n"
 
 
-def emit_stdlib_leakcheck_macros() -> str:
+def emit_leakcheck_macros() -> str:
     out = []
-    out.append("/* Optional stdlib heap interception")
-    out.append("   Define LOR_LEAKCHECK_STDLIB before including this header to route")
-    out.append("   malloc/calloc/realloc/free/strdup through liblor leak tracking. */")
-    out.append("#if defined(LOR_LEAKCHECK_STDLIB) && !defined(LOR_MEMORY_NO_STDLIB_MACROS)")
+    out.append("/* Leakcheck build mode")
+    out.append("   Define LOR_LEAKCHECK for the whole build to route liblor memory")
+    out.append("   calls and stdlib heap calls through location-aware tracking. */")
+    out.append("#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)")
+    out.append("#define lor_arena_init(arena, block_size) \\")
+    out.append("    lor_arena_init_debug((arena), (block_size), __FILE__, __LINE__)")
+    out.append("#define lor_arena_init_ex(arena, config) \\")
+    out.append("    lor_arena_init_ex_debug((arena), (config), __FILE__, __LINE__)")
+    out.append("#define lor_mmap_file(path, mode) \\")
+    out.append("    lor_mmap_file_debug((path), (mode), __FILE__, __LINE__)")
+    out.append("#endif")
+    out.append("")
+    out.append("#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_STDLIB_MACROS)")
     out.append("#define malloc(size) lor_malloc_debug((size), __FILE__, __LINE__)")
     out.append("#define calloc(count, elem_size) \\")
     out.append("    lor_calloc_debug((count), (elem_size), __FILE__, __LINE__)")
@@ -232,7 +245,7 @@ def generate(manifest_path: Path) -> str:
     out.append(emit_strip_prefix_aliases(modules).rstrip())
     out.append("")
     out.append("#undef LOR_SINGLE_HEADER_BUILD")
-    out.append(emit_stdlib_leakcheck_macros().rstrip())
+    out.append(emit_leakcheck_macros().rstrip())
     out.append("")
     out.append("#endif /* LOR_SINGLE_HEADER_H */")
     out.append("")

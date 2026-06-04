@@ -25,6 +25,7 @@ typedef enum LorArenaBackend {
 } LorArenaBackend;
 
 typedef struct LorArenaBlock LorArenaBlock;
+typedef struct LorArenaScope LorArenaScope;
 
 typedef struct LorArenaConfig {
     LorArenaBackend backend;
@@ -35,38 +36,31 @@ typedef struct LorArenaConfig {
 
 typedef struct LorArena {
     LorArenaBlock *blocks;
+    LorArenaScope *scopes;
     LorArenaBackend backend;
     size_t block_size;
     size_t reserve_size;  // capacity
     size_t commit_size;   // allocation size
-    int leakcheck_tracked;
 } LorArena;
 
-typedef struct LorArenaMark {
+typedef struct LorScratch {
+    LorArena *arena;
     LorArenaBlock *block;
     size_t used;
-} LorArenaMark;
+} LorScratch;
 
-typedef struct LorArenaTemp {
-    LorArena *arena;
-    LorArenaMark mark;
-} LorArenaTemp;
-
-#define LOR_ARENA_INIT {NULL, LOR_ARENA_BACKEND_HEAP, 0u, 0u, 0u, 0}
+#define LOR_ARENA_INIT {NULL, NULL, LOR_ARENA_BACKEND_HEAP, 0u, 0u, 0u}
 
 void lor_arena_init(LorArena *arena, size_t block_size);
 int lor_arena_init_ex(LorArena *arena, const LorArenaConfig *config);
 void lor_arena_deinit(LorArena *arena);
 void lor_arena_reset(LorArena *arena);
 
-LorArenaMark lor_arena_mark(const LorArena *arena);
-void lor_arena_rewind(LorArena *arena, LorArenaMark mark);
-LorArenaTemp lor_arena_temp_begin(LorArena *arena);
-void lor_arena_temp_end(LorArenaTemp temp);
+int lor_arena_mark(LorArena *arena);
+void lor_arena_rewind(LorArena *arena);
 
 void *lor_arena_alloc(LorArena *arena, size_t size);
 void *lor_arena_alloc_zero(LorArena *arena, size_t size);
-void *lor_arena_alloc_aligned(LorArena *arena, size_t size, size_t alignment);
 
 void *lor_arena_alloc_array(LorArena *arena, size_t count, size_t elem_size);
 void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size);
@@ -77,21 +71,11 @@ size_t lor_arena_used(const LorArena *arena);
 size_t lor_arena_capacity(const LorArena *arena);
 size_t lor_arena_committed(const LorArena *arena);
 
-LorArenaTemp lor_scratch_begin(LorArena **conflicts, size_t conflict_count);
-void lor_scratch_end(LorArenaTemp temp);
+LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count);
+void lor_scratch_end(LorScratch scratch);
 void lor_scratch_cleanup_current_thread(void);
 
-typedef struct LorVirtualMemory {
-    void *ptr;
-    size_t reserved;
-    size_t committed;
-} LorVirtualMemory;
-
 size_t lor_page_size(void);
-LorVirtualMemory lor_virtual_alloc(size_t reserve_size, size_t commit_size);
-int lor_virtual_commit(void *ptr, size_t size);
-int lor_virtual_decommit(void *ptr, size_t size);
-void lor_virtual_release(LorVirtualMemory *memory);
 
 typedef enum LorMmapMode {
     LOR_MMAP_READ = 0,
@@ -111,35 +95,27 @@ typedef struct LorLeakStats {
     size_t heap_count;
     size_t heap_bytes;
     size_t arena_count;
-    size_t virtual_count;
-    size_t virtual_bytes;
     size_t mmap_count;
     size_t mmap_bytes;
 } LorLeakStats;
 
-void lor_leakcheck_enable(int enabled);
-int lor_leakcheck_enabled(void);
 LorLeakStats lor_leakcheck_stats(void);
 size_t lor_leakcheck_count(void);
 size_t lor_leakcheck_report(FILE *out);
 
-void *lor_malloc(size_t size);
-void *lor_calloc(size_t count, size_t elem_size);
-void *lor_realloc(void *ptr, size_t size);
-void lor_free(void *ptr);
-char *lor_strdup(const char *text);
-
+#if defined(LOR_LEAKCHECK)
 void *lor_malloc_debug(size_t size, const char *file, int line);
 void *lor_calloc_debug(size_t count, size_t elem_size, const char *file, int line);
 void *lor_realloc_debug(void *ptr, size_t size, const char *file, int line);
 void lor_free_debug(void *ptr, const char *file, int line);
 char *lor_strdup_debug(const char *text, const char *file, int line);
-
-void lor_cleanup_free(void *ptr);
-void lor_cleanup_arena(void *arena);
-void lor_cleanup_arena_temp(void *temp);
-void lor_cleanup_mmap(void *map);
-void lor_cleanup_virtual(void *memory);
+void lor_arena_init_debug(LorArena *arena, size_t block_size, const char *file,
+                          int line);
+int lor_arena_init_ex_debug(LorArena *arena, const LorArenaConfig *config,
+                            const char *file, int line);
+LorMmap lor_mmap_file_debug(const char *path, LorMmapMode mode, const char *file,
+                            int line);
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
 #define LOR_CLEANUP_SUPPORTED 1
@@ -149,20 +125,61 @@ void lor_cleanup_virtual(void *memory);
 #define LOR_CLEANUP(fn)
 #endif
 
-#define LOR_AUTO_FREE LOR_CLEANUP(lor_cleanup_free)
-#define LOR_AUTO_ARENA LOR_CLEANUP(lor_cleanup_arena)
-#define LOR_AUTO_ARENA_TEMP LOR_CLEANUP(lor_cleanup_arena_temp)
-#define LOR_AUTO_MMAP LOR_CLEANUP(lor_cleanup_mmap)
-#define LOR_AUTO_VIRTUAL LOR_CLEANUP(lor_cleanup_virtual)
+static inline void lor_memory_cleanup_free_(void *ptr) {
+    void **value = (void **)ptr;
+    if (value == NULL || *value == NULL) { return; }
+#if defined(LOR_LEAKCHECK)
+    lor_free_debug(*value, NULL, 0);
+#else
+    free(*value);
+#endif
+    *value = NULL;
+}
+
+static inline void lor_memory_cleanup_arena_(void *arena) {
+    lor_arena_deinit((LorArena *)arena);
+}
+
+static inline void lor_memory_cleanup_scratch_(void *scratch) {
+    LorScratch *value = (LorScratch *)scratch;
+    if (value == NULL || value->arena == NULL) { return; }
+    lor_scratch_end(*value);
+    value->arena = NULL;
+}
+
+static inline void lor_memory_cleanup_mmap_(void *map) {
+    lor_mmap_unmap((LorMmap *)map);
+}
+
+static inline void lor_memory_cleanup_file_(void *file) {
+    FILE **value = (FILE **)file;
+    if (value == NULL || *value == NULL) { return; }
+    (void)fclose(*value);
+    *value = NULL;
+}
+
+#define LOR_AUTO_FREE LOR_CLEANUP(lor_memory_cleanup_free_)
+#define LOR_AUTO_ARENA LOR_CLEANUP(lor_memory_cleanup_arena_)
+#define LOR_AUTO_SCRATCH LOR_CLEANUP(lor_memory_cleanup_scratch_)
+#define LOR_AUTO_MMAP LOR_CLEANUP(lor_memory_cleanup_mmap_)
+#define LOR_AUTO_FILE LOR_CLEANUP(lor_memory_cleanup_file_)
 
 #ifdef __cplusplus
 }
 #endif
 
-/* Optional macro mode. Define LOR_LEAKCHECK_STDLIB before including this
-   header in a translation unit to route standard heap calls through liblor's
-   leak tracker. Use consistently inside that translation unit. */
-#if defined(LOR_LEAKCHECK_STDLIB) && !defined(LOR_MEMORY_NO_STDLIB_MACROS) && \
+/* Leakcheck build mode. Define LOR_LEAKCHECK for the whole build to route
+   liblor memory calls and standard heap calls through location-aware tracking. */
+#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS) && \
+    !defined(LOR_SINGLE_HEADER_BUILD)
+#define lor_arena_init(arena, block_size) \
+    lor_arena_init_debug((arena), (block_size), __FILE__, __LINE__)
+#define lor_arena_init_ex(arena, config) \
+    lor_arena_init_ex_debug((arena), (config), __FILE__, __LINE__)
+#define lor_mmap_file(path, mode) lor_mmap_file_debug((path), (mode), __FILE__, __LINE__)
+#endif
+
+#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_STDLIB_MACROS) && \
     !defined(LOR_SINGLE_HEADER_BUILD)
 #define malloc(size) lor_malloc_debug((size), __FILE__, __LINE__)
 #define calloc(count, elem_size) \

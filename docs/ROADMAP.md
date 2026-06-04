@@ -6,10 +6,9 @@ This file tracks current direction and the next concrete development steps.
 
 Build the memory subsystem foundation. See `docs/memory.md`.
 
-1. Harden Unix virtual-memory behavior on a Unix host.
-2. Decide the first container memory policy when dynamic arrays/hash maps begin.
-3. Define the initial error/result convention for memory failures.
-4. Revisit reference counting only after a real shared-ownership use case exists.
+1. Decide the first container memory policy when dynamic arrays/hash maps begin.
+2. Define the initial error/result convention for memory failures.
+3. Revisit reference counting only after a real shared-ownership use case exists.
 
 Reference counting and garbage collection are later memory features. They need
 real use cases before implementation.
@@ -35,8 +34,8 @@ real use cases before implementation.
 - [x] Add generated `lor.h` workflow.
 - [x] Consolidate public API naming: `lor_module_action`, `LorName`, `LOR_NAME`.
 - [x] Add memory subsystem implementation path.
-- [x] Add consolidated memory module with arenas, virtual memory, mmap, cleanup
-      helpers, and opt-in leak checking.
+- [x] Add consolidated memory module with arenas, mmap, cleanup helpers, and
+      opt-in leak checking.
 - [x] Simplify Makefile source, test, example, and header discovery.
 
 ## Backlog
@@ -44,9 +43,8 @@ real use cases before implementation.
 ### Foundation
 
 - [x] arena allocator;
-- [x] arena temp/mark scopes;
+- [x] arena mark/rewind scopes;
 - [x] scratch arenas;
-- [x] virtual memory reserve/commit/release;
 - [x] mmap file mapping;
 - [x] opt-in leak checking;
 - [ ] error/result conventions;
@@ -78,5 +76,6 @@ real use cases before implementation.
 ### Platform
 
 - [x] mmap abstraction;
+- [ ] public virtual-memory API, if common use cases justify it;
 - [ ] concurrency primitives;
 - [ ] custom entry-point helpers.

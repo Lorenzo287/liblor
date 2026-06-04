@@ -6,6 +6,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#include <stdalign.h>
+#define TEST_MAX_ALIGNMENT alignof(max_align_t)
+#else
+#define TEST_MAX_ALIGNMENT \
+    (sizeof(void *) > sizeof(double) ? sizeof(void *) : sizeof(double))
+#endif
+
 #define CHECK(expr)                                                          \
     do {                                                                     \
         if (!(expr)) {                                                       \
@@ -55,26 +63,24 @@ static int test_reset_reuses_blocks(void) {
     return 0;
 }
 
-static int test_mark_and_temp_rewind(void) {
+static int test_mark_rewind(void) {
     LorArena arena;
-    LorArenaMark mark;
-    LorArenaTemp temp;
     size_t before = 0;
 
     lor_arena_init(&arena, 128);
     CHECK(lor_arena_alloc(&arena, 24) != NULL);
-    mark = lor_arena_mark(&arena);
+    CHECK(lor_arena_mark(&arena));
     before = lor_arena_used(&arena);
     CHECK(lor_arena_alloc(&arena, 48) != NULL);
     CHECK(lor_arena_used(&arena) > before);
 
-    lor_arena_rewind(&arena, mark);
+    lor_arena_rewind(&arena);
     CHECK(lor_arena_used(&arena) == before);
 
-    temp = lor_arena_temp_begin(&arena);
+    CHECK(lor_arena_mark(&arena));
     CHECK(lor_arena_alloc(&arena, 64) != NULL);
     CHECK(lor_arena_used(&arena) > before);
-    lor_arena_temp_end(temp);
+    lor_arena_rewind(&arena);
     CHECK(lor_arena_used(&arena) == before);
 
     lor_arena_deinit(&arena);
@@ -83,17 +89,13 @@ static int test_mark_and_temp_rewind(void) {
 
 static int test_alignment(void) {
     LorArena arena;
-    size_t alignment = 0;
+    void *ptr = NULL;
 
     lor_arena_init(&arena, 64);
 
-    for (alignment = 1; alignment <= 64; alignment *= 2) {
-        void *ptr = lor_arena_alloc_aligned(&arena, 1, alignment);
-        CHECK(ptr != NULL);
-        CHECK(((uintptr_t)ptr % alignment) == 0);
-    }
-
-    CHECK(lor_arena_alloc_aligned(&arena, 8, 3) == NULL);
+    ptr = lor_arena_alloc(&arena, 1);
+    CHECK(ptr != NULL);
+    CHECK(((uintptr_t)ptr % TEST_MAX_ALIGNMENT) == 0);
 
     lor_arena_deinit(&arena);
     return 0;
@@ -162,9 +164,9 @@ static int test_virtual_backend(void) {
 }
 
 static int test_scratch_arena(void) {
-    LorArenaTemp scratch = lor_scratch_begin(NULL, 0);
+    LorScratch scratch = lor_scratch_begin(NULL, 0);
     LorArena *conflicts[1];
-    LorArenaTemp other;
+    LorScratch other;
     void *ptr = NULL;
 
     CHECK(scratch.arena != NULL);
@@ -185,7 +187,7 @@ static int test_scratch_arena(void) {
 int main(void) {
     CHECK(test_zero_initialized_arena() == 0);
     CHECK(test_reset_reuses_blocks() == 0);
-    CHECK(test_mark_and_temp_rewind() == 0);
+    CHECK(test_mark_rewind() == 0);
     CHECK(test_alignment() == 0);
     CHECK(test_zeroed_array_and_overflow() == 0);
     CHECK(test_strdup_and_large_allocation() == 0);

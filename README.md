@@ -26,9 +26,9 @@ targets:
 liblor is a normal multi-file library first. A generated single-header release
 is present as an alternative.
 
-The first implementation area is memory: arenas, scratch scopes, virtual memory,
-mmap, cleanup helpers, and opt-in leak checking. Include `lor/memory.h` for the
-current memory APIs. See [Memory](docs/memory.md).
+The first implementation area is memory: arenas, scratch scopes, mmap, cleanup
+helpers, and opt-in leak checking. Include `lor/memory.h` for the current memory
+APIs. See [Memory](docs/memory.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/memory.h"`.
@@ -67,8 +67,8 @@ Optional module and alias controls:
 - `LOR_ENABLE_MEMORY`: include only the memory module.
 - `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
 - `LOR_CUSTOM_PREFIX my_`: compile function symbols as `my_arena_alloc`, etc.
-- `LOR_LEAKCHECK_STDLIB`: optionally route `malloc/calloc/realloc/free/strdup`
-  through liblor leak tracking in that translation unit.
+- `LOR_LEAKCHECK`: development build mode for location-aware leak checking
+  across liblor memory calls and stdlib heap calls.
 
 ## License
 

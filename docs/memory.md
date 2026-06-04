@@ -1,22 +1,26 @@
 # Memory
 
-Memory is the first liblor subsystem. Keep arenas, scratch scopes, virtual
-memory, mmap, cleanup helpers, and leak checking together in
+Memory is the first liblor subsystem. Keep arenas, scratch scopes, mmap, cleanup
+helpers, and leak checking together in
 `include/lor/memory.h` and `src/memory.c` until the code clearly needs a split.
 
 ## Current Shape
 
 - `LorArena`: heap-backed by default, with optional virtual-memory backend.
-- `LorArenaMark` / `LorArenaTemp`: rewind temporary allocations.
-- `lor_scratch_begin`: per-thread temporary scratch arenas.
-- `LorVirtualMemory`: anonymous reserve/commit/release memory.
+- `lor_arena_mark` / `lor_arena_rewind`: arena-owned mark stack for rewinding
+  temporary allocations inside the same arena.
+- `LorScratch` / `lor_scratch_begin`: per-thread temporary scratch arenas.
 - `LorMmap`: file mapping by path.
-- `lor_malloc` / `lor_free` helpers: present for leakcheck, not as a generic
-  allocator abstraction.
-- `LOR_LEAKCHECK_STDLIB`: optional macro mode for stdlib heap calls.
+- cleanup helpers: scope-exit cleanup for heap pointers, arenas, scratch scopes,
+  mmap mappings, and `FILE *` handles on compilers that support cleanup
+  attributes.
+- `LOR_LEAKCHECK`: development build mode for location-aware leak checking.
 
 There is no public `LorAllocator`. Reintroduce an allocator interface only when
 a concrete container or subsystem needs user-supplied allocation behavior.
+
+The arena virtual-memory backend is an implementation detail. A public manual
+virtual-memory API can be added later if common liblor use cases justify it.
 
 ## Principles
 
@@ -29,22 +33,79 @@ a concrete container or subsystem needs user-supplied allocation behavior.
 
 ## Leak Checking
 
-Leakcheck is off by default. When enabled with `lor_leakcheck_enable(1)`, liblor
-tracks allocations made through liblor heap helpers, active arenas, virtual
-reservations, and active mmap mappings.
+Leakcheck is a development build mode. Normal builds compile tracking out.
+Define `LOR_LEAKCHECK` for the whole build so liblor memory calls and stdlib
+heap calls route through location-aware tracking macros.
 
-For stdlib heap calls in one translation unit:
+Single-header development build:
 
 ```c
-#define LOR_LEAKCHECK_STDLIB
-#include "lor/memory.h"
+#define LOR_IMPLEMENTATION
+#define LOR_LEAKCHECK
+#include "lor.h"
 ```
 
-Then `malloc`, `calloc`, `realloc`, `free`, and `strdup` route through liblor's
-tracker in that translation unit.
+Multi-file development build:
+
+```powershell
+make CPPFLAGS="-Iinclude -DLOR_LEAKCHECK" all
+```
+
+For multi-file builds, compile `src/memory.c` with `LOR_LEAKCHECK` to enable
+tracking and define it in consuming translation units to capture call-site file
+and line. In practice, pass `-DLOR_LEAKCHECK` to the whole project build.
+
+When active, leakcheck tracks liblor heap helpers, active arenas, virtual
+arena lifetimes, and active mmap mappings. It does not own or clean up
+resources; it only reports resources whose matching release/deinit/free/unmap
+call was not made.
+
+## Arenas, Temps, And Scratch
+
+Use an arena when many allocations share one lifetime. Individual arena
+allocations are not freed; the whole arena is reset, rewound, or deinitialized.
+This is useful for parsers, request/job-local state, temporary formatting, and
+batch construction.
+
+`lor_arena_mark` saves the current position inside an arena. Allocate through
+the same arena as usual, then call `lor_arena_rewind` to rewind to the latest
+mark and pop it. Marks are arena-owned and can be nested.
+
+```c
+if (!lor_arena_mark(&arena)) {
+    /* mark allocation failed */
+}
+
+char *temporary = lor_arena_strdup(&arena, text);
+
+lor_arena_rewind(&arena);
+```
+
+Scratch arenas are pre-owned per-thread temporary arenas returned by
+`lor_scratch_begin`. They are for short-lived helper work when the caller should
+not have to create an arena. Pass conflicting arenas when nested scratch work
+must avoid reusing an arena whose allocations are still live.
+
+Choose `malloc` when an object has an independent lifetime or must be freed
+separately. Choose an arena/temp/scratch scope when the lifetime is grouped and
+bulk release makes ownership simpler.
+
+## Cleanup Helpers
+
+Cleanup helpers use compiler-supported scope cleanup attributes. They call the
+matching explicit release function when a local variable leaves scope:
+
+- `LOR_AUTO_FREE`: `free`
+- `LOR_AUTO_ARENA`: `lor_arena_deinit`
+- `LOR_AUTO_SCRATCH`: `lor_scratch_end`
+- `LOR_AUTO_MMAP`: `lor_mmap_unmap`
+- `LOR_AUTO_FILE`: `fclose`
+
+They are deterministic cleanup conveniences, not leak checking. Use them for
+local variables with obvious ownership; avoid them when ownership is transferred
+out of the scope.
 
 ## Next Work
 
-- Harden Unix virtual-memory behavior on a Unix host.
 - Decide the first container memory policy when dynamic arrays/hash maps begin.
 - Add richer leak reports only if the current report format is insufficient.
