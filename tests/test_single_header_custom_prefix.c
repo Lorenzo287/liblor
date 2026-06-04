@@ -9,12 +9,21 @@
 
 int main(void) {
     LorArena arena = LOR_ARENA_INIT;
+    LorArena configured = LOR_ARENA_INIT;
     int *value = NULL;
+    int *zeroed = NULL;
+    int *configured_value = NULL;
     char *copy = NULL;
 
     value = (int *)my_arena_alloc(&arena, sizeof(*value));
     if (value == NULL) { return 1; }
     *value = 42;
+
+    zeroed = (int *)lor_arena_alloc(&arena, sizeof(*zeroed), .zero = true);
+    if (zeroed == NULL || *zeroed != 0) {
+        my_arena_deinit(&arena);
+        return 1;
+    }
 
     copy = my_arena_strdup(&arena, "custom prefix");
     if (copy == NULL) {
@@ -22,6 +31,19 @@ int main(void) {
         return 1;
     }
 
+    if (!lor_arena_init(&configured, .block_size = 128)) {
+        my_arena_deinit(&arena);
+        return 1;
+    }
+
+    configured_value = (int *)my_arena_alloc(&configured, sizeof(*configured_value));
+    if (configured_value == NULL) {
+        my_arena_deinit(&configured);
+        my_arena_deinit(&arena);
+        return 1;
+    }
+
+    my_arena_deinit(&configured);
     my_arena_deinit(&arena);
     puts("test_single_header_custom_prefix: ok");
     return 0;

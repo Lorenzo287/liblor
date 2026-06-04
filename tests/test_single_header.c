@@ -18,18 +18,29 @@
 
 int main(void) {
     Arena arena = ARENA_INIT;
-    int *values = (int *)arena_alloc_array_zero(&arena, 4, sizeof(*values));
+    Arena configured = ARENA_INIT;
+    ArenaMark mark = ARENA_MARK_INIT;
+    int *values = (int *)arena_alloc_array(&arena, 4, sizeof(*values),
+                                           .zero = true);
+    int *configured_value = NULL;
     char *scratch = NULL;
     char *heap = NULL;
 
     CHECK(values != NULL);
     CHECK(arena_used(&arena) >= 4 * sizeof(*values));
-    CHECK(arena_mark(&arena));
+    mark = arena_mark(&arena);
     scratch = (char *)arena_alloc(&arena, 32);
     CHECK(scratch != NULL);
 
-    arena_rewind(&arena);
+    arena_rewind(&arena, mark);
     arena_deinit(&arena);
+
+    CHECK(arena_init(&configured, .block_size = 128));
+    configured_value = (int *)arena_alloc(&configured, sizeof(*configured_value),
+                                          .zero = true);
+    CHECK(configured_value != NULL);
+    CHECK(*configured_value == 0);
+    arena_deinit(&configured);
 
     heap = (char *)malloc(16);
     CHECK(heap != NULL);

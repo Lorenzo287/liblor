@@ -14,9 +14,9 @@ int main(void) {
         return 1;
     }
 
-    // keep and array of pointers to Arena to track the conflicts
+    // Keep an array of arena pointers to track nested scratch conflicts.
     LorArena *conflicts[] = {scratch1.arena};
-    // pass the array and its length to the next scratch initialization
+    // Pass the array and its length to the next scratch initialization.
     LorScratch scratch2 = lor_scratch_begin(conflicts, 1);
     if (scratch2.arena == NULL) {
         lor_scratch_end(scratch1);

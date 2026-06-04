@@ -7,9 +7,10 @@ helpers, and leak checking together in
 ## Current Shape
 
 - `LorArena`: heap-backed by default, with optional virtual-memory backend.
-- `lor_arena_mark` / `lor_arena_rewind`: arena-owned mark stack for rewinding
-  temporary allocations inside the same arena.
-- `LorScratch` / `lor_scratch_begin`: per-thread temporary scratch arenas.
+- `LorArenaMark` / `lor_arena_mark` / `lor_arena_rewind`: explicit
+  checkpoints for rewinding temporary allocations inside the same arena.
+- `LorScratch` / `lor_scratch_begin`: scope handles for per-thread scratch
+  arenas.
 - `LorMmap`: file mapping by path.
 - cleanup helpers: scope-exit cleanup for heap pointers, arenas, scratch scopes,
   mmap mappings, and `FILE *` handles on compilers that support cleanup
@@ -67,24 +68,55 @@ allocations are not freed; the whole arena is reset, rewound, or deinitialized.
 This is useful for parsers, request/job-local state, temporary formatting, and
 batch construction.
 
-`lor_arena_mark` saves the current position inside an arena. Allocate through
-the same arena as usual, then call `lor_arena_rewind` to rewind to the latest
-mark and pop it. Marks are arena-owned and can be nested.
+Arena allocation calls accept optional designated arguments for allocation
+behavior. Use `.zero = true` when the returned memory should be zeroed.
 
 ```c
-if (!lor_arena_mark(&arena)) {
-    /* mark allocation failed */
-}
+int *values = lor_arena_alloc_array(&arena, count, sizeof(*values),
+                                    .zero = true);
+```
+
+`lor_arena_mark` returns the current position inside an arena. Allocate through
+the same arena as usual, then call `lor_arena_rewind` with that mark. Marks are
+plain values and can be nested naturally.
+
+```c
+LorArenaMark mark = lor_arena_mark(&arena);
 
 char *temporary = lor_arena_strdup(&arena, text);
 
-lor_arena_rewind(&arena);
+lor_arena_rewind(&arena, mark);
 ```
 
-Scratch arenas are pre-owned per-thread temporary arenas returned by
+Scratch arenas are pre-owned per-thread temporary arenas selected by
 `lor_scratch_begin`. They are for short-lived helper work when the caller should
-not have to create an arena. Pass conflicting arenas when nested scratch work
-must avoid reusing an arena whose allocations are still live.
+not have to create an arena. `LorScratch` is the scope handle and exposes the
+selected arena for normal `lor_arena_*` allocations. Pass conflicting arenas
+when nested scratch work must avoid reusing an arena whose allocations are still
+live.
+
+```c
+LorScratch scratch = lor_scratch_begin(NULL, 0);
+if (scratch.arena == NULL) {
+    /* no scratch arena available */
+    return;
+}
+
+char *text = lor_arena_strdup(scratch.arena, source);
+
+lor_scratch_end(scratch);
+```
+
+Virtual arenas use the same designated-argument style through
+`lor_arena_init`:
+
+```c
+if (!lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL,
+                    .reserve_size = LOR_MIB(64),
+                    .commit_size = LOR_KIB(64))) {
+    /* invalid config or initialization failed */
+}
+```
 
 Choose `malloc` when an object has an independent lifetime or must be freed
 separately. Choose an arena/temp/scratch scope when the lifetime is grouped and

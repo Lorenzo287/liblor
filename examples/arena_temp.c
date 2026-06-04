@@ -19,14 +19,11 @@ int main(void) {
     *permanent = 42;
     before = lor_arena_used(&arena);
 
-    if (!lor_arena_mark(&arena)) {
-        lor_arena_deinit(&arena);
-        return 1;
-    }
+    LorArenaMark mark = lor_arena_mark(&arena);
 
     char *message = lor_arena_strdup(&arena, "temporary arena text");
     if (message == NULL) {
-        lor_arena_rewind(&arena);
+        lor_arena_rewind(&arena, mark);
         lor_arena_deinit(&arena);
         return 1;
     }
@@ -34,7 +31,7 @@ int main(void) {
     during = lor_arena_used(&arena);
     printf("%s\n", message);
 
-    lor_arena_rewind(&arena);
+    lor_arena_rewind(&arena, mark);
     after = lor_arena_used(&arena);
 
     printf("permanent=%d before=%zu during=%zu after=%zu\n", *permanent, before,
