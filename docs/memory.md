@@ -76,14 +76,11 @@ batch construction.
 the arena's allocated blocks for reuse. This is a throughput-oriented high-water
 policy. Use `lor_arena_deinit` when storage should be returned to the system.
 
-Arena allocation calls accept optional designated arguments for allocation
-behavior. Use `.zero = true` when the returned memory should be zeroed.
-There are no separate zero-allocation entry points; the optional argument form
-is the canonical spelling.
+Arena allocation calls are ordinary C functions. Use the `_zero` variants when
+the returned memory should be zeroed.
 
 ```c
-int *values = lor_arena_alloc_array(&arena, count, sizeof(*values),
-                                    .zero = true);
+int *values = lor_arena_alloc_array_zero(&arena, count, sizeof(*values));
 ```
 
 `lor_arena_mark` returns the current position inside an arena. Allocate through
@@ -117,13 +114,15 @@ char *text = lor_arena_strdup(scratch.arena, source);
 lor_scratch_end(scratch);
 ```
 
-Virtual arenas use the same designated-argument style through
-`lor_arena_init`:
+Virtual arenas use explicit configuration through `lor_arena_init_config`:
 
 ```c
-if (!lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL,
-                    .reserve_size = LOR_MIB(64),
-                    .commit_size = LOR_KIB(64))) {
+if (!lor_arena_init_config(&arena,
+                           (LorArenaConfig){
+                               .backend = LOR_ARENA_BACKEND_VIRTUAL,
+                               .reserve_size = LOR_MIB(64),
+                               .commit_size = LOR_KIB(64),
+                           })) {
     /* invalid config or initialization failed */
 }
 ```

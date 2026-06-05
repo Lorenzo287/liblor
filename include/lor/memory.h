@@ -4,7 +4,6 @@
 #define LOR_MEMORY_H
 
 #include <stddef.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,10 +33,6 @@ typedef struct LorArenaConfig {
     size_t commit_size;
 } LorArenaConfig;
 
-typedef struct LorArenaAllocOptions {
-    bool zero;
-} LorArenaAllocOptions;
-
 typedef struct LorArena {
     LorArenaBlock *blocks;
     LorArenaBackend backend;
@@ -60,7 +55,19 @@ typedef struct LorScratch {
 #define LOR_ARENA_MARK_INIT {NULL, 0u}
 #define LOR_SCRATCH_INIT {NULL, LOR_ARENA_MARK_INIT}
 
-int lor_memory_arena_init_(LorArena *arena, const LorArenaConfig *config);
+/** Initializes `arena` with the default heap-backed configuration.
+ *
+ * Passing `NULL` fails and returns zero. A zero-initialized arena can also be
+ * used lazily by calling `lor_arena_alloc` without an explicit init call.
+ */
+int lor_arena_init(LorArena *arena);
+
+/** Initializes `arena` with explicit configuration.
+ *
+ * Fields left as zero use the same defaults as `lor_arena_init`. Use
+ * `LOR_ARENA_BACKEND_VIRTUAL` to reserve virtual memory and commit it on demand.
+ */
+int lor_arena_init_config(LorArena *arena, LorArenaConfig config);
 
 /** Releases all storage owned by `arena` and resets it to `LOR_ARENA_INIT`.
  *
@@ -91,11 +98,25 @@ LorArenaMark lor_arena_mark(const LorArena *arena);
  */
 void lor_arena_rewind(LorArena *arena, LorArenaMark mark);
 
-void *lor_memory_arena_alloc_(LorArena *arena, size_t size,
-                              LorArenaAllocOptions options);
-void *lor_memory_arena_alloc_array_(LorArena *arena, size_t count,
-                                    size_t elem_size,
-                                    LorArenaAllocOptions options);
+/** Allocates `size` bytes from `arena`.
+ *
+ * Returns `NULL` when `arena` is `NULL`, `size` is zero, or backing allocation
+ * fails. The returned pointer is owned by the arena and must not be freed
+ * individually.
+ */
+void *lor_arena_alloc(LorArena *arena, size_t size);
+
+/** Allocates zero-filled `size` bytes from `arena`. */
+void *lor_arena_alloc_zero(LorArena *arena, size_t size);
+
+/** Allocates `count * elem_size` bytes from `arena`.
+ *
+ * Returns `NULL` for zero counts, zero element sizes, or size overflow.
+ */
+void *lor_arena_alloc_array(LorArena *arena, size_t count, size_t elem_size);
+
+/** Allocates a zero-filled array from `arena`. */
+void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size);
 
 /** Copies the NUL-terminated string `text` into `arena`.
  *
@@ -206,26 +227,44 @@ void lor_free_debug(void *ptr, const char *file, int line);
 /** Leakcheck wrapper for `strdup` with explicit source location metadata. */
 char *lor_strdup_debug(const char *text, const char *file, int line);
 
-int lor_memory_arena_init_debug_(LorArena *arena, const LorArenaConfig *config,
-                                 const char *file, int line);
+/** Leakcheck-tracked form of `lor_arena_init` with explicit source location. */
+int lor_arena_init_debug(LorArena *arena, const char *file, int line);
 
-void *lor_memory_arena_alloc_debug_(LorArena *arena, size_t size,
-                                    LorArenaAllocOptions options,
-                                    const char *file, int line);
-void *lor_memory_arena_alloc_array_debug_(LorArena *arena, size_t count,
-                                          size_t elem_size,
-                                          LorArenaAllocOptions options,
-                                          const char *file, int line);
+/** Leakcheck-tracked form of `lor_arena_init_config`. */
+int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
+                                const char *file, int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc`.
+ *
+ * Arena allocations are still bulk-owned by the arena; this location is used
+ * only when a zero-initialized arena is lazily initialized by the allocation.
+ */
+void *lor_arena_alloc_debug(LorArena *arena, size_t size, const char *file,
+                            int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc_zero`. */
+void *lor_arena_alloc_zero_debug(LorArena *arena, size_t size, const char *file,
+                                 int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc_array`. */
+void *lor_arena_alloc_array_debug(LorArena *arena, size_t count, size_t elem_size,
+                                  const char *file, int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc_array_zero`. */
+void *lor_arena_alloc_array_zero_debug(LorArena *arena, size_t count,
+                                       size_t elem_size, const char *file, int line);
 
 /** Leakcheck-tracked form of `lor_arena_strdup` with explicit source location. */
-char *lor_arena_strdup_debug(LorArena *arena, const char *text,
-                             const char *file, int line);
+char *lor_arena_strdup_debug(LorArena *arena, const char *text, const char *file,
+                             int line);
 
 /** Leakcheck-tracked form of `lor_mmap_file` with explicit source location. */
 LorMmap lor_mmap_file_debug(const char *path, LorMmapMode mode, const char *file,
                             int line);
 #endif
 
+/* Scope cleanup has to be a macro because C attributes are declaration syntax.
+   Unsupported compilers leave LOR_AUTO_* empty, so code remains portable. */
 #if defined(__GNUC__) || defined(__clang__)
 #define LOR_CLEANUP_SUPPORTED 1
 #define LOR_CLEANUP(fn) __attribute__((cleanup(fn)))
@@ -280,135 +319,36 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_file_(void *file) {
 #endif
 
 /* LOR_SINGLE_HEADER_LATE_MACROS_BEGIN */
-/* Optional macro mode.
-   These wrappers live after declarations in normal headers, and are emitted
-   after implementation in the generated single-header. */
-#if !defined(LOR_MEMORY_INTERNAL) && !defined(LOR_SINGLE_HEADER_BUILD)
-#define LOR_MEMORY_SELECT_INIT_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-#define LOR_MEMORY_ARENA_INIT_DEFAULT_(arena) \
-    lor_memory_arena_init_((arena), NULL)
-#define LOR_MEMORY_ARENA_INIT_OPTIONS_(arena, ...) \
-    lor_memory_arena_init_((arena), &(LorArenaConfig){__VA_ARGS__})
-#define LOR_MEMORY_ARENA_INIT_DEBUG_DEFAULT_(arena) \
-    lor_memory_arena_init_debug_((arena), NULL, __FILE__, __LINE__)
-#define LOR_MEMORY_ARENA_INIT_DEBUG_OPTIONS_(arena, ...) \
-    lor_memory_arena_init_debug_((arena), &(LorArenaConfig){__VA_ARGS__}, \
-                                 __FILE__, __LINE__)
+/* Leakcheck location capture.
 
-#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)
-#define LOR_MEMORY_ARENA_INIT_DEFAULT LOR_MEMORY_ARENA_INIT_DEBUG_DEFAULT_
-#define LOR_MEMORY_ARENA_INIT_OPTIONS LOR_MEMORY_ARENA_INIT_DEBUG_OPTIONS_
-#else
-#define LOR_MEMORY_ARENA_INIT_DEFAULT LOR_MEMORY_ARENA_INIT_DEFAULT_
-#define LOR_MEMORY_ARENA_INIT_OPTIONS LOR_MEMORY_ARENA_INIT_OPTIONS_
-#endif
+   These macros are deliberately kept at the end of the header. In normal
+   multi-file builds they affect user code after all declarations are visible.
+   In the generated single-header they are emitted after the implementation, so
+   they do not rewrite liblor's own function definitions.
 
-#define LOR_MEMORY_ARENA_INIT_(...)                                      \
-    LOR_MEMORY_SELECT_INIT_(__VA_ARGS__, LOR_MEMORY_ARENA_INIT_OPTIONS,   \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_DEFAULT, unused)        \
-    (__VA_ARGS__)
-
-/** Initializes an arena from optional designated configuration arguments.
- *
- * Supported forms:
- * `lor_arena_init(&arena)`
- * `lor_arena_init(&arena, .block_size = 128)`
- * `lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL)`
- */
-#undef lor_arena_init
-#define lor_arena_init(...) LOR_MEMORY_ARENA_INIT_(__VA_ARGS__)
-
-#define LOR_MEMORY_SELECT_ALLOC_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-#define LOR_MEMORY_ARENA_ALLOC_DEFAULT_(arena, size) \
-    lor_memory_arena_alloc_((arena), (size), (LorArenaAllocOptions){0})
-#define LOR_MEMORY_ARENA_ALLOC_OPTIONS_(arena, size, ...) \
-    lor_memory_arena_alloc_((arena), (size), (LorArenaAllocOptions){__VA_ARGS__})
-#define LOR_MEMORY_ARENA_ALLOC_DEBUG_DEFAULT_(arena, size) \
-    lor_memory_arena_alloc_debug_((arena), (size), (LorArenaAllocOptions){0}, \
-                                  __FILE__, __LINE__)
-#define LOR_MEMORY_ARENA_ALLOC_DEBUG_OPTIONS_(arena, size, ...) \
-    lor_memory_arena_alloc_debug_((arena), (size),                       \
-                                  (LorArenaAllocOptions){__VA_ARGS__},   \
-                                  __FILE__, __LINE__)
-
-#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)
-#define LOR_MEMORY_ARENA_ALLOC_DEFAULT LOR_MEMORY_ARENA_ALLOC_DEBUG_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_OPTIONS LOR_MEMORY_ARENA_ALLOC_DEBUG_OPTIONS_
-#else
-#define LOR_MEMORY_ARENA_ALLOC_DEFAULT LOR_MEMORY_ARENA_ALLOC_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_OPTIONS LOR_MEMORY_ARENA_ALLOC_OPTIONS_
-#endif
-
-#define LOR_MEMORY_ARENA_ALLOC_(...)                                      \
-    LOR_MEMORY_SELECT_ALLOC_(__VA_ARGS__, LOR_MEMORY_ARENA_ALLOC_OPTIONS,  \
-                             LOR_MEMORY_ARENA_ALLOC_OPTIONS,               \
-                             LOR_MEMORY_ARENA_ALLOC_OPTIONS,               \
-                             LOR_MEMORY_ARENA_ALLOC_OPTIONS,               \
-                             LOR_MEMORY_ARENA_ALLOC_DEFAULT, unused)       \
-    (__VA_ARGS__)
-
-/** Allocates from an arena with optional designated allocation arguments.
- *
- * Supported forms:
- * `lor_arena_alloc(&arena, size)`
- * `lor_arena_alloc(&arena, size, .zero = true)`
- */
-#undef lor_arena_alloc
-#define lor_arena_alloc(...) LOR_MEMORY_ARENA_ALLOC_(__VA_ARGS__)
-
-#define LOR_MEMORY_SELECT_ALLOC_ARRAY_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT_(arena, count, elem_size)       \
-    lor_memory_arena_alloc_array_((arena), (count), (elem_size),             \
-                                  (LorArenaAllocOptions){0})
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_(arena, count, elem_size, ...) \
-    lor_memory_arena_alloc_array_((arena), (count), (elem_size),            \
-                                  (LorArenaAllocOptions){__VA_ARGS__})
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_DEFAULT_(arena, count, elem_size) \
-    lor_memory_arena_alloc_array_debug_((arena), (count), (elem_size),       \
-                                        (LorArenaAllocOptions){0}, __FILE__, \
-                                        __LINE__)
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_OPTIONS_(arena, count, elem_size, ...) \
-    lor_memory_arena_alloc_array_debug_((arena), (count), (elem_size),            \
-                                        (LorArenaAllocOptions){__VA_ARGS__},      \
-                                        __FILE__, __LINE__)
-
-#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT \
-    LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS \
-    LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_OPTIONS_
-#else
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_
-#endif
-
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_(...)                                  \
-    LOR_MEMORY_SELECT_ALLOC_ARRAY_(__VA_ARGS__,                             \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS,    \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS,    \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS,    \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT,    \
-                                   unused)                                  \
-    (__VA_ARGS__)
-
-/** Allocates an array from an arena with optional designated arguments.
- *
- * Supported forms:
- * `lor_arena_alloc_array(&arena, count, sizeof(*items))`
- * `lor_arena_alloc_array(&arena, count, sizeof(*items), .zero = true)`
- */
-#undef lor_arena_alloc_array
-#define lor_arena_alloc_array(...) LOR_MEMORY_ARENA_ALLOC_ARRAY_(__VA_ARGS__)
-#endif
-
-/* Leakcheck build mode. Define LOR_LEAKCHECK for the whole build to route
-   liblor memory calls and standard heap calls through location-aware tracking. */
+   src/memory.c defines LOR_MEMORY_NO_LOCATION_MACROS and
+   LOR_MEMORY_NO_STDLIB_MACROS before including this header because the
+   implementation needs to define and call the real functions. */
 #if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS) && \
     !defined(LOR_SINGLE_HEADER_BUILD)
+#undef lor_arena_init
+#define lor_arena_init(arena) lor_arena_init_debug((arena), __FILE__, __LINE__)
+#undef lor_arena_init_config
+#define lor_arena_init_config(arena, ...) \
+    lor_arena_init_config_debug((arena), __VA_ARGS__, __FILE__, __LINE__)
+#undef lor_arena_alloc
+#define lor_arena_alloc(arena, size) \
+    lor_arena_alloc_debug((arena), (size), __FILE__, __LINE__)
+#undef lor_arena_alloc_zero
+#define lor_arena_alloc_zero(arena, size) \
+    lor_arena_alloc_zero_debug((arena), (size), __FILE__, __LINE__)
+#undef lor_arena_alloc_array
+#define lor_arena_alloc_array(arena, count, elem_size) \
+    lor_arena_alloc_array_debug((arena), (count), (elem_size), __FILE__, __LINE__)
+#undef lor_arena_alloc_array_zero
+#define lor_arena_alloc_array_zero(arena, count, elem_size)                   \
+    lor_arena_alloc_array_zero_debug((arena), (count), (elem_size), __FILE__, \
+                                     __LINE__)
 #undef lor_arena_strdup
 #define lor_arena_strdup(arena, text) \
     lor_arena_strdup_debug((arena), (text), __FILE__, __LINE__)

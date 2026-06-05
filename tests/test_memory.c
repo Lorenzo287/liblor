@@ -22,7 +22,7 @@ static int test_leakcheck_tracks_arena_and_mmap_lifetimes(void) {
     LorMmap map = {0};
     LorMmap copy = {0};
 
-    CHECK(lor_arena_init(&arena, .block_size = 128));
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 128}));
     CHECK(lor_arena_alloc(&arena, 16) != NULL);
     stats = lor_leakcheck_stats();
 #if defined(LOR_LEAKCHECK)

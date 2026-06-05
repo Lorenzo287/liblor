@@ -53,8 +53,7 @@ int main(void) {
     Arena arena = ARENA_INIT;
     Arena configured = ARENA_INIT;
     ArenaMark mark = ARENA_MARK_INIT;
-    int *values = (int *)arena_alloc_array(&arena, 4, sizeof(*values),
-                                           .zero = true);
+    int *values = (int *)arena_alloc_array_zero(&arena, 4, sizeof(*values));
     int *configured_value = NULL;
     char *scratch = NULL;
     char *heap = NULL;
@@ -68,9 +67,9 @@ int main(void) {
     arena_rewind(&arena, mark);
     arena_deinit(&arena);
 
-    CHECK(arena_init(&configured, .block_size = 128));
-    configured_value = (int *)arena_alloc(&configured, sizeof(*configured_value),
-                                          .zero = true);
+    CHECK(arena_init_config(&configured, (ArenaConfig){.block_size = 128}));
+    configured_value =
+        (int *)arena_alloc_zero(&configured, sizeof(*configured_value));
     CHECK(configured_value != NULL);
     CHECK(*configured_value == 0);
     arena_deinit(&configured);

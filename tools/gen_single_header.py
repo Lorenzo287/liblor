@@ -36,10 +36,11 @@ def strip_local_includes(lines: list[str]) -> list[str]:
         stripped = line.strip()
         if stripped.startswith('#include "lor/') or stripped == '#include "lor.h"':
             continue
+        # These are only for compiling the normal source file. In the generated
+        # header, post-implementation macros are emitted after the source block.
         if stripped in {
             "#define LOR_MEMORY_NO_STDLIB_MACROS",
             "#define LOR_MEMORY_NO_LOCATION_MACROS",
-            "#define LOR_MEMORY_INTERNAL",
         }:
             continue
         result.append(line)
@@ -146,10 +147,6 @@ def module_enabled_condition(module: dict) -> str:
     return module["enable_macro"]
 
 
-def function_suffix(alias: str) -> str:
-    return alias
-
-
 def emit_module_selection(modules: list[dict]) -> str:
     enable_macros = [module["enable_macro"] for module in modules]
     no_modules = " && ".join(f"!defined({macro})" for macro in enable_macros)
@@ -166,31 +163,6 @@ def emit_module_selection(modules: list[dict]) -> str:
     out.append("#ifdef LOR_ENABLE_ALL")
     for macro in enable_macros:
         out.append(f"#define {macro}")
-    out.append("#endif")
-    return "\n".join(out) + "\n"
-
-
-def emit_custom_prefix(modules: list[dict]) -> str:
-    out = []
-    out.append("/* Optional compiled symbol prefix")
-    out.append("   Example: #define LOR_CUSTOM_PREFIX my_")
-    out.append("   turns lor_arena_deinit into my_arena_deinit in this translation unit.")
-    out.append("   Macro facades such as lor_arena_alloc keep their source-level names;")
-    out.append("   the C preprocessor cannot synthesize new macro names from this prefix.")
-    out.append("   This affects declarations and definitions, so all translation units")
-    out.append("   using the generated header must use the same custom prefix. */")
-    out.append("#ifdef LOR_CUSTOM_PREFIX")
-    out.append("#define LOR__JOIN2(a, b) a##b")
-    out.append("#define LOR__JOIN(a, b) LOR__JOIN2(a, b)")
-    for module in modules:
-        out.append(f"#ifdef {module_enabled_condition(module)}")
-        compiled_symbols = (
-            module["symbols"].get("internal_functions", [])
-            + module["symbols"].get("functions", [])
-        )
-        for canonical, alias in compiled_symbols:
-            out.append(f"#define {canonical} LOR__JOIN(LOR_CUSTOM_PREFIX, {function_suffix(alias)})")
-        out.append("#endif")
     out.append("#endif")
     return "\n".join(out) + "\n"
 
@@ -226,7 +198,7 @@ def emit_strip_prefix_aliases(modules: list[dict]) -> str:
     out = []
     out.append("/* Optional short-name aliases")
     out.append("   These are preprocessor aliases only. They do not change compiled")
-    out.append("   symbol names unless LOR_CUSTOM_PREFIX is also used. */")
+    out.append("   symbol names. */")
     out.append("#ifdef LOR_STRIP_PREFIX")
     for module in modules:
         out.append(f"#ifdef {module_enabled_condition(module)}")
@@ -239,6 +211,11 @@ def emit_strip_prefix_aliases(modules: list[dict]) -> str:
 
 
 def emit_late_macros(modules: list[dict]) -> str:
+    """Emit marked macro blocks after single-header implementations.
+
+    Some public macros intentionally wrap function names, so emitting them with
+    declarations would also rewrite the generated function definitions.
+    """
     out = []
 
     for module in modules:
@@ -270,8 +247,6 @@ def generate(manifest_path: Path) -> str:
     out.append("#define LOR_SINGLE_HEADER_BUILD")
     out.append("")
     out.append(emit_module_selection(modules).rstrip())
-    out.append("")
-    out.append(emit_custom_prefix(modules).rstrip())
     out.append("")
     out.append(emit_declarations(modules).rstrip())
     out.append(emit_implementations(modules).rstrip())

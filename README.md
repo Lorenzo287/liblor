@@ -66,9 +66,6 @@ Optional module and alias controls:
 
 - `LOR_ENABLE_MEMORY`: include only the memory module.
 - `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
-- `LOR_CUSTOM_PREFIX my_`: compile function symbols such as
-  `lor_arena_deinit` as `my_arena_deinit`. Macro facades such as
-  `lor_arena_alloc` keep their source-level names.
 - `LOR_LEAKCHECK`: development build mode for location-aware leak checking
   across liblor memory calls and stdlib heap calls.
 

@@ -20,54 +20,9 @@
 #define LOR_ENABLE_MEMORY
 #endif
 
-/* Optional compiled symbol prefix
-   Example: #define LOR_CUSTOM_PREFIX my_
-   turns lor_arena_deinit into my_arena_deinit in this translation unit.
-   Macro facades such as lor_arena_alloc keep their source-level names;
-   the C preprocessor cannot synthesize new macro names from this prefix.
-   This affects declarations and definitions, so all translation units
-   using the generated header must use the same custom prefix. */
-#ifdef LOR_CUSTOM_PREFIX
-#define LOR__JOIN2(a, b) a##b
-#define LOR__JOIN(a, b) LOR__JOIN2(a, b)
-#ifdef LOR_ENABLE_MEMORY
-#define lor_memory_arena_init_ LOR__JOIN(LOR_CUSTOM_PREFIX, memory_arena_init_)
-#define lor_memory_arena_init_debug_ LOR__JOIN(LOR_CUSTOM_PREFIX, memory_arena_init_debug_)
-#define lor_memory_arena_alloc_ LOR__JOIN(LOR_CUSTOM_PREFIX, memory_arena_alloc_)
-#define lor_memory_arena_alloc_debug_ LOR__JOIN(LOR_CUSTOM_PREFIX, memory_arena_alloc_debug_)
-#define lor_memory_arena_alloc_array_ LOR__JOIN(LOR_CUSTOM_PREFIX, memory_arena_alloc_array_)
-#define lor_memory_arena_alloc_array_debug_ LOR__JOIN(LOR_CUSTOM_PREFIX, memory_arena_alloc_array_debug_)
-#define lor_arena_strdup_debug LOR__JOIN(LOR_CUSTOM_PREFIX, arena_strdup_debug)
-#define lor_malloc_debug LOR__JOIN(LOR_CUSTOM_PREFIX, malloc_debug)
-#define lor_calloc_debug LOR__JOIN(LOR_CUSTOM_PREFIX, calloc_debug)
-#define lor_realloc_debug LOR__JOIN(LOR_CUSTOM_PREFIX, realloc_debug)
-#define lor_free_debug LOR__JOIN(LOR_CUSTOM_PREFIX, free_debug)
-#define lor_strdup_debug LOR__JOIN(LOR_CUSTOM_PREFIX, strdup_debug)
-#define lor_mmap_file_debug LOR__JOIN(LOR_CUSTOM_PREFIX, mmap_file_debug)
-#define lor_arena_deinit LOR__JOIN(LOR_CUSTOM_PREFIX, arena_deinit)
-#define lor_arena_reset LOR__JOIN(LOR_CUSTOM_PREFIX, arena_reset)
-#define lor_arena_mark LOR__JOIN(LOR_CUSTOM_PREFIX, arena_mark)
-#define lor_arena_rewind LOR__JOIN(LOR_CUSTOM_PREFIX, arena_rewind)
-#define lor_arena_strdup LOR__JOIN(LOR_CUSTOM_PREFIX, arena_strdup)
-#define lor_arena_used LOR__JOIN(LOR_CUSTOM_PREFIX, arena_used)
-#define lor_arena_capacity LOR__JOIN(LOR_CUSTOM_PREFIX, arena_capacity)
-#define lor_arena_committed LOR__JOIN(LOR_CUSTOM_PREFIX, arena_committed)
-#define lor_scratch_begin LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_begin)
-#define lor_scratch_end LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_end)
-#define lor_scratch_cleanup LOR__JOIN(LOR_CUSTOM_PREFIX, scratch_cleanup)
-#define lor_page_size LOR__JOIN(LOR_CUSTOM_PREFIX, page_size)
-#define lor_mmap_file LOR__JOIN(LOR_CUSTOM_PREFIX, mmap_file)
-#define lor_mmap_unmap LOR__JOIN(LOR_CUSTOM_PREFIX, mmap_unmap)
-#define lor_leakcheck_stats LOR__JOIN(LOR_CUSTOM_PREFIX, leakcheck_stats)
-#define lor_leakcheck_count LOR__JOIN(LOR_CUSTOM_PREFIX, leakcheck_count)
-#define lor_leakcheck_report LOR__JOIN(LOR_CUSTOM_PREFIX, leakcheck_report)
-#endif
-#endif
-
 /* === memory: declarations === */
 #ifdef LOR_ENABLE_MEMORY
 #include <stddef.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -97,10 +52,6 @@ typedef struct LorArenaConfig {
     size_t commit_size;
 } LorArenaConfig;
 
-typedef struct LorArenaAllocOptions {
-    bool zero;
-} LorArenaAllocOptions;
-
 typedef struct LorArena {
     LorArenaBlock *blocks;
     LorArenaBackend backend;
@@ -123,7 +74,19 @@ typedef struct LorScratch {
 #define LOR_ARENA_MARK_INIT {NULL, 0u}
 #define LOR_SCRATCH_INIT {NULL, LOR_ARENA_MARK_INIT}
 
-int lor_memory_arena_init_(LorArena *arena, const LorArenaConfig *config);
+/** Initializes `arena` with the default heap-backed configuration.
+ *
+ * Passing `NULL` fails and returns zero. A zero-initialized arena can also be
+ * used lazily by calling `lor_arena_alloc` without an explicit init call.
+ */
+int lor_arena_init(LorArena *arena);
+
+/** Initializes `arena` with explicit configuration.
+ *
+ * Fields left as zero use the same defaults as `lor_arena_init`. Use
+ * `LOR_ARENA_BACKEND_VIRTUAL` to reserve virtual memory and commit it on demand.
+ */
+int lor_arena_init_config(LorArena *arena, LorArenaConfig config);
 
 /** Releases all storage owned by `arena` and resets it to `LOR_ARENA_INIT`.
  *
@@ -154,11 +117,25 @@ LorArenaMark lor_arena_mark(const LorArena *arena);
  */
 void lor_arena_rewind(LorArena *arena, LorArenaMark mark);
 
-void *lor_memory_arena_alloc_(LorArena *arena, size_t size,
-                              LorArenaAllocOptions options);
-void *lor_memory_arena_alloc_array_(LorArena *arena, size_t count,
-                                    size_t elem_size,
-                                    LorArenaAllocOptions options);
+/** Allocates `size` bytes from `arena`.
+ *
+ * Returns `NULL` when `arena` is `NULL`, `size` is zero, or backing allocation
+ * fails. The returned pointer is owned by the arena and must not be freed
+ * individually.
+ */
+void *lor_arena_alloc(LorArena *arena, size_t size);
+
+/** Allocates zero-filled `size` bytes from `arena`. */
+void *lor_arena_alloc_zero(LorArena *arena, size_t size);
+
+/** Allocates `count * elem_size` bytes from `arena`.
+ *
+ * Returns `NULL` for zero counts, zero element sizes, or size overflow.
+ */
+void *lor_arena_alloc_array(LorArena *arena, size_t count, size_t elem_size);
+
+/** Allocates a zero-filled array from `arena`. */
+void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size);
 
 /** Copies the NUL-terminated string `text` into `arena`.
  *
@@ -269,26 +246,44 @@ void lor_free_debug(void *ptr, const char *file, int line);
 /** Leakcheck wrapper for `strdup` with explicit source location metadata. */
 char *lor_strdup_debug(const char *text, const char *file, int line);
 
-int lor_memory_arena_init_debug_(LorArena *arena, const LorArenaConfig *config,
-                                 const char *file, int line);
+/** Leakcheck-tracked form of `lor_arena_init` with explicit source location. */
+int lor_arena_init_debug(LorArena *arena, const char *file, int line);
 
-void *lor_memory_arena_alloc_debug_(LorArena *arena, size_t size,
-                                    LorArenaAllocOptions options,
-                                    const char *file, int line);
-void *lor_memory_arena_alloc_array_debug_(LorArena *arena, size_t count,
-                                          size_t elem_size,
-                                          LorArenaAllocOptions options,
-                                          const char *file, int line);
+/** Leakcheck-tracked form of `lor_arena_init_config`. */
+int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
+                                const char *file, int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc`.
+ *
+ * Arena allocations are still bulk-owned by the arena; this location is used
+ * only when a zero-initialized arena is lazily initialized by the allocation.
+ */
+void *lor_arena_alloc_debug(LorArena *arena, size_t size, const char *file,
+                            int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc_zero`. */
+void *lor_arena_alloc_zero_debug(LorArena *arena, size_t size, const char *file,
+                                 int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc_array`. */
+void *lor_arena_alloc_array_debug(LorArena *arena, size_t count, size_t elem_size,
+                                  const char *file, int line);
+
+/** Leakcheck-tracked form of `lor_arena_alloc_array_zero`. */
+void *lor_arena_alloc_array_zero_debug(LorArena *arena, size_t count,
+                                       size_t elem_size, const char *file, int line);
 
 /** Leakcheck-tracked form of `lor_arena_strdup` with explicit source location. */
-char *lor_arena_strdup_debug(LorArena *arena, const char *text,
-                             const char *file, int line);
+char *lor_arena_strdup_debug(LorArena *arena, const char *text, const char *file,
+                             int line);
 
 /** Leakcheck-tracked form of `lor_mmap_file` with explicit source location. */
 LorMmap lor_mmap_file_debug(const char *path, LorMmapMode mode, const char *file,
                             int line);
 #endif
 
+/* Scope cleanup has to be a macro because C attributes are declaration syntax.
+   Unsupported compilers leave LOR_AUTO_* empty, so code remains portable. */
 #if defined(__GNUC__) || defined(__clang__)
 #define LOR_CLEANUP_SUPPORTED 1
 #define LOR_CLEANUP(fn) __attribute__((cleanup(fn)))
@@ -346,6 +341,9 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_file_(void *file) {
 
 /* === memory: implementation === */
 #ifdef LOR_ENABLE_MEMORY
+/* The implementation needs the real function names. In leakcheck builds the
+   public header can macro-wrap those names to attach call-site file/line data. */
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -513,9 +511,12 @@ static void lor_leak__untrack(LorLeakKind kind, void *ptr) {
 
 static const char *lor_leak__kind_name(LorLeakKind kind) {
     switch (kind) {
-    case LOR_LEAK_KIND_HEAP: return "heap";
-    case LOR_LEAK_KIND_ARENA: return "arena";
-    case LOR_LEAK_KIND_MMAP: return "mmap";
+    case LOR_LEAK_KIND_HEAP:
+        return "heap";
+    case LOR_LEAK_KIND_ARENA:
+        return "arena";
+    case LOR_LEAK_KIND_MMAP:
+        return "mmap";
     }
 
     return "unknown";
@@ -595,8 +596,7 @@ void *lor_malloc_debug(size_t size, const char *file, int line) {
     return ptr;
 }
 
-void *lor_calloc_debug(size_t count, size_t elem_size, const char *file,
-                       int line) {
+void *lor_calloc_debug(size_t count, size_t elem_size, const char *file, int line) {
     void *ptr = NULL;
 
     if (count == 0 || elem_size == 0 ||
@@ -708,23 +708,11 @@ static void lor_virtual__release_raw(void *ptr, size_t size) {
 #endif
 }
 
-static size_t lor_arena__defaulted_block_size(size_t block_size) {
-    return block_size != 0 ? block_size : LOR_ARENA_DEFAULT_BLOCK_SIZE;
-}
-
-static size_t lor_arena__defaulted_reserve_size(size_t reserve_size) {
-    return reserve_size != 0 ? reserve_size : LOR_ARENA_DEFAULT_RESERVE_SIZE;
-}
-
-static size_t lor_arena__defaulted_commit_size(size_t commit_size) {
-    return commit_size != 0 ? commit_size : LOR_ARENA_DEFAULT_COMMIT_SIZE;
-}
-
 static unsigned char *lor_arena__block_data(LorArenaBlock *block) {
     uintptr_t aligned = 0;
 
-    if (!lor_memory__align_forward((uintptr_t)block->data,
-                                   LOR_ARENA_MAX_ALIGNMENT, &aligned)) {
+    if (!lor_memory__align_forward((uintptr_t)block->data, LOR_ARENA_MAX_ALIGNMENT,
+                                   &aligned)) {
         return NULL;
     }
 
@@ -883,14 +871,15 @@ static LorArenaBlock *lor_arena__block_new(LorArena *arena, size_t min_capacity)
                                             min_capacity);
     }
 
-    if (arena->block_size < min_capacity) { return lor_arena__heap_block_new(min_capacity); }
+    if (arena->block_size < min_capacity) {
+        return lor_arena__heap_block_new(min_capacity);
+    }
     return lor_arena__heap_block_new(arena->block_size);
 }
 
-static int lor_arena__init_internal(LorArena *arena, const LorArenaConfig *config,
-                                    bool track_leakcheck, const char *file,
+static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
+                                    int track_leakcheck, const char *file,
                                     int line) {
-    LorArenaConfig defaults = {0};
 #if !defined(LOR_LEAKCHECK)
     (void)file;
     (void)line;
@@ -898,13 +887,14 @@ static int lor_arena__init_internal(LorArena *arena, const LorArenaConfig *confi
 
     if (arena == NULL) { return 0; }
 
-    if (config == NULL) { config = &defaults; }
-
     arena->blocks = NULL;
-    arena->backend = config->backend;
-    arena->block_size = lor_arena__defaulted_block_size(config->block_size);
-    arena->reserve_size = lor_arena__defaulted_reserve_size(config->reserve_size);
-    arena->commit_size = lor_arena__defaulted_commit_size(config->commit_size);
+    arena->backend = config.backend;
+    arena->block_size =
+        config.block_size != 0 ? config.block_size : LOR_ARENA_DEFAULT_BLOCK_SIZE;
+    arena->reserve_size = config.reserve_size != 0 ? config.reserve_size
+                                                   : LOR_ARENA_DEFAULT_RESERVE_SIZE;
+    arena->commit_size =
+        config.commit_size != 0 ? config.commit_size : LOR_ARENA_DEFAULT_COMMIT_SIZE;
 
     if (arena->backend != LOR_ARENA_BACKEND_HEAP &&
         arena->backend != LOR_ARENA_BACKEND_VIRTUAL) {
@@ -921,20 +911,30 @@ static int lor_arena__init_internal(LorArena *arena, const LorArenaConfig *confi
         }
     }
 
-    if (track_leakcheck) { lor_leak__track(LOR_LEAK_KIND_ARENA, arena, 0, file, line); }
+    if (track_leakcheck) {
+        lor_leak__track(LOR_LEAK_KIND_ARENA, arena, 0, file, line);
+    }
 
     return 1;
 }
 
 #if defined(LOR_LEAKCHECK)
-int lor_memory_arena_init_debug_(LorArena *arena, const LorArenaConfig *config,
-                                 const char *file, int line) {
-    return lor_arena__init_internal(arena, config, true, file, line);
+int lor_arena_init_debug(LorArena *arena, const char *file, int line) {
+    return lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, file, line);
+}
+
+int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
+                                const char *file, int line) {
+    return lor_arena__init_internal(arena, config, 1, file, line);
 }
 #endif
 
-int lor_memory_arena_init_(LorArena *arena, const LorArenaConfig *config) {
-    return lor_arena__init_internal(arena, config, true, NULL, 0);
+int lor_arena_init(LorArena *arena) {
+    return lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, NULL, 0);
+}
+
+int lor_arena_init_config(LorArena *arena, LorArenaConfig config) {
+    return lor_arena__init_internal(arena, config, 1, NULL, 0);
 }
 
 void lor_arena_deinit(LorArena *arena) {
@@ -972,8 +972,7 @@ LorArenaMark lor_arena_mark(const LorArena *arena) {
     };
 }
 
-static int lor_arena__has_block(const LorArena *arena,
-                                const LorArenaBlock *target) {
+static int lor_arena__has_block(const LorArena *arena, const LorArenaBlock *target) {
     const LorArenaBlock *block = NULL;
 
     if (arena == NULL || target == NULL) { return 0; }
@@ -985,45 +984,39 @@ static int lor_arena__has_block(const LorArena *arena,
     return 0;
 }
 
-static void lor_arena__rewind_to(LorArena *arena, LorArenaBlock *mark_block,
-                                 size_t mark_used) {
+void lor_arena_rewind(LorArena *arena, LorArenaMark mark) {
     LorArenaBlock *block = NULL;
 
     if (arena == NULL) { return; }
 
-    if (mark_block == NULL) {
+    if (mark.block == NULL) {
         for (block = arena->blocks; block != NULL; block = block->next) {
             block->used = 0;
         }
         return;
     }
 
-    if (!lor_arena__has_block(arena, mark_block)) {
+    if (!lor_arena__has_block(arena, mark.block)) {
         assert(!"lor_arena_rewind mark does not belong to arena");
         return;
     }
 
-    while (arena->blocks != NULL && arena->blocks != mark_block) {
+    while (arena->blocks != NULL && arena->blocks != mark.block) {
         block = arena->blocks;
         arena->blocks = block->next;
         lor_arena__block_free(arena, block);
     }
 
-    if (mark_used > arena->blocks->used) {
+    if (mark.used > arena->blocks->used) {
         assert(!"lor_arena_rewind mark used exceeds block used");
         return;
     }
 
-    arena->blocks->used = mark_used;
+    arena->blocks->used = mark.used;
 }
 
-void lor_arena_rewind(LorArena *arena, LorArenaMark mark) {
-    lor_arena__rewind_to(arena, mark.block, mark.used);
-}
-
-static void *lor_arena__alloc_aligned(LorArena *arena, size_t size,
-                                      size_t alignment, const char *file,
-                                      int line) {
+static void *lor_arena__alloc_aligned(LorArena *arena, size_t size, size_t alignment,
+                                      const char *file, int line) {
     size_t min_capacity = 0;
     LorArenaBlock *block = NULL;
     void *result = NULL;
@@ -1037,7 +1030,9 @@ static void *lor_arena__alloc_aligned(LorArena *arena, size_t size,
     }
 
     if (arena->block_size == 0 && arena->reserve_size == 0) {
-        (void)lor_arena__init_internal(arena, NULL, true, file, line);
+        if (!lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, file, line)) {
+            return NULL;
+        }
     }
 
     if (arena->blocks != NULL) {
@@ -1061,52 +1056,73 @@ static void *lor_arena__alloc_aligned(LorArena *arena, size_t size,
     return lor_arena__block_alloc(arena, block, size, alignment);
 }
 
-void *lor_memory_arena_alloc_(LorArena *arena, size_t size,
-                              LorArenaAllocOptions options) {
-    void *ptr = lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT,
-                                         NULL, 0);
+void *lor_arena_alloc(LorArena *arena, size_t size) {
+    return lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT, NULL, 0);
+}
 
-    if (ptr != NULL && options.zero) { memset(ptr, 0, size); }
+void *lor_arena_alloc_zero(LorArena *arena, size_t size) {
+    void *ptr =
+        lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT, NULL, 0);
 
+    if (ptr != NULL) { memset(ptr, 0, size); }
     return ptr;
 }
 
 #if defined(LOR_LEAKCHECK)
-void *lor_memory_arena_alloc_debug_(LorArena *arena, size_t size,
-                                    LorArenaAllocOptions options,
-                                    const char *file, int line) {
-    void *ptr = lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT,
-                                         file, line);
+void *lor_arena_alloc_debug(LorArena *arena, size_t size, const char *file,
+                            int line) {
+    return lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT, file,
+                                    line);
+}
 
-    if (ptr != NULL && options.zero) { memset(ptr, 0, size); }
+void *lor_arena_alloc_zero_debug(LorArena *arena, size_t size, const char *file,
+                                 int line) {
+    void *ptr =
+        lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT, file, line);
 
+    if (ptr != NULL) { memset(ptr, 0, size); }
     return ptr;
 }
 #endif
 
-void *lor_memory_arena_alloc_array_(LorArena *arena, size_t count,
-                                    size_t elem_size,
-                                    LorArenaAllocOptions options) {
+void *lor_arena_alloc_array(LorArena *arena, size_t count, size_t elem_size) {
     if (count == 0 || elem_size == 0 ||
         lor_memory__mul_overflows_size(count, elem_size)) {
         return NULL;
     }
 
-    return lor_memory_arena_alloc_(arena, count * elem_size, options);
+    return lor_arena_alloc(arena, count * elem_size);
+}
+
+void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size) {
+    if (count == 0 || elem_size == 0 ||
+        lor_memory__mul_overflows_size(count, elem_size)) {
+        return NULL;
+    }
+
+    return lor_arena_alloc_zero(arena, count * elem_size);
 }
 
 #if defined(LOR_LEAKCHECK)
-void *lor_memory_arena_alloc_array_debug_(LorArena *arena, size_t count,
-                                          size_t elem_size,
-                                          LorArenaAllocOptions options,
-                                          const char *file, int line) {
+void *lor_arena_alloc_array_debug(LorArena *arena, size_t count, size_t elem_size,
+                                  const char *file, int line) {
     if (count == 0 || elem_size == 0 ||
         lor_memory__mul_overflows_size(count, elem_size)) {
         return NULL;
     }
 
-    return lor_memory_arena_alloc_debug_(arena, count * elem_size, options, file,
-                                         line);
+    return lor_arena_alloc_debug(arena, count * elem_size, file, line);
+}
+
+void *lor_arena_alloc_array_zero_debug(LorArena *arena, size_t count,
+                                       size_t elem_size, const char *file,
+                                       int line) {
+    if (count == 0 || elem_size == 0 ||
+        lor_memory__mul_overflows_size(count, elem_size)) {
+        return NULL;
+    }
+
+    return lor_arena_alloc_zero_debug(arena, count * elem_size, file, line);
 }
 #endif
 
@@ -1120,9 +1136,8 @@ static char *lor_arena__strdup_at(LorArena *arena, const char *text,
     len = strlen(text);
     if (len == SIZE_MAX) { return NULL; }
 
-    copy = (char *)lor_arena__alloc_aligned(arena, len + 1u,
-                                            LOR_ARENA_MAX_ALIGNMENT, file,
-                                            line);
+    copy = (char *)lor_arena__alloc_aligned(arena, len + 1u, LOR_ARENA_MAX_ALIGNMENT,
+                                            file, line);
     if (copy == NULL) { return NULL; }
 
     memcpy(copy, text, len + 1u);
@@ -1134,8 +1149,8 @@ char *lor_arena_strdup(LorArena *arena, const char *text) {
 }
 
 #if defined(LOR_LEAKCHECK)
-char *lor_arena_strdup_debug(LorArena *arena, const char *text,
-                             const char *file, int line) {
+char *lor_arena_strdup_debug(LorArena *arena, const char *text, const char *file,
+                             int line) {
     return lor_arena__strdup_at(arena, text, file, line);
 }
 #endif
@@ -1196,7 +1211,8 @@ LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
         int conflict = 0;
 
         for (j = 0; j < conflict_count; ++j) {
-            if (conflicts != NULL && conflicts[j] == &lor_memory__scratch_arenas[i]) {
+            if (conflicts != NULL &&
+                conflicts[j] == &lor_memory__scratch_arenas[i]) {
                 conflict = 1;
                 break;
             }
@@ -1208,8 +1224,8 @@ LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
             LorArenaConfig config = {0};
             config.backend = LOR_ARENA_BACKEND_HEAP;
             config.block_size = LOR_ARENA_DEFAULT_BLOCK_SIZE;
-            if (!lor_arena__init_internal(&lor_memory__scratch_arenas[i], &config,
-                                          false, NULL, 0)) {
+            if (!lor_arena__init_internal(&lor_memory__scratch_arenas[i], config, 0,
+                                          NULL, 0)) {
                 return (LorScratch)LOR_SCRATCH_INIT;
             }
             lor_memory__scratch_inited[i] = 1;
@@ -1243,18 +1259,24 @@ void lor_scratch_cleanup(void) {
 #if defined(_WIN32)
 static DWORD lor_mmap__windows_protect(LorMmapMode mode) {
     switch (mode) {
-    case LOR_MMAP_SHARED: return PAGE_READWRITE;
-    case LOR_MMAP_COPY: return PAGE_WRITECOPY;
-    case LOR_MMAP_READ: return PAGE_READONLY;
+    case LOR_MMAP_SHARED:
+        return PAGE_READWRITE;
+    case LOR_MMAP_COPY:
+        return PAGE_WRITECOPY;
+    case LOR_MMAP_READ:
+        return PAGE_READONLY;
     }
     return PAGE_READONLY;
 }
 
 static DWORD lor_mmap__windows_access(LorMmapMode mode) {
     switch (mode) {
-    case LOR_MMAP_SHARED: return FILE_MAP_WRITE;
-    case LOR_MMAP_COPY: return FILE_MAP_COPY;
-    case LOR_MMAP_READ: return FILE_MAP_READ;
+    case LOR_MMAP_SHARED:
+        return FILE_MAP_WRITE;
+    case LOR_MMAP_COPY:
+        return FILE_MAP_COPY;
+    case LOR_MMAP_READ:
+        return FILE_MAP_READ;
     }
     return FILE_MAP_READ;
 }
@@ -1292,8 +1314,7 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
         }
 
         mapping = CreateFileMappingA(file_handle, NULL,
-                                     lor_mmap__windows_protect(mode), 0, 0,
-                                     NULL);
+                                     lor_mmap__windows_protect(mode), 0, 0, NULL);
         CloseHandle(file_handle);
         if (mapping == NULL) { return map; }
 
@@ -1364,12 +1385,11 @@ void lor_mmap_unmap(LorMmap *map) {
 #endif
 /* Optional short-name aliases
    These are preprocessor aliases only. They do not change compiled
-   symbol names unless LOR_CUSTOM_PREFIX is also used. */
+   symbol names. */
 #ifdef LOR_STRIP_PREFIX
 #ifdef LOR_ENABLE_MEMORY
 #define ArenaBackend LorArenaBackend
 #define ArenaConfig LorArenaConfig
-#define ArenaAllocOptions LorArenaAllocOptions
 #define Arena LorArena
 #define ArenaMark LorArenaMark
 #define ArenaBlock LorArenaBlock
@@ -1385,9 +1405,6 @@ void lor_mmap_unmap(LorMmap *map) {
 #define ARENA_DEFAULT_BLOCK_SIZE LOR_ARENA_DEFAULT_BLOCK_SIZE
 #define ARENA_DEFAULT_RESERVE_SIZE LOR_ARENA_DEFAULT_RESERVE_SIZE
 #define ARENA_DEFAULT_COMMIT_SIZE LOR_ARENA_DEFAULT_COMMIT_SIZE
-#define arena_init lor_arena_init
-#define arena_alloc lor_arena_alloc
-#define arena_alloc_array lor_arena_alloc_array
 #define ARENA_INIT LOR_ARENA_INIT
 #define ARENA_MARK_INIT LOR_ARENA_MARK_INIT
 #define SCRATCH_INIT LOR_SCRATCH_INIT
@@ -1401,10 +1418,16 @@ void lor_mmap_unmap(LorMmap *map) {
 #define AUTO_SCRATCH LOR_AUTO_SCRATCH
 #define AUTO_MMAP LOR_AUTO_MMAP
 #define AUTO_FILE LOR_AUTO_FILE
+#define arena_init lor_arena_init
+#define arena_init_config lor_arena_init_config
 #define arena_deinit lor_arena_deinit
 #define arena_reset lor_arena_reset
 #define arena_mark lor_arena_mark
 #define arena_rewind lor_arena_rewind
+#define arena_alloc lor_arena_alloc
+#define arena_alloc_zero lor_arena_alloc_zero
+#define arena_alloc_array lor_arena_alloc_array
+#define arena_alloc_array_zero lor_arena_alloc_array_zero
 #define arena_strdup lor_arena_strdup
 #define arena_used lor_arena_used
 #define arena_capacity lor_arena_capacity
@@ -1424,135 +1447,36 @@ void lor_mmap_unmap(LorMmap *map) {
 #undef LOR_SINGLE_HEADER_BUILD
 /* === memory: post-implementation macros === */
 #ifdef LOR_ENABLE_MEMORY
-/* Optional macro mode.
-   These wrappers live after declarations in normal headers, and are emitted
-   after implementation in the generated single-header. */
-#if !defined(LOR_MEMORY_INTERNAL) && !defined(LOR_SINGLE_HEADER_BUILD)
-#define LOR_MEMORY_SELECT_INIT_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-#define LOR_MEMORY_ARENA_INIT_DEFAULT_(arena) \
-    lor_memory_arena_init_((arena), NULL)
-#define LOR_MEMORY_ARENA_INIT_OPTIONS_(arena, ...) \
-    lor_memory_arena_init_((arena), &(LorArenaConfig){__VA_ARGS__})
-#define LOR_MEMORY_ARENA_INIT_DEBUG_DEFAULT_(arena) \
-    lor_memory_arena_init_debug_((arena), NULL, __FILE__, __LINE__)
-#define LOR_MEMORY_ARENA_INIT_DEBUG_OPTIONS_(arena, ...) \
-    lor_memory_arena_init_debug_((arena), &(LorArenaConfig){__VA_ARGS__}, \
-                                 __FILE__, __LINE__)
+/* Leakcheck location capture.
 
-#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)
-#define LOR_MEMORY_ARENA_INIT_DEFAULT LOR_MEMORY_ARENA_INIT_DEBUG_DEFAULT_
-#define LOR_MEMORY_ARENA_INIT_OPTIONS LOR_MEMORY_ARENA_INIT_DEBUG_OPTIONS_
-#else
-#define LOR_MEMORY_ARENA_INIT_DEFAULT LOR_MEMORY_ARENA_INIT_DEFAULT_
-#define LOR_MEMORY_ARENA_INIT_OPTIONS LOR_MEMORY_ARENA_INIT_OPTIONS_
-#endif
+   These macros are deliberately kept at the end of the header. In normal
+   multi-file builds they affect user code after all declarations are visible.
+   In the generated single-header they are emitted after the implementation, so
+   they do not rewrite liblor's own function definitions.
 
-#define LOR_MEMORY_ARENA_INIT_(...)                                      \
-    LOR_MEMORY_SELECT_INIT_(__VA_ARGS__, LOR_MEMORY_ARENA_INIT_OPTIONS,   \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_OPTIONS,                \
-                            LOR_MEMORY_ARENA_INIT_DEFAULT, unused)        \
-    (__VA_ARGS__)
-
-/** Initializes an arena from optional designated configuration arguments.
- *
- * Supported forms:
- * `lor_arena_init(&arena)`
- * `lor_arena_init(&arena, .block_size = 128)`
- * `lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL)`
- */
-#undef lor_arena_init
-#define lor_arena_init(...) LOR_MEMORY_ARENA_INIT_(__VA_ARGS__)
-
-#define LOR_MEMORY_SELECT_ALLOC_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-#define LOR_MEMORY_ARENA_ALLOC_DEFAULT_(arena, size) \
-    lor_memory_arena_alloc_((arena), (size), (LorArenaAllocOptions){0})
-#define LOR_MEMORY_ARENA_ALLOC_OPTIONS_(arena, size, ...) \
-    lor_memory_arena_alloc_((arena), (size), (LorArenaAllocOptions){__VA_ARGS__})
-#define LOR_MEMORY_ARENA_ALLOC_DEBUG_DEFAULT_(arena, size) \
-    lor_memory_arena_alloc_debug_((arena), (size), (LorArenaAllocOptions){0}, \
-                                  __FILE__, __LINE__)
-#define LOR_MEMORY_ARENA_ALLOC_DEBUG_OPTIONS_(arena, size, ...) \
-    lor_memory_arena_alloc_debug_((arena), (size),                       \
-                                  (LorArenaAllocOptions){__VA_ARGS__},   \
-                                  __FILE__, __LINE__)
-
-#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)
-#define LOR_MEMORY_ARENA_ALLOC_DEFAULT LOR_MEMORY_ARENA_ALLOC_DEBUG_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_OPTIONS LOR_MEMORY_ARENA_ALLOC_DEBUG_OPTIONS_
-#else
-#define LOR_MEMORY_ARENA_ALLOC_DEFAULT LOR_MEMORY_ARENA_ALLOC_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_OPTIONS LOR_MEMORY_ARENA_ALLOC_OPTIONS_
-#endif
-
-#define LOR_MEMORY_ARENA_ALLOC_(...)                                      \
-    LOR_MEMORY_SELECT_ALLOC_(__VA_ARGS__, LOR_MEMORY_ARENA_ALLOC_OPTIONS,  \
-                             LOR_MEMORY_ARENA_ALLOC_OPTIONS,               \
-                             LOR_MEMORY_ARENA_ALLOC_OPTIONS,               \
-                             LOR_MEMORY_ARENA_ALLOC_OPTIONS,               \
-                             LOR_MEMORY_ARENA_ALLOC_DEFAULT, unused)       \
-    (__VA_ARGS__)
-
-/** Allocates from an arena with optional designated allocation arguments.
- *
- * Supported forms:
- * `lor_arena_alloc(&arena, size)`
- * `lor_arena_alloc(&arena, size, .zero = true)`
- */
-#undef lor_arena_alloc
-#define lor_arena_alloc(...) LOR_MEMORY_ARENA_ALLOC_(__VA_ARGS__)
-
-#define LOR_MEMORY_SELECT_ALLOC_ARRAY_(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT_(arena, count, elem_size)       \
-    lor_memory_arena_alloc_array_((arena), (count), (elem_size),             \
-                                  (LorArenaAllocOptions){0})
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_(arena, count, elem_size, ...) \
-    lor_memory_arena_alloc_array_((arena), (count), (elem_size),            \
-                                  (LorArenaAllocOptions){__VA_ARGS__})
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_DEFAULT_(arena, count, elem_size) \
-    lor_memory_arena_alloc_array_debug_((arena), (count), (elem_size),       \
-                                        (LorArenaAllocOptions){0}, __FILE__, \
-                                        __LINE__)
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_OPTIONS_(arena, count, elem_size, ...) \
-    lor_memory_arena_alloc_array_debug_((arena), (count), (elem_size),            \
-                                        (LorArenaAllocOptions){__VA_ARGS__},      \
-                                        __FILE__, __LINE__)
-
-#if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS)
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT \
-    LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS \
-    LOR_MEMORY_ARENA_ALLOC_ARRAY_DEBUG_OPTIONS_
-#else
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT_
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS_
-#endif
-
-#define LOR_MEMORY_ARENA_ALLOC_ARRAY_(...)                                  \
-    LOR_MEMORY_SELECT_ALLOC_ARRAY_(__VA_ARGS__,                             \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS,    \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS,    \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_OPTIONS,    \
-                                   LOR_MEMORY_ARENA_ALLOC_ARRAY_DEFAULT,    \
-                                   unused)                                  \
-    (__VA_ARGS__)
-
-/** Allocates an array from an arena with optional designated arguments.
- *
- * Supported forms:
- * `lor_arena_alloc_array(&arena, count, sizeof(*items))`
- * `lor_arena_alloc_array(&arena, count, sizeof(*items), .zero = true)`
- */
-#undef lor_arena_alloc_array
-#define lor_arena_alloc_array(...) LOR_MEMORY_ARENA_ALLOC_ARRAY_(__VA_ARGS__)
-#endif
-
-/* Leakcheck build mode. Define LOR_LEAKCHECK for the whole build to route
-   liblor memory calls and standard heap calls through location-aware tracking. */
+   src/memory.c defines LOR_MEMORY_NO_LOCATION_MACROS and
+   LOR_MEMORY_NO_STDLIB_MACROS before including this header because the
+   implementation needs to define and call the real functions. */
 #if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS) && \
     !defined(LOR_SINGLE_HEADER_BUILD)
+#undef lor_arena_init
+#define lor_arena_init(arena) lor_arena_init_debug((arena), __FILE__, __LINE__)
+#undef lor_arena_init_config
+#define lor_arena_init_config(arena, ...) \
+    lor_arena_init_config_debug((arena), __VA_ARGS__, __FILE__, __LINE__)
+#undef lor_arena_alloc
+#define lor_arena_alloc(arena, size) \
+    lor_arena_alloc_debug((arena), (size), __FILE__, __LINE__)
+#undef lor_arena_alloc_zero
+#define lor_arena_alloc_zero(arena, size) \
+    lor_arena_alloc_zero_debug((arena), (size), __FILE__, __LINE__)
+#undef lor_arena_alloc_array
+#define lor_arena_alloc_array(arena, count, elem_size) \
+    lor_arena_alloc_array_debug((arena), (count), (elem_size), __FILE__, __LINE__)
+#undef lor_arena_alloc_array_zero
+#define lor_arena_alloc_array_zero(arena, count, elem_size)                   \
+    lor_arena_alloc_array_zero_debug((arena), (count), (elem_size), __FILE__, \
+                                     __LINE__)
 #undef lor_arena_strdup
 #define lor_arena_strdup(arena, text) \
     lor_arena_strdup_debug((arena), (text), __FILE__, __LINE__)

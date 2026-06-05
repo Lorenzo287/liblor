@@ -1,6 +1,6 @@
+#include "lor/memory.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "lor/memory.h"
 
 int main(void) {
     LorArena arena = LOR_ARENA_INIT;

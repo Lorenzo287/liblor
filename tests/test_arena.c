@@ -45,7 +45,7 @@ static int test_reset_reuses_blocks(void) {
     void *second = NULL;
     size_t capacity = 0;
 
-    CHECK(lor_arena_init(&arena, .block_size = 128));
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 128}));
     first = lor_arena_alloc(&arena, 32);
     CHECK(first != NULL);
     CHECK(lor_arena_used(&arena) >= 32);
@@ -68,7 +68,7 @@ static int test_mark_rewind(void) {
     LorArenaMark mark = LOR_ARENA_MARK_INIT;
     size_t before = 0;
 
-    CHECK(lor_arena_init(&arena, .block_size = 128));
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 128}));
     CHECK(lor_arena_alloc(&arena, 24) != NULL);
     mark = lor_arena_mark(&arena);
     before = lor_arena_used(&arena);
@@ -92,7 +92,7 @@ static int test_alignment(void) {
     LorArena arena;
     void *ptr = NULL;
 
-    CHECK(lor_arena_init(&arena, .block_size = 64));
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 64}));
 
     ptr = lor_arena_alloc(&arena, 1);
     CHECK(ptr != NULL);
@@ -108,13 +108,12 @@ static int test_zeroed_array_and_overflow(void) {
     unsigned char *bytes = NULL;
     size_t i = 0;
 
-    CHECK(lor_arena_init(&arena, .block_size = 128));
-    bytes = (unsigned char *)lor_arena_alloc(&arena, 16, .zero = true);
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 128}));
+    bytes = (unsigned char *)lor_arena_alloc_zero(&arena, 16);
     CHECK(bytes != NULL);
     for (i = 0; i < 16; ++i) { CHECK(bytes[i] == 0); }
 
-    values = (int *)lor_arena_alloc_array(&arena, 8, sizeof(*values),
-                                          .zero = true);
+    values = (int *)lor_arena_alloc_array_zero(&arena, 8, sizeof(*values));
     CHECK(values != NULL);
 
     for (i = 0; i < 8; ++i) {
@@ -125,7 +124,7 @@ static int test_zeroed_array_and_overflow(void) {
     CHECK(lor_arena_alloc(&arena, 0) == NULL);
     CHECK(lor_arena_alloc_array(&arena, 0, sizeof(int)) == NULL);
     CHECK(lor_arena_alloc_array(&arena, (size_t)-1, 2) == NULL);
-    CHECK(lor_arena_alloc_array(&arena, (size_t)-1, 2, .zero = true) == NULL);
+    CHECK(lor_arena_alloc_array_zero(&arena, (size_t)-1, 2) == NULL);
 
     lor_arena_deinit(&arena);
     return 0;
@@ -136,7 +135,7 @@ static int test_strdup_and_large_allocation(void) {
     char *copy = NULL;
     void *large = NULL;
 
-    CHECK(lor_arena_init(&arena, .block_size = 16));
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 16}));
     copy = lor_arena_strdup(&arena, "liblor");
     CHECK(copy != NULL);
     CHECK(strcmp(copy, "liblor") == 0);
@@ -154,9 +153,11 @@ static int test_virtual_backend(void) {
     LorArena arena = LOR_ARENA_INIT;
     char *bytes = NULL;
 
-    CHECK(lor_arena_init(&arena, .backend = LOR_ARENA_BACKEND_VIRTUAL,
-                         .reserve_size = lor_page_size() * 4u,
-                         .commit_size = lor_page_size()));
+    CHECK(lor_arena_init_config(&arena, (LorArenaConfig){
+                                            .backend = LOR_ARENA_BACKEND_VIRTUAL,
+                                            .reserve_size = lor_page_size() * 4u,
+                                            .commit_size = lor_page_size(),
+                                        }));
     bytes = (char *)lor_arena_alloc(&arena, lor_page_size() + 32u);
     CHECK(bytes != NULL);
     bytes[0] = 'a';
