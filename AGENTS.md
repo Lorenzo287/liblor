@@ -42,12 +42,18 @@ study material, not liblor-owned source.
   tracked project requirement.
 - Prefer C99/C11-compatible code unless a module documents otherwise.
 - Use `snake_case` for functions, variables, and fields.
+- Declare variables close to first use and initialize them in the declaration
+  when practical. Prefer loop-local declarations over function-wide counters.
 - File-local helpers should be `static`.
 - File-local helpers in module sources should use a module-qualified internal
   name such as `lor_arena__block_new`, because source files are amalgamated
   into generated `lor.h`.
-- Braces may be omitted for simple single-line `if`, `while`, and similar
-  statements.
+- Omit braces for simple single-line `if`, `while`, `for`, and similar
+  statements. Keep braces when a body has multiple statements or they make
+  nested control flow clearer.
+- Use `//` for short comments. Use `/* ... */` for multi-line comments without
+  adding a leading `*` to every continuation line, and close the comment at the
+  end of its final text line.
 - Comments should explain intent, invariants, ownership, or portability issues.
 
 ## API Rules

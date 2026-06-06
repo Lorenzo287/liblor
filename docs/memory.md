@@ -127,9 +127,21 @@ if (!lor_arena_init_config(&arena,
 }
 ```
 
-For virtual arenas, `lor_arena_capacity` reports reserved usable capacity and
-`lor_arena_committed` reports committed backing memory. Capacity can therefore
-be much larger than committed memory.
+Arena accounting excludes block metadata and leading alignment slack:
+
+- `lor_arena_used` reports consumed usable capacity, including alignment
+  padding between allocations.
+- `lor_arena_capacity` reports all usable capacity currently held by the arena.
+- `lor_arena_committed` reports the usable portion currently backed by
+  committed memory.
+
+For heap arenas, each block is fully backed when allocated, so capacity and
+committed memory are equal. For virtual arenas, capacity is reserved address
+space and can be much larger than committed memory. Virtual memory is committed
+on demand in commit-size increments. Resetting an arena, or rewinding within a
+retained block, lowers used bytes but does not decommit storage. Rewinding can
+still lower capacity and committed memory when it releases blocks created after
+the mark.
 
 Choose `malloc` when an object has an independent lifetime or must be freed
 separately. Choose an arena/temp/scratch scope when the lifetime is grouped and

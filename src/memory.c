@@ -60,11 +60,19 @@ struct LorLeakRecord {
 #endif
 
 struct LorArenaBlock {
+    // Newer blocks precede older blocks in the arena's allocation history.
     LorArenaBlock *next;
+    // Bytes available from the aligned data start.
     size_t capacity;
+    /* Heap: usable bytes backed by the allocation, equal to capacity.
+       Virtual: bytes committed from the raw block base, including metadata. */
     size_t committed;
+    // Consumed usable bytes, including inter-allocation alignment padding.
     size_t used;
+    /* Heap: raw allocation size. Virtual: raw reserved address-space size.
+       Both include the block metadata and data-alignment slack. */
     size_t allocation_size;
+    // Unaligned start marker; lor_arena__block_data returns the usable start.
     unsigned char data[];
 };
 
@@ -112,8 +120,7 @@ static size_t lor_memory__align_up(size_t value, size_t alignment) {
 static int lor_memory__align_forward(uintptr_t value, size_t alignment,
                                      uintptr_t *out) {
     uintptr_t mask = (uintptr_t)(alignment - 1u);
-
-    if (value > UINTPTR_MAX - mask) { return 0; }
+    if (value > UINTPTR_MAX - mask) return 0;
 
     *out = (value + mask) & ~mask;
     return 1;
@@ -123,7 +130,7 @@ static int lor_memory__align_forward(uintptr_t value, size_t alignment,
 static void lor_leak__insert(LorLeakRecord *record) {
     record->prev = NULL;
     record->next = lor_memory__leaks;
-    if (lor_memory__leaks != NULL) { lor_memory__leaks->prev = record; }
+    if (lor_memory__leaks != NULL) lor_memory__leaks->prev = record;
     lor_memory__leaks = record;
 }
 
@@ -134,30 +141,24 @@ static void lor_leak__remove(LorLeakRecord *record) {
         lor_memory__leaks = record->next;
     }
 
-    if (record->next != NULL) { record->next->prev = record->prev; }
-
+    if (record->next != NULL) record->next->prev = record->prev;
     lor_memory__raw_free(record);
 }
 
 static LorLeakRecord *lor_leak__find(void *ptr, LorLeakKind kind) {
-    LorLeakRecord *record = NULL;
-
-    for (record = lor_memory__leaks; record != NULL; record = record->next) {
-        if (record->ptr == ptr && record->kind == kind) { return record; }
-    }
+    for (LorLeakRecord *record = lor_memory__leaks; record != NULL;
+         record = record->next)
+        if (record->ptr == ptr && record->kind == kind) return record;
 
     return NULL;
 }
 
 static void lor_leak__track(LorLeakKind kind, void *ptr, size_t size,
                             const char *file, int line) {
-    LorLeakRecord *record = NULL;
+    if (ptr == NULL) return;
 
-    if (ptr == NULL) { return; }
-
-    record = (LorLeakRecord *)lor_memory__raw_malloc(sizeof(*record));
-    if (record == NULL) { return; }
-
+    LorLeakRecord *record = (LorLeakRecord *)lor_memory__raw_malloc(sizeof(*record));
+    if (record == NULL) return;
     record->kind = kind;
     record->ptr = ptr;
     record->size = size;
@@ -168,7 +169,7 @@ static void lor_leak__track(LorLeakKind kind, void *ptr, size_t size,
 
 static void lor_leak__untrack(LorLeakKind kind, void *ptr) {
     LorLeakRecord *record = lor_leak__find(ptr, kind);
-    if (record != NULL) { lor_leak__remove(record); }
+    if (record != NULL) lor_leak__remove(record);
 }
 
 static const char *lor_leak__kind_name(LorLeakKind kind) {
@@ -185,10 +186,9 @@ static const char *lor_leak__kind_name(LorLeakKind kind) {
 }
 
 static size_t lor_leak__record_size(const LorLeakRecord *record) {
-    if (record == NULL) { return 0; }
-    if (record->kind == LOR_LEAK_KIND_ARENA) {
+    if (record == NULL) return 0;
+    if (record->kind == LOR_LEAK_KIND_ARENA)
         return lor_arena_committed((const LorArena *)record->ptr);
-    }
     return record->size;
 }
 #else
@@ -199,9 +199,8 @@ static size_t lor_leak__record_size(const LorLeakRecord *record) {
 LorLeakStats lor_leakcheck_stats(void) {
     LorLeakStats stats = {0};
 #if defined(LOR_LEAKCHECK)
-    LorLeakRecord *record = NULL;
-
-    for (record = lor_memory__leaks; record != NULL; record = record->next) {
+    for (LorLeakRecord *record = lor_memory__leaks; record != NULL;
+         record = record->next) {
         switch (record->kind) {
         case LOR_LEAK_KIND_HEAP:
             stats.heap_count += 1u;
@@ -229,11 +228,10 @@ size_t lor_leakcheck_count(void) {
 size_t lor_leakcheck_report(FILE *out) {
     size_t count = 0;
 #if defined(LOR_LEAKCHECK)
-    LorLeakRecord *record = NULL;
+    if (out == NULL) out = stderr;
 
-    if (out == NULL) { out = stderr; }
-
-    for (record = lor_memory__leaks; record != NULL; record = record->next) {
+    for (LorLeakRecord *record = lor_memory__leaks; record != NULL;
+         record = record->next) {
         const char *file = record->file != NULL ? record->file : "?";
         fprintf(out, "LEAK %s: %zu bytes at %p (%s:%d)\n",
                 lor_leak__kind_name(record->kind), lor_leak__record_size(record),
@@ -249,24 +247,19 @@ size_t lor_leakcheck_report(FILE *out) {
 
 #if defined(LOR_LEAKCHECK)
 void *lor_malloc_debug(size_t size, const char *file, int line) {
-    void *ptr = NULL;
+    if (size == 0) return NULL;
 
-    if (size == 0) { return NULL; }
-
-    ptr = lor_memory__raw_malloc(size);
+    void *ptr = lor_memory__raw_malloc(size);
     lor_leak__track(LOR_LEAK_KIND_HEAP, ptr, size, file, line);
     return ptr;
 }
 
 void *lor_calloc_debug(size_t count, size_t elem_size, const char *file, int line) {
-    void *ptr = NULL;
-
     if (count == 0 || elem_size == 0 ||
-        lor_memory__mul_overflows_size(count, elem_size)) {
+        lor_memory__mul_overflows_size(count, elem_size))
         return NULL;
-    }
 
-    ptr = lor_memory__raw_calloc(count, elem_size);
+    void *ptr = lor_memory__raw_calloc(count, elem_size);
     lor_leak__track(LOR_LEAK_KIND_HEAP, ptr, count * elem_size, file, line);
     return ptr;
 }
@@ -274,27 +267,22 @@ void *lor_calloc_debug(size_t count, size_t elem_size, const char *file, int lin
 void lor_free_debug(void *ptr, const char *file, int line) {
     (void)file;
     (void)line;
-
-    if (ptr == NULL) { return; }
+    if (ptr == NULL) return;
 
     lor_leak__untrack(LOR_LEAK_KIND_HEAP, ptr);
     lor_memory__raw_free(ptr);
 }
 
 void *lor_realloc_debug(void *ptr, size_t size, const char *file, int line) {
-    LorLeakRecord *record = NULL;
-    void *new_ptr = NULL;
-
-    if (ptr == NULL) { return lor_malloc_debug(size, file, line); }
-
+    if (ptr == NULL) return lor_malloc_debug(size, file, line);
     if (size == 0) {
         lor_free_debug(ptr, file, line);
         return NULL;
     }
 
-    record = lor_leak__find(ptr, LOR_LEAK_KIND_HEAP);
-    new_ptr = lor_memory__raw_realloc(ptr, size);
-    if (new_ptr == NULL) { return NULL; }
+    LorLeakRecord *record = lor_leak__find(ptr, LOR_LEAK_KIND_HEAP);
+    void *new_ptr = lor_memory__raw_realloc(ptr, size);
+    if (new_ptr == NULL) return NULL;
 
     if (record != NULL) {
         record->ptr = new_ptr;
@@ -309,16 +297,13 @@ void *lor_realloc_debug(void *ptr, size_t size, const char *file, int line) {
 }
 
 char *lor_strdup_debug(const char *text, const char *file, int line) {
-    size_t len = 0;
-    char *copy = NULL;
+    if (text == NULL) return NULL;
 
-    if (text == NULL) { return NULL; }
+    size_t len = strlen(text);
+    if (len == SIZE_MAX) return NULL;
 
-    len = strlen(text);
-    if (len == SIZE_MAX) { return NULL; }
-
-    copy = (char *)lor_malloc_debug(len + 1u, file, line);
-    if (copy == NULL) { return NULL; }
+    char *copy = (char *)lor_malloc_debug(len + 1u, file, line);
+    if (copy == NULL) return NULL;
 
     memcpy(copy, text, len + 1u);
     return copy;
@@ -332,15 +317,15 @@ size_t lor_page_size(void) {
     return (size_t)info.dwPageSize;
 #else
     long page_size = sysconf(_SC_PAGESIZE);
-    if (page_size <= 0) { return LOR_KIB(4); }
+    if (page_size <= 0) return LOR_KIB(4);
     return (size_t)page_size;
 #endif
 }
 
 static size_t lor_virtual__page_align(size_t size) {
     size_t page_size = lor_page_size();
-    if (page_size == 0) { return size; }
-    if (lor_memory__add_overflows_size(size, page_size - 1u)) { return 0; }
+    if (page_size == 0) return size;
+    if (lor_memory__add_overflows_size(size, page_size - 1u)) return 0;
     return lor_memory__align_up(size, page_size);
 }
 
@@ -372,11 +357,9 @@ static void lor_virtual__release_raw(void *ptr, size_t size) {
 
 static unsigned char *lor_arena__block_data(LorArenaBlock *block) {
     uintptr_t aligned = 0;
-
     if (!lor_memory__align_forward((uintptr_t)block->data, LOR_ARENA_MAX_ALIGNMENT,
-                                   &aligned)) {
+                                   &aligned))
         return NULL;
-    }
 
     return (unsigned char *)aligned;
 }
@@ -386,15 +369,12 @@ static size_t lor_arena__block_header_slack(void) {
 }
 
 static LorArenaBlock *lor_arena__heap_block_new(size_t capacity) {
-    size_t allocation_size = 0;
-    LorArenaBlock *block = NULL;
     size_t slack = lor_arena__block_header_slack();
+    if (lor_memory__add_overflows_size(capacity, slack)) return NULL;
 
-    if (lor_memory__add_overflows_size(capacity, slack)) { return NULL; }
-
-    allocation_size = capacity + slack;
-    block = (LorArenaBlock *)lor_memory__raw_malloc(allocation_size);
-    if (block == NULL) { return NULL; }
+    size_t allocation_size = capacity + slack;
+    LorArenaBlock *block = (LorArenaBlock *)lor_memory__raw_malloc(allocation_size);
+    if (block == NULL) return NULL;
 
     block->next = NULL;
     block->capacity = capacity;
@@ -408,28 +388,21 @@ static LorArenaBlock *lor_arena__virtual_block_new(size_t reserve_size,
                                                    size_t commit_size,
                                                    size_t min_capacity) {
     size_t slack = lor_arena__block_header_slack();
-    size_t min_reserve = 0;
-    size_t data_offset = 0;
-    LorArenaBlock *block = NULL;
-    unsigned char *base = NULL;
-    unsigned char *data = NULL;
+    if (lor_memory__add_overflows_size(min_capacity, slack)) return NULL;
 
-    if (lor_memory__add_overflows_size(min_capacity, slack)) { return NULL; }
-
-    min_reserve = min_capacity + slack;
-    if (reserve_size < min_reserve) { reserve_size = min_reserve; }
+    size_t min_reserve = min_capacity + slack;
+    if (reserve_size < min_reserve) reserve_size = min_reserve;
     reserve_size = lor_virtual__page_align(reserve_size);
-    if (reserve_size == 0) { return NULL; }
+    if (reserve_size == 0) return NULL;
 
-    if (commit_size < slack) { commit_size = slack; }
-    if (commit_size < min_reserve && min_reserve < LOR_ARENA_DEFAULT_COMMIT_SIZE) {
+    if (commit_size < slack) commit_size = slack;
+    if (commit_size < min_reserve && min_reserve < LOR_ARENA_DEFAULT_COMMIT_SIZE)
         commit_size = min_reserve;
-    }
     commit_size = lor_virtual__page_align(commit_size);
-    if (commit_size > reserve_size) { commit_size = reserve_size; }
+    if (commit_size > reserve_size) commit_size = reserve_size;
 
-    block = (LorArenaBlock *)lor_virtual__reserve_raw(reserve_size);
-    if (block == NULL) { return NULL; }
+    LorArenaBlock *block = (LorArenaBlock *)lor_virtual__reserve_raw(reserve_size);
+    if (block == NULL) return NULL;
     if (commit_size != 0 && !lor_virtual__commit_raw(block, commit_size)) {
         lor_virtual__release_raw(block, reserve_size);
         return NULL;
@@ -441,26 +414,25 @@ static LorArenaBlock *lor_arena__virtual_block_new(size_t reserve_size,
     block->used = 0;
     block->allocation_size = reserve_size;
 
-    base = (unsigned char *)block;
-    data = lor_arena__block_data(block);
+    unsigned char *base = (unsigned char *)block;
+    unsigned char *data = lor_arena__block_data(block);
     if (data == NULL) {
         lor_virtual__release_raw(block, reserve_size);
         return NULL;
     }
 
-    data_offset = (size_t)(data - base);
+    size_t data_offset = (size_t)(data - base);
     block->capacity = reserve_size - data_offset;
     return block;
 }
 
 static void lor_arena__block_free(LorArena *arena, LorArenaBlock *block) {
-    if (block == NULL) { return; }
+    if (block == NULL) return;
 
-    if (arena->backend == LOR_ARENA_BACKEND_VIRTUAL) {
+    if (arena->backend == LOR_ARENA_BACKEND_VIRTUAL)
         lor_virtual__release_raw(block, block->allocation_size);
-    } else {
+    else
         lor_memory__raw_free(block);
-    }
 }
 
 static int lor_arena__block_ensure_committed(LorArenaBlock *block,
@@ -468,33 +440,26 @@ static int lor_arena__block_ensure_committed(LorArenaBlock *block,
                                              size_t commit_size) {
     unsigned char *base = lor_arena__block_data(block);
     unsigned char *block_base = (unsigned char *)block;
-    size_t data_offset = 0;
-    size_t needed_total = 0;
-    size_t new_committed = 0;
+    if (base == NULL || needed_used > block->capacity) return 0;
 
-    if (base == NULL || needed_used > block->capacity) { return 0; }
+    size_t data_offset = (size_t)(base - block_base);
+    if (lor_memory__add_overflows_size(data_offset, needed_used)) return 0;
 
-    data_offset = (size_t)(base - block_base);
-    if (lor_memory__add_overflows_size(data_offset, needed_used)) { return 0; }
-    needed_total = data_offset + needed_used;
+    size_t needed_total = data_offset + needed_used;
+    if (needed_total <= block->committed) return 1;
 
-    if (needed_total <= block->committed) { return 1; }
-
-    new_committed = needed_total;
+    size_t new_committed = needed_total;
     if (commit_size != 0) {
-        if (lor_memory__add_overflows_size(new_committed, commit_size - 1u)) {
+        if (lor_memory__add_overflows_size(new_committed, commit_size - 1u))
             return 0;
-        }
         new_committed = lor_memory__align_up(new_committed, commit_size);
     }
 
-    if (new_committed > block->allocation_size) {
+    if (new_committed > block->allocation_size)
         new_committed = block->allocation_size;
-    }
     if (!lor_virtual__commit_raw(block_base + block->committed,
-                                 new_committed - block->committed)) {
+                                 new_committed - block->committed))
         return 0;
-    }
 
     block->committed = new_committed;
     return 1;
@@ -503,39 +468,32 @@ static int lor_arena__block_ensure_committed(LorArenaBlock *block,
 static void *lor_arena__block_alloc(LorArena *arena, LorArenaBlock *block,
                                     size_t size, size_t alignment) {
     unsigned char *base = lor_arena__block_data(block);
-    uintptr_t current = 0;
+    if (base == NULL || block->used > block->capacity) return NULL;
+
+    uintptr_t current = (uintptr_t)(base + block->used);
     uintptr_t aligned = 0;
-    size_t padding = 0;
-    size_t new_used = 0;
+    if (!lor_memory__align_forward(current, alignment, &aligned)) return NULL;
 
-    if (base == NULL || block->used > block->capacity) { return NULL; }
+    size_t padding = (size_t)(aligned - current);
+    if (padding > block->capacity - block->used) return NULL;
+    if (size > block->capacity - block->used - padding) return NULL;
 
-    current = (uintptr_t)(base + block->used);
-    if (!lor_memory__align_forward(current, alignment, &aligned)) { return NULL; }
-
-    padding = (size_t)(aligned - current);
-    if (padding > block->capacity - block->used) { return NULL; }
-    if (size > block->capacity - block->used - padding) { return NULL; }
-
-    new_used = block->used + padding + size;
+    size_t new_used = block->used + padding + size;
     if (arena->backend == LOR_ARENA_BACKEND_VIRTUAL &&
-        !lor_arena__block_ensure_committed(block, new_used, arena->commit_size)) {
+        !lor_arena__block_ensure_committed(block, new_used, arena->commit_size))
         return NULL;
-    }
 
     block->used = new_used;
     return (void *)aligned;
 }
 
 static LorArenaBlock *lor_arena__block_new(LorArena *arena, size_t min_capacity) {
-    if (arena->backend == LOR_ARENA_BACKEND_VIRTUAL) {
+    if (arena->backend == LOR_ARENA_BACKEND_VIRTUAL)
         return lor_arena__virtual_block_new(arena->reserve_size, arena->commit_size,
                                             min_capacity);
-    }
 
-    if (arena->block_size < min_capacity) {
+    if (arena->block_size < min_capacity)
         return lor_arena__heap_block_new(min_capacity);
-    }
     return lor_arena__heap_block_new(arena->block_size);
 }
 
@@ -546,8 +504,7 @@ static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
     (void)file;
     (void)line;
 #endif
-
-    if (arena == NULL) { return 0; }
+    if (arena == NULL) return 0;
 
     arena->blocks = NULL;
     arena->backend = config.backend;
@@ -573,9 +530,7 @@ static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
         }
     }
 
-    if (track_leakcheck) {
-        lor_leak__track(LOR_LEAK_KIND_ARENA, arena, 0, file, line);
-    }
+    if (track_leakcheck) lor_leak__track(LOR_LEAK_KIND_ARENA, arena, 0, file, line);
 
     return 1;
 }
@@ -600,11 +555,9 @@ int lor_arena_init_config(LorArena *arena, LorArenaConfig config) {
 }
 
 void lor_arena_deinit(LorArena *arena) {
-    LorArenaBlock *block = NULL;
+    if (arena == NULL) return;
 
-    if (arena == NULL) { return; }
-
-    block = arena->blocks;
+    LorArenaBlock *block = arena->blocks;
     while (block != NULL) {
         LorArenaBlock *next = block->next;
         lor_arena__block_free(arena, block);
@@ -612,22 +565,19 @@ void lor_arena_deinit(LorArena *arena) {
     }
 
     lor_leak__untrack(LOR_LEAK_KIND_ARENA, arena);
-
     *arena = (LorArena)LOR_ARENA_INIT;
 }
 
 void lor_arena_reset(LorArena *arena) {
-    LorArenaBlock *block = NULL;
+    if (arena == NULL) return;
 
-    if (arena == NULL) { return; }
-
-    for (block = arena->blocks; block != NULL; block = block->next) {
+    for (LorArenaBlock *block = arena->blocks; block != NULL; block = block->next)
         block->used = 0;
-    }
 }
 
 LorArenaMark lor_arena_mark(const LorArena *arena) {
-    if (arena == NULL) { return (LorArenaMark)LOR_ARENA_MARK_INIT; }
+    if (arena == NULL) return (LorArenaMark)LOR_ARENA_MARK_INIT;
+
     return (LorArenaMark){
         .block = arena->blocks,
         .used = arena->blocks != NULL ? arena->blocks->used : 0,
@@ -635,26 +585,22 @@ LorArenaMark lor_arena_mark(const LorArena *arena) {
 }
 
 static int lor_arena__has_block(const LorArena *arena, const LorArenaBlock *target) {
-    const LorArenaBlock *block = NULL;
+    if (arena == NULL || target == NULL) return 0;
 
-    if (arena == NULL || target == NULL) { return 0; }
-
-    for (block = arena->blocks; block != NULL; block = block->next) {
-        if (block == target) { return 1; }
-    }
+    for (const LorArenaBlock *block = arena->blocks; block != NULL;
+         block = block->next)
+        if (block == target) return 1;
 
     return 0;
 }
 
 void lor_arena_rewind(LorArena *arena, LorArenaMark mark) {
-    LorArenaBlock *block = NULL;
-
-    if (arena == NULL) { return; }
+    if (arena == NULL) return;
 
     if (mark.block == NULL) {
-        for (block = arena->blocks; block != NULL; block = block->next) {
+        for (LorArenaBlock *block = arena->blocks; block != NULL;
+             block = block->next)
             block->used = 0;
-        }
         return;
     }
 
@@ -664,7 +610,7 @@ void lor_arena_rewind(LorArena *arena, LorArenaMark mark) {
     }
 
     while (arena->blocks != NULL && arena->blocks != mark.block) {
-        block = arena->blocks;
+        LorArenaBlock *block = arena->blocks;
         arena->blocks = block->next;
         lor_arena__block_free(arena, block);
     }
@@ -679,39 +625,32 @@ void lor_arena_rewind(LorArena *arena, LorArenaMark mark) {
 
 static void *lor_arena__alloc_aligned(LorArena *arena, size_t size, size_t alignment,
                                       const char *file, int line) {
-    size_t min_capacity = 0;
-    LorArenaBlock *block = NULL;
-    void *result = NULL;
 #if !defined(LOR_LEAKCHECK)
     (void)file;
     (void)line;
 #endif
 
-    if (arena == NULL || size == 0 || !lor_memory__is_power_of_two(alignment)) {
+    if (arena == NULL || size == 0 || !lor_memory__is_power_of_two(alignment))
         return NULL;
-    }
 
-    if (arena->block_size == 0 && arena->reserve_size == 0) {
-        if (!lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, file, line)) {
+    if (arena->block_size == 0 && arena->reserve_size == 0)
+        if (!lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, file, line))
             return NULL;
-        }
-    }
 
     if (arena->blocks != NULL) {
-        result = lor_arena__block_alloc(arena, arena->blocks, size, alignment);
-        if (result != NULL) { return result; }
+        void *result = lor_arena__block_alloc(arena, arena->blocks, size, alignment);
+        if (result != NULL) return result;
     }
 
-    min_capacity = size;
+    size_t min_capacity = size;
     if (alignment > 1u) {
-        if (lor_memory__add_overflows_size(min_capacity, alignment - 1u)) {
+        if (lor_memory__add_overflows_size(min_capacity, alignment - 1u))
             return NULL;
-        }
         min_capacity += alignment - 1u;
     }
 
-    block = lor_arena__block_new(arena, min_capacity);
-    if (block == NULL) { return NULL; }
+    LorArenaBlock *block = lor_arena__block_new(arena, min_capacity);
+    if (block == NULL) return NULL;
 
     block->next = arena->blocks;
     arena->blocks = block;
@@ -726,7 +665,7 @@ void *lor_arena_alloc_zero(LorArena *arena, size_t size) {
     void *ptr =
         lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT, NULL, 0);
 
-    if (ptr != NULL) { memset(ptr, 0, size); }
+    if (ptr != NULL) memset(ptr, 0, size);
     return ptr;
 }
 
@@ -742,25 +681,23 @@ void *lor_arena_alloc_zero_debug(LorArena *arena, size_t size, const char *file,
     void *ptr =
         lor_arena__alloc_aligned(arena, size, LOR_ARENA_MAX_ALIGNMENT, file, line);
 
-    if (ptr != NULL) { memset(ptr, 0, size); }
+    if (ptr != NULL) memset(ptr, 0, size);
     return ptr;
 }
 #endif
 
 void *lor_arena_alloc_array(LorArena *arena, size_t count, size_t elem_size) {
     if (count == 0 || elem_size == 0 ||
-        lor_memory__mul_overflows_size(count, elem_size)) {
+        lor_memory__mul_overflows_size(count, elem_size))
         return NULL;
-    }
 
     return lor_arena_alloc(arena, count * elem_size);
 }
 
 void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size) {
     if (count == 0 || elem_size == 0 ||
-        lor_memory__mul_overflows_size(count, elem_size)) {
+        lor_memory__mul_overflows_size(count, elem_size))
         return NULL;
-    }
 
     return lor_arena_alloc_zero(arena, count * elem_size);
 }
@@ -769,9 +706,8 @@ void *lor_arena_alloc_array_zero(LorArena *arena, size_t count, size_t elem_size
 void *lor_arena_alloc_array_debug(LorArena *arena, size_t count, size_t elem_size,
                                   const char *file, int line) {
     if (count == 0 || elem_size == 0 ||
-        lor_memory__mul_overflows_size(count, elem_size)) {
+        lor_memory__mul_overflows_size(count, elem_size))
         return NULL;
-    }
 
     return lor_arena_alloc_debug(arena, count * elem_size, file, line);
 }
@@ -780,9 +716,8 @@ void *lor_arena_alloc_array_zero_debug(LorArena *arena, size_t count,
                                        size_t elem_size, const char *file,
                                        int line) {
     if (count == 0 || elem_size == 0 ||
-        lor_memory__mul_overflows_size(count, elem_size)) {
+        lor_memory__mul_overflows_size(count, elem_size))
         return NULL;
-    }
 
     return lor_arena_alloc_zero_debug(arena, count * elem_size, file, line);
 }
@@ -790,17 +725,14 @@ void *lor_arena_alloc_array_zero_debug(LorArena *arena, size_t count,
 
 static char *lor_arena__strdup_at(LorArena *arena, const char *text,
                                   const char *file, int line) {
-    size_t len = 0;
-    char *copy = NULL;
+    if (text == NULL) return NULL;
 
-    if (text == NULL) { return NULL; }
+    size_t len = strlen(text);
+    if (len == SIZE_MAX) return NULL;
 
-    len = strlen(text);
-    if (len == SIZE_MAX) { return NULL; }
-
-    copy = (char *)lor_arena__alloc_aligned(arena, len + 1u, LOR_ARENA_MAX_ALIGNMENT,
-                                            file, line);
-    if (copy == NULL) { return NULL; }
+    char *copy = (char *)lor_arena__alloc_aligned(
+        arena, len + 1u, LOR_ARENA_MAX_ALIGNMENT, file, line);
+    if (copy == NULL) return NULL;
 
     memcpy(copy, text, len + 1u);
     return copy;
@@ -818,61 +750,47 @@ char *lor_arena_strdup_debug(LorArena *arena, const char *text, const char *file
 #endif
 
 size_t lor_arena_used(const LorArena *arena) {
+    if (arena == NULL) return 0;
+
     size_t total = 0;
-    const LorArenaBlock *block = NULL;
-
-    if (arena == NULL) { return 0; }
-
-    for (block = arena->blocks; block != NULL; block = block->next) {
+    for (const LorArenaBlock *block = arena->blocks; block != NULL;
+         block = block->next)
         total += block->used;
-    }
-
     return total;
 }
 
 size_t lor_arena_capacity(const LorArena *arena) {
+    if (arena == NULL) return 0;
+
     size_t total = 0;
-    const LorArenaBlock *block = NULL;
-
-    if (arena == NULL) { return 0; }
-
-    for (block = arena->blocks; block != NULL; block = block->next) {
+    for (const LorArenaBlock *block = arena->blocks; block != NULL;
+         block = block->next)
         total += block->capacity;
-    }
-
     return total;
 }
 
 size_t lor_arena_committed(const LorArena *arena) {
+    if (arena == NULL) return 0;
+
     size_t total = 0;
-    const LorArenaBlock *block = NULL;
-
-    if (arena == NULL) { return 0; }
-
-    for (block = arena->blocks; block != NULL; block = block->next) {
+    for (const LorArenaBlock *block = arena->blocks; block != NULL;
+         block = block->next) {
         if (arena->backend == LOR_ARENA_BACKEND_VIRTUAL) {
             unsigned char *base = (unsigned char *)block;
             unsigned char *data = lor_arena__block_data((LorArenaBlock *)block);
             size_t data_offset = data != NULL ? (size_t)(data - base) : 0;
-            if (block->committed > data_offset) {
+            if (block->committed > data_offset)
                 total += block->committed - data_offset;
-            }
-        } else {
+        } else
             total += block->committed;
-        }
     }
-
     return total;
 }
 
 LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
-    size_t i = 0;
-    size_t j = 0;
-
-    for (i = 0; i < 2u; ++i) {
+    for (size_t i = 0; i < 2u; ++i) {
         int conflict = 0;
-
-        for (j = 0; j < conflict_count; ++j) {
+        for (size_t j = 0; j < conflict_count; ++j) {
             if (conflicts != NULL &&
                 conflicts[j] == &lor_memory__scratch_arenas[i]) {
                 conflict = 1;
@@ -880,16 +798,16 @@ LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
             }
         }
 
-        if (conflict) { continue; }
+        if (conflict) continue;
 
         if (!lor_memory__scratch_inited[i]) {
-            LorArenaConfig config = {0};
-            config.backend = LOR_ARENA_BACKEND_HEAP;
-            config.block_size = LOR_ARENA_DEFAULT_BLOCK_SIZE;
+            LorArenaConfig config = {
+                .backend = LOR_ARENA_BACKEND_HEAP,
+                .block_size = LOR_ARENA_DEFAULT_BLOCK_SIZE,
+            };
             if (!lor_arena__init_internal(&lor_memory__scratch_arenas[i], config, 0,
-                                          NULL, 0)) {
+                                          NULL, 0))
                 return (LorScratch)LOR_SCRATCH_INIT;
-            }
             lor_memory__scratch_inited[i] = 1;
         }
 
@@ -903,14 +821,12 @@ LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
 }
 
 void lor_scratch_end(LorScratch scratch) {
-    if (scratch.arena == NULL) { return; }
+    if (scratch.arena == NULL) return;
     lor_arena_rewind(scratch.arena, scratch.mark);
 }
 
 void lor_scratch_cleanup(void) {
-    size_t i = 0;
-
-    for (i = 0; i < 2u; ++i) {
+    for (size_t i = 0; i < 2u; ++i) {
         if (lor_memory__scratch_inited[i]) {
             lor_arena_deinit(&lor_memory__scratch_arenas[i]);
             lor_memory__scratch_inited[i] = 0;
@@ -951,8 +867,7 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
     (void)file;
     (void)line;
 #endif
-
-    if (path == NULL) { return map; }
+    if (path == NULL) return map;
 
 #if defined(_WIN32)
     {
@@ -963,9 +878,8 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
         HANDLE file_handle =
             CreateFileA(path, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                         create, FILE_ATTRIBUTE_NORMAL, NULL);
-        HANDLE mapping = NULL;
 
-        if (file_handle == INVALID_HANDLE_VALUE) { return map; }
+        if (file_handle == INVALID_HANDLE_VALUE) return map;
         if (!GetFileSizeEx(file_handle, &file_size) || file_size.QuadPart <= 0) {
             CloseHandle(file_handle);
             return map;
@@ -975,14 +889,14 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
             return map;
         }
 
-        mapping = CreateFileMappingA(file_handle, NULL,
-                                     lor_mmap__windows_protect(mode), 0, 0, NULL);
+        HANDLE mapping = CreateFileMappingA(
+            file_handle, NULL, lor_mmap__windows_protect(mode), 0, 0, NULL);
         CloseHandle(file_handle);
-        if (mapping == NULL) { return map; }
+        if (mapping == NULL) return map;
 
         map.data = MapViewOfFile(mapping, lor_mmap__windows_access(mode), 0, 0, 0);
         CloseHandle(mapping);
-        if (map.data == NULL) { return (LorMmap){0}; }
+        if (map.data == NULL) return (LorMmap){0};
 
         map.size = (size_t)file_size.QuadPart;
     }
@@ -994,7 +908,7 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
         struct stat st;
         int fd = open(path, flags);
 
-        if (fd < 0) { return map; }
+        if (fd < 0) return map;
         if (fstat(fd, &st) != 0 || st.st_size <= 0) {
             close(fd);
             return map;
@@ -1004,12 +918,12 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
             return map;
         }
 
-        if (mode != LOR_MMAP_READ) { prot |= PROT_WRITE; }
+        if (mode != LOR_MMAP_READ) prot |= PROT_WRITE;
 
         map.size = (size_t)st.st_size;
         map.data = mmap(NULL, map.size, prot, mmap_flags, fd, 0);
         close(fd);
-        if (map.data == MAP_FAILED) { return (LorMmap){0}; }
+        if (map.data == MAP_FAILED) return (LorMmap){0};
     }
 #endif
 
@@ -1029,7 +943,7 @@ LorMmap lor_mmap_file(const char *path, LorMmapMode mode) {
 }
 
 void lor_mmap_unmap(LorMmap *map) {
-    if (map == NULL || map->data == NULL) { return; }
+    if (map == NULL || map->data == NULL) return;
 
     lor_leak__untrack(LOR_LEAK_KIND_MMAP, map->data);
 

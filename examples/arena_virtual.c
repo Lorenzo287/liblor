@@ -10,7 +10,7 @@ int main(void) {
         .reserve_size = page_size * 8u,
         .commit_size = page_size,
     };
-    if (!lor_arena_init_config(&arena, config)) { return 1; }
+    if (!lor_arena_init_config(&arena, config)) return 1;
 
     char *buffer = (char *)lor_arena_alloc(&arena, page_size + 128u);
     if (buffer == NULL) {

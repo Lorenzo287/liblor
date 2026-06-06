@@ -11,7 +11,7 @@ int main(void) {
         return 1;
     }
 
-    for (size_t i = 0; i < 4; ++i) { values[i] = (int)(i + 1); }
+    for (size_t i = 0; i < 4; ++i) values[i] = (int)(i + 1);
 
     printf("%s: %d %d %d %d\n", label, values[0], values[1], values[2], values[3]);
     lor_arena_deinit(&arena);

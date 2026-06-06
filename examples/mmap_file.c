@@ -6,7 +6,7 @@ int main(void) {
     const char *path = "lor_mmap_example.tmp";
 
     FILE *file = fopen(path, "wb");
-    if (file == NULL) { return 1; }
+    if (file == NULL) return 1;
 
     if (fputs("hello from lor_mmap_file\n", file) < 0) {
         fclose(file);

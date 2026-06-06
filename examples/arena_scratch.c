@@ -3,7 +3,7 @@
 
 int main(void) {
     LorScratch scratch1 = lor_scratch_begin(NULL, 0);
-    if (scratch1.arena == NULL) { return 1; }
+    if (scratch1.arena == NULL) return 1;
 
     char *a = lor_arena_strdup(scratch1.arena, "first scratch arena");
     if (a == NULL) {

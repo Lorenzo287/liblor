@@ -17,26 +17,22 @@
 
 static int test_leakcheck_tracks_arena_and_mmap_lifetimes(void) {
     LorArena arena = LOR_ARENA_INIT;
-    LorLeakStats stats;
-    FILE *file = NULL;
-    LorMmap map = {0};
-    LorMmap copy = {0};
-
     CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 128}));
     CHECK(lor_arena_alloc(&arena, 16) != NULL);
-    stats = lor_leakcheck_stats();
+
+    LorLeakStats stats = lor_leakcheck_stats();
 #if defined(LOR_LEAKCHECK)
     CHECK(stats.arena_count == 1);
 #else
     CHECK(stats.arena_count == 0);
 #endif
 
-    file = fopen(".build/lor_mmap_leakcheck.txt", "wb");
+    FILE *file = fopen(".build/lor_mmap_leakcheck.txt", "wb");
     CHECK(file != NULL);
     CHECK(fputs("mapped", file) >= 0);
     CHECK(fclose(file) == 0);
 
-    map = lor_mmap_file(".build/lor_mmap_leakcheck.txt", LOR_MMAP_READ);
+    LorMmap map = lor_mmap_file(".build/lor_mmap_leakcheck.txt", LOR_MMAP_READ);
     CHECK(map.data != NULL);
     stats = lor_leakcheck_stats();
 #if defined(LOR_LEAKCHECK)
@@ -45,7 +41,7 @@ static int test_leakcheck_tracks_arena_and_mmap_lifetimes(void) {
     CHECK(stats.mmap_count == 0);
 #endif
 
-    copy = lor_mmap_file(".build/lor_mmap_leakcheck.txt", LOR_MMAP_COPY);
+    LorMmap copy = lor_mmap_file(".build/lor_mmap_leakcheck.txt", LOR_MMAP_COPY);
     CHECK(copy.data != NULL);
     ((char *)copy.data)[0] = 'M';
     stats = lor_leakcheck_stats();

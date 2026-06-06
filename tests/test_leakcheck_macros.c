@@ -15,12 +15,10 @@
 
 int main(void) {
 #if defined(LOR_LEAKCHECK)
-    char *text = NULL;
-    int *values = NULL;
-
-    text = strdup("stdlib");
+    char *text = strdup("stdlib");
     CHECK(text != NULL);
-    values = (int *)calloc(4, sizeof(*values));
+
+    int *values = (int *)calloc(4, sizeof(*values));
     CHECK(values != NULL);
     CHECK(lor_leakcheck_count() == 2);
 
