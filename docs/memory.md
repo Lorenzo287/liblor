@@ -96,11 +96,19 @@ lor_arena_rewind(&arena, mark);
 ```
 
 Scratch arenas are pre-owned per-thread temporary arenas selected by
-`lor_scratch_begin`. They are for short-lived helper work when the caller should
-not have to create an arena. `LorScratch` is the scope handle and exposes the
-selected arena for normal `lor_arena_*` allocations. Pass conflicting arenas
-when nested scratch work must avoid reusing an arena whose allocations are still
-live.
+`lor_scratch_begin`. The library automatically provisions 2 of these arenas per
+thread with zero setup required, they are ready to use just by including the header.
+They are perfect for short-lived helper work when the caller should not have
+to create a dedicated arena.
+
+`LorScratch` is the scope handle and exposes the selected arena for normal
+`lor_arena_*` allocations. 
+
+Pass conflicting arenas when nested scratch work must avoid reusing an arena
+whose allocations are still live. Since the library provides 2 scratch arenas,
+passing an output arena as a conflict guarantees the library will hand you
+the *other* scratch arena, allowing you to safely build messy temporary
+structures without overwriting the clean data you intend to return.
 
 ```c
 LorScratch scratch = lor_scratch_begin(NULL, 0);
