@@ -26,7 +26,9 @@ study material, not liblor-owned source.
 - Read `docs/memory.md` before allocator, arena, cleanup, leak-checking,
   refcount, or GC work.
 - Search with `rg` or `rg --files` when available.
-- Build with `make all`; use `make CC=gcc all` for GCC.
+- Build with `make all`; use `make gcc` for GCC and `make check` for the full
+  strict Clang, strict GCC, and leak-check verification.
+- Build optimized static and shared libraries with `make release-check`.
 - Regenerate the single header with `make single-header` after public API or
   implementation changes.
 - The Makefile discovers `src/*.c`, `tests/test_*.c`, `examples/*.c`, and

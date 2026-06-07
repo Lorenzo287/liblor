@@ -50,6 +50,8 @@ Complete the remaining small library modules before starting build tooling.
 - [x] Add function-based CLI parsing with generated help and typed values.
 - [x] Add explicit-state PCG32 generation, unbiased bounded values, and system
       entropy.
+- [x] Add isolated development profiles and optimized static/shared library
+      release builds.
 
 ## Backlog
 

@@ -57,7 +57,7 @@ to track dynamic-string allocations.
 Multi-file development build:
 
 ```powershell
-make CPPFLAGS="-Iinclude -DLOR_LEAKCHECK" all
+make leakcheck
 ```
 
 For multi-file builds, compile `src/memory.c` with `LOR_LEAKCHECK` to enable
