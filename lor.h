@@ -11,7 +11,7 @@
    If no LOR_ENABLE_* macro is defined, every stable module is enabled.
    Define one or more LOR_ENABLE_* macros before including this header
    to include only those modules. */
-#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_STRING) && !defined(LOR_ENABLE_ARRAY)
+#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_STRING) && !defined(LOR_ENABLE_ARRAY) && !defined(LOR_ENABLE_MAP) && !defined(LOR_ENABLE_SET)
 #define LOR_ENABLE_ALL
 #endif
 
@@ -20,6 +20,8 @@
 #define LOR_ENABLE_MEMORY
 #define LOR_ENABLE_STRING
 #define LOR_ENABLE_ARRAY
+#define LOR_ENABLE_MAP
+#define LOR_ENABLE_SET
 #endif
 
 #if defined(LOR_LEAKCHECK)
@@ -32,6 +34,17 @@
 
 #ifdef LOR_ENABLE_ARRAY
 #define LOR_ENABLE_STATUS
+#endif
+
+#ifdef LOR_ENABLE_MAP
+#define LOR_ENABLE_STATUS
+#define LOR_ENABLE_STRING
+#endif
+
+#ifdef LOR_ENABLE_SET
+#define LOR_ENABLE_STATUS
+#define LOR_ENABLE_STRING
+#define LOR_ENABLE_MAP
 #endif
 
 // === status: declarations ===
@@ -625,16 +638,14 @@ LorStatus lor_array_append_raw(void *array_ref, size_t element_size,
 
    The source and destination element sizes must match. Self-append is valid. */
 LorStatus lor_array_append_array_raw(void *array_ref, size_t element_size,
-                                     const void *source,
-                                     size_t source_element_size);
+                                     const void *source, size_t source_element_size);
 
 /* Inserts `count` copied elements before `index`.
 
    `index` may equal the current size to append. `elements` may point into the
    same array, including across the insertion point. */
-LorStatus lor_array_insert_raw(void *array_ref, size_t element_size,
-                               size_t index, const void *elements,
-                               size_t count);
+LorStatus lor_array_insert_raw(void *array_ref, size_t element_size, size_t index,
+                               const void *elements, size_t count);
 
 // Reduces capacity to the current size. An empty array becomes `NULL`.
 LorStatus lor_array_shrink_to_fit_raw(void *array_ref, size_t element_size);
@@ -675,35 +686,29 @@ void lor_array_deinit(void *array_ref);
 #define lor_array_append(array, elements, count) \
     lor_array_append_raw(&(array), sizeof *(array), (elements), (count))
 #define lor_array_append_array(array, source) \
-    lor_array_append_array_raw(&(array), sizeof *(array), (source), \
-                               sizeof *(source))
+    lor_array_append_array_raw(&(array), sizeof *(array), (source), sizeof *(source))
 #define lor_array_push(array, value) \
     lor_array_append_raw(&(array), sizeof *(array), &(value), 1u)
 #define lor_array_push_as(array, type, ...) \
     lor_array_append_raw(&(array), sizeof *(array), &(type){__VA_ARGS__}, 1u)
 #if defined(__GNUC__) || defined(__clang__)
 #define LOR_HAS_ARRAY_PUSH_AUTO 1
-#define lor_array_push_auto(array, value) \
-    __extension__({ \
-        __typeof__(*(array)) lor_array__push_value = (value); \
-        lor_array_append_raw(&(array), sizeof *(array), \
-                             &lor_array__push_value, 1u); \
+#define lor_array_push_auto(array, value)                                       \
+    __extension__({                                                             \
+        __typeof__(*(array)) lor_array__push_value = (value);                   \
+        lor_array_append_raw(&(array), sizeof *(array), &lor_array__push_value, 1u); \
     })
 #else
 #define LOR_HAS_ARRAY_PUSH_AUTO 0
 #endif
 #define lor_array_insert_many(array, index, elements, count) \
-    lor_array_insert_raw(&(array), sizeof *(array), (index), (elements), \
-                         (count))
+    lor_array_insert_raw(&(array), sizeof *(array), (index), (elements), (count))
 #define lor_array_insert(array, index, value) \
     lor_array_insert_raw(&(array), sizeof *(array), (index), &(value), 1u)
-#define lor_array_insert_as(array, index, type, ...) \
-    lor_array_insert_raw(&(array), sizeof *(array), (index), \
-                         &(type){__VA_ARGS__}, 1u)
+#define lor_array_insert_as(array, index, type, ...)                               \
+    lor_array_insert_raw(&(array), sizeof *(array), (index), &(type){__VA_ARGS__}, 1u)
 #define lor_array_last(array) \
-    (lor_array_size(array) != 0 \
-         ? &(array)[lor_array_size(array) - 1u] \
-         : NULL)
+    (lor_array_size(array) != 0 ? &(array)[lor_array_size(array) - 1u] : NULL)
 #define lor_array_shrink_to_fit(array) \
     lor_array_shrink_to_fit_raw(&(array), sizeof *(array))
 
@@ -718,6 +723,369 @@ static inline void __attribute__((unused)) lor_array_cleanup_(void *array_ref) {
 #define LOR_AUTO_ARRAY __attribute__((cleanup(lor_array_cleanup_)))
 #else
 #define LOR_AUTO_ARRAY
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+// === map: declarations ===
+#ifdef LOR_ENABLE_MAP
+#include <stddef.h>
+#include <stdint.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Typed hash-map entry helper.
+
+   Map entries must begin with a field named `key`. A field named `value` is
+   required only by the `lor_map_put_*` convenience macros. */
+#define LOR_MAP_ENTRY(key_type, value_type) \
+    struct {                                \
+        key_type key;                       \
+        value_type value;                   \
+    }
+
+#define LOR_MAP_INIT NULL
+
+typedef uint64_t (*LorMapHashFn)(const void *key, size_t key_size, void *context);
+typedef int (*LorMapEqualFn)(const void *a, const void *b, size_t key_size,
+                             void *context);
+typedef int (*LorMapKeyValidFn)(const void *key, size_t key_size, void *context);
+
+/* Copies one key into `destination`.
+
+   Return `LOR_STATUS_OK` only when the destination key is ready to own. On
+   failure, the map does not call `drop` for the incomplete destination. */
+typedef LorStatus (*LorMapKeyCloneFn)(void *destination, const void *source,
+                                      size_t key_size, void *context);
+
+// Releases resources owned by one stored key.
+typedef void (*LorMapKeyDropFn)(void *key, size_t key_size, void *context);
+
+typedef struct LorMapConfig {
+    LorMapHashFn hash;
+    LorMapEqualFn equal;
+    LorMapKeyValidFn key_valid;
+    LorMapKeyCloneFn clone;
+    LorMapKeyDropFn drop;
+    void *context;
+} LorMapConfig;
+
+typedef enum {
+    LOR_MAP_KEY_BORROWED = 0,
+    LOR_MAP_KEY_OWNED
+} LorMapKeyOwnership;
+
+// Returns byte hashing/equality with shallow key copies.
+LorMapConfig lor_map_config_bytes(void);
+
+/* Returns content hashing/equality for `LorStringView` keys.
+
+   Borrowed maps store the original views. Owned maps copy each key's bytes and
+   release them on replacement, removal, clear, or deinit. */
+LorMapConfig lor_map_config_string_view(LorMapKeyOwnership ownership);
+
+// Returns the map's key configuration, or byte-key configuration for `NULL`.
+LorMapConfig lor_map_get_config(const void *map);
+
+// Returns non-zero when every callback and context pointer matches.
+int lor_map_config_equal(LorMapConfig a, LorMapConfig b);
+
+/* Initializes an empty map with custom key behavior.
+
+   `entry_size` is `sizeof *map`; `key_size` is `sizeof map->key`. `map_ref`
+   must point to a `NULL` handle. `hash` and `equal` must either both be set or
+   both be `NULL`; the same rule applies to `clone` and `drop`. `key_valid` is
+   optional and rejects invalid keys before hashing. */
+LorStatus lor_map_init_raw(void *map_ref, size_t entry_size, size_t key_size,
+                           LorMapConfig config);
+
+// Returns the number of entries, or zero for `NULL`.
+size_t lor_map_size(const void *map);
+
+// Returns the allocated dense-entry capacity, or zero for `NULL`.
+size_t lor_map_capacity(const void *map);
+
+// Returns the stored entry size, or zero for `NULL`.
+size_t lor_map_entry_size(const void *map);
+
+// Returns the stored key size, or zero for `NULL`.
+size_t lor_map_key_size(const void *map);
+
+/* Ensures room for at least `capacity` entries.
+
+   A `NULL` map is initialized with byte-key behavior. Existing entries and the
+   original handle are unchanged on failure. */
+LorStatus lor_map_reserve_raw(void *map_ref, size_t entry_size, size_t key_size,
+                              size_t capacity);
+
+/* Inserts or replaces an entry.
+
+   The entry's first field is its key. A `NULL` map is initialized with
+   byte-key behavior. The map is unchanged on failure. */
+LorStatus lor_map_set_raw(void *map_ref, size_t entry_size, size_t key_size,
+                          const void *entry);
+
+/* Returns the mutable entry matching `key`, or `NULL`.
+
+   The returned `void *` converts to the map's entry-pointer type in C. Stored
+   keys must not be modified through the returned entry. */
+void *lor_map_find_raw(void *map, size_t entry_size, size_t key_size,
+                       const void *key);
+
+// Const-qualified form of `lor_map_find_raw`.
+const void *lor_map_find_const_raw(const void *map, size_t entry_size,
+                                   size_t key_size, const void *key);
+
+// Returns non-zero when `key` is present.
+int lor_map_contains_raw(const void *map, size_t entry_size, size_t key_size,
+                         const void *key);
+
+// Removes `key` when present and returns non-zero.
+int lor_map_remove_raw(void *map, size_t entry_size, size_t key_size,
+                       const void *key);
+
+// Removes all entries and owned keys while retaining map capacity and config.
+void lor_map_clear(void *map);
+
+// Releases entries, buckets, owned keys, and resets the handle to `NULL`.
+void lor_map_deinit(void *map_ref);
+
+/* Typed portable operations.
+
+   `lor_map_set`, `find`, `contains`, and `remove` take lvalues of the exact
+   entry or key type. The `_as` forms construct C99 compound literals. */
+#define lor_map_init(map, config) \
+    lor_map_init_raw(&(map), sizeof *(map), sizeof(map)->key, (config))
+#define lor_map_reserve(map, capacity) \
+    lor_map_reserve_raw(&(map), sizeof *(map), sizeof(map)->key, (capacity))
+#define lor_map_set(map, entry) \
+    lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &(entry))
+#define lor_map_set_as(map, type, ...) \
+    lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#define lor_map_put_as(map, type, key_value, value_value) \
+    lor_map_set_as(map, type, .key = (key_value), .value = (value_value))
+#define lor_map_find(map, key_value) \
+    lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#define lor_map_find_const(map, key_value) \
+    lor_map_find_const_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#define lor_map_find_as(map, type, ...) \
+    lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#define lor_map_contains(map, key_value) \
+    lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#define lor_map_contains_as(map, type, ...)                      \
+    lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#define lor_map_remove(map, key_value) \
+    lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#define lor_map_remove_as(map, type, ...) \
+    lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+
+/* GCC/Clang convenience operations.
+
+   These infer destination types, evaluate each supplied expression once, and
+   perform normal assignment conversion into temporary key/value objects. */
+#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#define LOR_HAS_MAP_AUTO 1
+#define lor_map_put_auto(map, key_value, value_value)                                     \
+    __extension__({                                                                       \
+        __typeof__(*(map)) lor_map__entry = {.key = (key_value), .value = (value_value)}; \
+        lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &lor_map__entry);        \
+    })
+#define lor_map_find_auto(map, key_value)                                         \
+    __extension__({                                                               \
+        __typeof__((map)->key) lor_map__key = (key_value);                        \
+        (__typeof__(map))lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, \
+                                          &lor_map__key);                         \
+    })
+#define lor_map_contains_auto(map, key_value)                                        \
+    __extension__({                                                                  \
+        __typeof__((map)->key) lor_map__key = (key_value);                           \
+        lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &lor_map__key); \
+    })
+#define lor_map_remove_auto(map, key_value)                                        \
+    __extension__({                                                                \
+        __typeof__((map)->key) lor_map__key = (key_value);                         \
+        lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &lor_map__key); \
+    })
+#else
+#define LOR_HAS_MAP_AUTO 0
+#endif
+
+/* Scope-exit cleanup for maps on GCC and Clang.
+
+   Unsupported compilers leave `LOR_AUTO_MAP` empty, so explicit
+   `lor_map_deinit` remains required for portable ownership paths. */
+#if defined(__GNUC__) || defined(__clang__)
+static inline void __attribute__((unused)) lor_map_cleanup_(void *map_ref) {
+    lor_map_deinit(map_ref);
+}
+#define LOR_AUTO_MAP __attribute__((cleanup(lor_map_cleanup_)))
+#else
+#define LOR_AUTO_MAP
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+// === set: declarations ===
+#ifdef LOR_ENABLE_SET
+#include <stddef.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Typed hash set.
+
+   A set handle is an ordinary pointer to its key type. Keys are stored densely
+   for direct indexing and iteration; a hidden map index provides lookup. */
+#define LOR_SET_INIT NULL
+
+typedef LorMapConfig LorSetConfig;
+typedef LorMapKeyOwnership LorSetKeyOwnership;
+
+#define LOR_SET_KEY_BORROWED LOR_MAP_KEY_BORROWED
+#define LOR_SET_KEY_OWNED LOR_MAP_KEY_OWNED
+
+// Returns byte hashing/equality with shallow key copies.
+LorSetConfig lor_set_config_bytes(void);
+
+// Returns borrowed or owned content semantics for `LorStringView` keys.
+LorSetConfig lor_set_config_string_view(LorSetKeyOwnership ownership);
+
+// Initializes an empty set with custom key behavior.
+LorStatus lor_set_init_raw(void *set_ref, size_t element_size, LorSetConfig config);
+
+// Returns the number of keys, or zero for `NULL`.
+size_t lor_set_size(const void *set);
+
+// Returns the allocated key capacity, or zero for `NULL`.
+size_t lor_set_capacity(const void *set);
+
+// Ensures room for at least `capacity` keys.
+LorStatus lor_set_reserve_raw(void *set_ref, size_t element_size, size_t capacity);
+
+// Adds `key`; adding an existing key is successful and leaves one copy.
+LorStatus lor_set_add_raw(void *set_ref, size_t element_size, const void *key);
+
+// Returns non-zero when `key` is present.
+int lor_set_contains_raw(const void *set, size_t element_size, const void *key);
+
+// Removes `key` when present and returns non-zero.
+int lor_set_remove_raw(void *set, size_t element_size, const void *key);
+
+// Removes all keys and owned key resources while retaining capacity/config.
+void lor_set_clear(void *set);
+
+// Releases all storage and resets the handle to `NULL`.
+void lor_set_deinit(void *set_ref);
+
+/* Creates a new result set.
+
+   `result_ref` must point to a `NULL` handle. The result inherits the key
+   policy of a non-empty operand, or otherwise the first initialized operand.
+   Compatible owning policies take precedence so results remain independent.
+   Two non-empty operands must use matching hash/equality semantics. On
+   failure, `result_ref` remains `NULL`. */
+LorStatus lor_set_union_raw(void *result_ref, size_t element_size, const void *a,
+                            const void *b);
+LorStatus lor_set_intersection_raw(void *result_ref, size_t element_size,
+                                   const void *a, const void *b);
+LorStatus lor_set_difference_raw(void *result_ref, size_t element_size,
+                                 const void *a, const void *b);
+LorStatus lor_set_symmetric_difference_raw(void *result_ref, size_t element_size,
+                                           const void *a, const void *b);
+
+// Mathematical relationship predicates. Incompatible non-empty sets are false.
+int lor_set_equal_raw(const void *a, const void *b, size_t element_size);
+int lor_set_is_subset_raw(const void *a, const void *b, size_t element_size);
+int lor_set_is_proper_subset_raw(const void *a, const void *b, size_t element_size);
+int lor_set_is_superset_raw(const void *a, const void *b, size_t element_size);
+int lor_set_is_proper_superset_raw(const void *a, const void *b,
+                                   size_t element_size);
+int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
+
+/* Typed portable operations.
+
+   `lor_set_add`, `contains`, and `remove` take lvalues of the exact key type.
+   The `_as` forms construct C99 compound literals. */
+#define lor_set_init(set, config) \
+    lor_set_init_raw(&(set), sizeof *(set), (config))
+#define lor_set_reserve(set, capacity) \
+    lor_set_reserve_raw(&(set), sizeof *(set), (capacity))
+#define lor_set_add(set, key_value) \
+    lor_set_add_raw(&(set), sizeof *(set), &(key_value))
+#define lor_set_add_as(set, type, ...) \
+    lor_set_add_raw(&(set), sizeof *(set), &(type){__VA_ARGS__})
+#define lor_set_contains(set, key_value) \
+    lor_set_contains_raw((set), sizeof *(set), &(key_value))
+#define lor_set_contains_as(set, type, ...) \
+    lor_set_contains_raw((set), sizeof *(set), &(type){__VA_ARGS__})
+#define lor_set_remove(set, key_value) \
+    lor_set_remove_raw((set), sizeof *(set), &(key_value))
+#define lor_set_remove_as(set, type, ...) \
+    lor_set_remove_raw((set), sizeof *(set), &(type){__VA_ARGS__})
+#define lor_set_union(result, a, b) \
+    lor_set_union_raw(&(result), sizeof *(result), (a), (b))
+#define lor_set_intersection(result, a, b) \
+    lor_set_intersection_raw(&(result), sizeof *(result), (a), (b))
+#define lor_set_difference(result, a, b) \
+    lor_set_difference_raw(&(result), sizeof *(result), (a), (b))
+#define lor_set_symmetric_difference(result, a, b) \
+    lor_set_symmetric_difference_raw(&(result), sizeof *(result), (a), (b))
+#define lor_set_equal(a, b) \
+    lor_set_equal_raw((a), (b), sizeof *(a))
+#define lor_set_is_subset(a, b) \
+    lor_set_is_subset_raw((a), (b), sizeof *(a))
+#define lor_set_is_proper_subset(a, b) \
+    lor_set_is_proper_subset_raw((a), (b), sizeof *(a))
+#define lor_set_is_superset(a, b) \
+    lor_set_is_superset_raw((a), (b), sizeof *(a))
+#define lor_set_is_proper_superset(a, b) \
+    lor_set_is_proper_superset_raw((a), (b), sizeof *(a))
+#define lor_set_is_disjoint(a, b) \
+    lor_set_is_disjoint_raw((a), (b), sizeof *(a))
+
+#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#define LOR_HAS_SET_AUTO 1
+#define lor_set_add_auto(set, key_value)                       \
+    __extension__({                                            \
+        __typeof__(*(set)) lor_set__key = (key_value);         \
+        lor_set_add_raw(&(set), sizeof *(set), &lor_set__key); \
+    })
+#define lor_set_contains_auto(set, key_value)                      \
+    __extension__({                                                \
+        __typeof__(*(set)) lor_set__key = (key_value);             \
+        lor_set_contains_raw((set), sizeof *(set), &lor_set__key); \
+    })
+#define lor_set_remove_auto(set, key_value)                      \
+    __extension__({                                              \
+        __typeof__(*(set)) lor_set__key = (key_value);           \
+        lor_set_remove_raw((set), sizeof *(set), &lor_set__key); \
+    })
+#else
+#define LOR_HAS_SET_AUTO 0
+#endif
+
+/* Scope-exit cleanup for sets on GCC and Clang.
+
+   Unsupported compilers leave `LOR_AUTO_SET` empty, so explicit
+   `lor_set_deinit` remains required for portable ownership paths. */
+#if defined(__GNUC__) || defined(__clang__)
+static inline void __attribute__((unused)) lor_set_cleanup_(void *set_ref) {
+    lor_set_deinit(set_ref);
+}
+#define LOR_AUTO_SET __attribute__((cleanup(lor_set_cleanup_)))
+#else
+#define LOR_AUTO_SET
 #endif
 
 #ifdef __cplusplus
@@ -2513,6 +2881,957 @@ void lor_array_deinit(void *array_ref) {
 }
 #endif
 
+// === map: implementation ===
+#ifdef LOR_ENABLE_MAP
+#if defined(LOR_LEAKCHECK)
+#endif
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+typedef max_align_t LorMapAlignment;
+#else
+typedef union LorMapAlignment {
+    void *pointer;
+    long double long_double;
+    long long long_long;
+} LorMapAlignment;
+#endif
+
+typedef union LorMapHeader {
+    struct {
+        size_t size;
+        size_t capacity;
+        size_t entry_size;
+        size_t key_size;
+        size_t bucket_capacity;
+        size_t *buckets;
+        LorMapConfig config;
+    } values;
+    LorMapAlignment alignment;
+} LorMapHeader;
+
+static LorMapHeader *lor_map__header(void *map) {
+    return (LorMapHeader *)map - 1;
+}
+
+static const LorMapHeader *lor_map__header_const(const void *map) {
+    return (const LorMapHeader *)map - 1;
+}
+
+static void *lor_map__read_ref(const void *map_ref) {
+    void *map = NULL;
+    if (map_ref != NULL) memcpy(&map, map_ref, sizeof(map));
+    return map;
+}
+
+static void lor_map__write_ref(void *map_ref, void *map) {
+    memcpy(map_ref, &map, sizeof(map));
+}
+
+static void *lor_map__malloc(size_t size) {
+#if defined(LOR_LEAKCHECK)
+    return lor_malloc_debug(size, __FILE__, __LINE__);
+#else
+    return malloc(size);
+#endif
+}
+
+static void *lor_map__calloc(size_t count, size_t size) {
+#if defined(LOR_LEAKCHECK)
+    return lor_calloc_debug(count, size, __FILE__, __LINE__);
+#else
+    return calloc(count, size);
+#endif
+}
+
+static void *lor_map__realloc(void *ptr, size_t size) {
+#if defined(LOR_LEAKCHECK)
+    return lor_realloc_debug(ptr, size, __FILE__, __LINE__);
+#else
+    return realloc(ptr, size);
+#endif
+}
+
+static void lor_map__free(void *ptr) {
+#if defined(LOR_LEAKCHECK)
+    lor_free_debug(ptr, __FILE__, __LINE__);
+#else
+    free(ptr);
+#endif
+}
+
+static uint64_t lor_map__hash_bytes(const void *data, size_t size) {
+    const unsigned char *bytes = (const unsigned char *)data;
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (size_t i = 0; i < size; ++i) {
+        hash ^= bytes[i];
+        hash *= UINT64_C(1099511628211);
+    }
+    return hash;
+}
+
+static uint64_t lor_map__default_hash(const void *key, size_t key_size,
+                                      void *context) {
+    (void)context;
+    return lor_map__hash_bytes(key, key_size);
+}
+
+static int lor_map__default_equal(const void *a, const void *b,
+                                  size_t key_size, void *context) {
+    (void)context;
+    return memcmp(a, b, key_size) == 0;
+}
+
+static uint64_t lor_map__sv_hash(const void *key, size_t key_size,
+                                 void *context) {
+    (void)context;
+    if (key_size != sizeof(LorStringView)) return 0;
+
+    const LorStringView *view = (const LorStringView *)key;
+    if (!lor_sv_is_valid(*view)) return 0;
+    return lor_map__hash_bytes(view->data, view->size);
+}
+
+static int lor_map__sv_equal(const void *a, const void *b, size_t key_size,
+                             void *context) {
+    (void)context;
+    if (key_size != sizeof(LorStringView)) return 0;
+    return lor_sv_equal(*(const LorStringView *)a,
+                        *(const LorStringView *)b);
+}
+
+static int lor_map__sv_valid(const void *key, size_t key_size, void *context) {
+    (void)context;
+    return key_size == sizeof(LorStringView) &&
+           lor_sv_is_valid(*(const LorStringView *)key);
+}
+
+static LorStatus lor_map__sv_clone(void *destination, const void *source,
+                                   size_t key_size, void *context) {
+    (void)context;
+    if (key_size != sizeof(LorStringView))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    LorStringView view = *(const LorStringView *)source;
+    if (!lor_sv_is_valid(view)) return LOR_STATUS_INVALID_ARGUMENT;
+
+    LorStringView copy = LOR_STRING_VIEW_INIT;
+    if (view.size != 0) {
+        char *data = (char *)lor_map__malloc(view.size);
+        if (data == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+        memcpy(data, view.data, view.size);
+        copy = lor_sv_from_parts(data, view.size);
+    }
+
+    *(LorStringView *)destination = copy;
+    return LOR_STATUS_OK;
+}
+
+static void lor_map__sv_drop(void *key, size_t key_size, void *context) {
+    (void)context;
+    if (key_size != sizeof(LorStringView)) return;
+
+    LorStringView *view = (LorStringView *)key;
+    lor_map__free((void *)view->data);
+    *view = (LorStringView)LOR_STRING_VIEW_INIT;
+}
+
+LorMapConfig lor_map_config_bytes(void) {
+    return (LorMapConfig){0};
+}
+
+LorMapConfig lor_map_config_string_view(LorMapKeyOwnership ownership) {
+    LorMapConfig config = {
+        .hash = lor_map__sv_hash,
+        .equal = lor_map__sv_equal,
+        .key_valid = lor_map__sv_valid,
+    };
+    if (ownership == LOR_MAP_KEY_OWNED) {
+        config.clone = lor_map__sv_clone;
+        config.drop = lor_map__sv_drop;
+    } else if (ownership != LOR_MAP_KEY_BORROWED) {
+        config.equal = NULL;
+    }
+    return config;
+}
+
+LorMapConfig lor_map_get_config(const void *map) {
+    return map != NULL ? lor_map__header_const(map)->values.config
+                       : lor_map_config_bytes();
+}
+
+int lor_map_config_equal(LorMapConfig a, LorMapConfig b) {
+    return a.hash == b.hash && a.equal == b.equal &&
+           a.key_valid == b.key_valid && a.clone == b.clone &&
+           a.drop == b.drop && a.context == b.context;
+}
+
+static int lor_map__config_valid(LorMapConfig config) {
+    return (config.hash == NULL) == (config.equal == NULL) &&
+           (config.clone == NULL) == (config.drop == NULL);
+}
+
+static int lor_map__layout_valid(size_t entry_size, size_t key_size) {
+    return key_size != 0 && entry_size >= key_size;
+}
+
+static int lor_map__matches_layout(const void *map, size_t entry_size,
+                                   size_t key_size) {
+    if (!lor_map__layout_valid(entry_size, key_size)) return 0;
+    if (map == NULL) return 1;
+
+    const LorMapHeader *header = lor_map__header_const(map);
+    return header->values.entry_size == entry_size &&
+           header->values.key_size == key_size;
+}
+
+static uint64_t lor_map__hash(const LorMapHeader *header, const void *key) {
+    LorMapHashFn hash = header->values.config.hash;
+    if (hash == NULL) hash = lor_map__default_hash;
+    return hash(key, header->values.key_size,
+                header->values.config.context);
+}
+
+static int lor_map__equal(const LorMapHeader *header, const void *a,
+                          const void *b) {
+    LorMapEqualFn equal = header->values.config.equal;
+    if (equal == NULL) equal = lor_map__default_equal;
+    return equal(a, b, header->values.key_size,
+                 header->values.config.context);
+}
+
+static int lor_map__key_valid(const LorMapHeader *header, const void *key) {
+    LorMapKeyValidFn key_valid = header->values.config.key_valid;
+    return key_valid == NULL ||
+           key_valid(key, header->values.key_size,
+                     header->values.config.context);
+}
+
+static void *lor_map__entry(void *map, size_t index) {
+    LorMapHeader *header = lor_map__header(map);
+    return (unsigned char *)map + index * header->values.entry_size;
+}
+
+static const void *lor_map__entry_const(const void *map, size_t index) {
+    const LorMapHeader *header = lor_map__header_const(map);
+    return (const unsigned char *)map +
+           index * header->values.entry_size;
+}
+
+static size_t lor_map__bucket_for(const LorMapHeader *header, uint64_t hash) {
+    return (size_t)hash & (header->values.bucket_capacity - 1u);
+}
+
+static size_t lor_map__find_bucket(const void *map, const void *key) {
+    const LorMapHeader *header = lor_map__header_const(map);
+    if (header->values.bucket_capacity == 0) return SIZE_MAX;
+
+    size_t mask = header->values.bucket_capacity - 1u;
+    size_t bucket = lor_map__bucket_for(header, lor_map__hash(header, key));
+    for (;;) {
+        size_t stored = header->values.buckets[bucket];
+        if (stored == 0) return SIZE_MAX;
+
+        size_t index = stored - 1u;
+        if (lor_map__equal(header, lor_map__entry_const(map, index), key))
+            return bucket;
+        bucket = (bucket + 1u) & mask;
+    }
+}
+
+static void lor_map__insert_bucket(void *map, size_t index) {
+    LorMapHeader *header = lor_map__header(map);
+    const void *key = lor_map__entry_const(map, index);
+    size_t mask = header->values.bucket_capacity - 1u;
+    size_t bucket = lor_map__bucket_for(header, lor_map__hash(header, key));
+    while (header->values.buckets[bucket] != 0)
+        bucket = (bucket + 1u) & mask;
+    header->values.buckets[bucket] = index + 1u;
+}
+
+static void lor_map__fill_buckets(void *map, size_t *buckets,
+                                  size_t bucket_capacity) {
+    LorMapHeader *header = lor_map__header(map);
+    header->values.buckets = buckets;
+    header->values.bucket_capacity = bucket_capacity;
+
+    for (size_t i = 0; i < header->values.size; ++i)
+        lor_map__insert_bucket(map, i);
+}
+
+static LorStatus lor_map__entry_capacity(size_t current, size_t required,
+                                         size_t *capacity) {
+    size_t result = current < 8u ? 8u : current;
+    while (result < required) {
+        if (result > SIZE_MAX / 2u) {
+            result = required;
+            break;
+        }
+        result *= 2u;
+    }
+    *capacity = result;
+    return LOR_STATUS_OK;
+}
+
+static LorStatus lor_map__bucket_capacity(size_t required_entries,
+                                          size_t *capacity) {
+    if (required_entries == 0) {
+        *capacity = 0;
+        return LOR_STATUS_OK;
+    }
+    if (required_entries > SIZE_MAX / 4u)
+        return LOR_STATUS_OVERFLOW;
+
+    size_t required = required_entries + required_entries / 3u + 1u;
+    size_t result = 8u;
+    while (result < required) {
+        if (result > SIZE_MAX / 2u) return LOR_STATUS_OVERFLOW;
+        result *= 2u;
+    }
+    *capacity = result;
+    return LOR_STATUS_OK;
+}
+
+static LorStatus lor_map__allocate_header(size_t entry_size, size_t key_size,
+                                          LorMapConfig config,
+                                          LorMapHeader **header) {
+    LorMapHeader *result =
+        (LorMapHeader *)lor_map__malloc(sizeof(LorMapHeader));
+    if (result == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+
+    memset(result, 0, sizeof(*result));
+    result->values.entry_size = entry_size;
+    result->values.key_size = key_size;
+    result->values.config = config;
+    *header = result;
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_map_init_raw(void *map_ref, size_t entry_size, size_t key_size,
+                           LorMapConfig config) {
+    if (map_ref == NULL || lor_map__read_ref(map_ref) != NULL ||
+        !lor_map__layout_valid(entry_size, key_size) ||
+        !lor_map__config_valid(config))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    LorMapHeader *header = NULL;
+    LorStatus status =
+        lor_map__allocate_header(entry_size, key_size, config, &header);
+    if (status != LOR_STATUS_OK) return status;
+
+    lor_map__write_ref(map_ref, header + 1);
+    return LOR_STATUS_OK;
+}
+
+size_t lor_map_size(const void *map) {
+    return map != NULL ? lor_map__header_const(map)->values.size : 0;
+}
+
+size_t lor_map_capacity(const void *map) {
+    return map != NULL ? lor_map__header_const(map)->values.capacity : 0;
+}
+
+size_t lor_map_entry_size(const void *map) {
+    return map != NULL ? lor_map__header_const(map)->values.entry_size : 0;
+}
+
+size_t lor_map_key_size(const void *map) {
+    return map != NULL ? lor_map__header_const(map)->values.key_size : 0;
+}
+
+LorStatus lor_map_reserve_raw(void *map_ref, size_t entry_size,
+                              size_t key_size, size_t capacity) {
+    if (map_ref == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *map = lor_map__read_ref(map_ref);
+    if (!lor_map__matches_layout(map, entry_size, key_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+    if (capacity <= lor_map_capacity(map)) return LOR_STATUS_OK;
+
+    size_t new_capacity = 0;
+    LorStatus status = lor_map__entry_capacity(
+        lor_map_capacity(map), capacity, &new_capacity);
+    if (status != LOR_STATUS_OK) return status;
+    if (new_capacity >
+        (SIZE_MAX - sizeof(LorMapHeader)) / entry_size)
+        return LOR_STATUS_OVERFLOW;
+
+    size_t new_bucket_capacity = 0;
+    status = lor_map__bucket_capacity(new_capacity, &new_bucket_capacity);
+    if (status != LOR_STATUS_OK) return status;
+    if (new_bucket_capacity > SIZE_MAX / sizeof(size_t))
+        return LOR_STATUS_OVERFLOW;
+
+    size_t *new_buckets = (size_t *)lor_map__calloc(
+        new_bucket_capacity, sizeof(*new_buckets));
+    if (new_buckets == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+
+    LorMapHeader *header = map != NULL ? lor_map__header(map) : NULL;
+    if (header == NULL) {
+        status = lor_map__allocate_header(
+            entry_size, key_size, lor_map_config_bytes(), &header);
+        if (status != LOR_STATUS_OK) {
+            lor_map__free(new_buckets);
+            return status;
+        }
+    }
+
+    size_t allocation_size =
+        sizeof(LorMapHeader) + new_capacity * entry_size;
+    LorMapHeader *new_header =
+        (LorMapHeader *)lor_map__realloc(header, allocation_size);
+    if (new_header == NULL) {
+        if (map == NULL) lor_map__free(header);
+        lor_map__free(new_buckets);
+        return LOR_STATUS_OUT_OF_MEMORY;
+    }
+
+    void *new_map = new_header + 1;
+    size_t *old_buckets = new_header->values.buckets;
+    new_header->values.capacity = new_capacity;
+    lor_map__fill_buckets(new_map, new_buckets, new_bucket_capacity);
+    lor_map__free(old_buckets);
+    lor_map__write_ref(map_ref, new_map);
+    return LOR_STATUS_OK;
+}
+
+static int lor_map__entry_alias(const void *map, const void *entry) {
+    if (map == NULL || entry == NULL) return 0;
+
+    const LorMapHeader *header = lor_map__header_const(map);
+    if (header->values.size > SIZE_MAX / header->values.entry_size)
+        return -1;
+
+    size_t initialized_bytes =
+        header->values.size * header->values.entry_size;
+    uintptr_t base = (uintptr_t)map;
+    uintptr_t source = (uintptr_t)entry;
+    if (initialized_bytes > UINTPTR_MAX - base) return 0;
+    if (source < base || source > base + initialized_bytes) return 0;
+
+    size_t offset = (size_t)(source - base);
+    if (offset > initialized_bytes ||
+        header->values.entry_size > initialized_bytes - offset)
+        return -1;
+    return 1;
+}
+
+static LorStatus lor_map__prepare_entry(const LorMapHeader *header,
+                                        const void *entry, int alias,
+                                        void **prepared) {
+    LorMapKeyCloneFn clone = header->values.config.clone;
+    if (clone == NULL && alias == 0) {
+        *prepared = NULL;
+        return LOR_STATUS_OK;
+    }
+
+    void *copy = lor_map__malloc(header->values.entry_size);
+    if (copy == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+    memcpy(copy, entry, header->values.entry_size);
+
+    if (clone != NULL) {
+        memset(copy, 0, header->values.key_size);
+        LorStatus status =
+            clone(copy, entry, header->values.key_size,
+                  header->values.config.context);
+        if (status != LOR_STATUS_OK) {
+            lor_map__free(copy);
+            return status;
+        }
+    }
+
+    *prepared = copy;
+    return LOR_STATUS_OK;
+}
+
+static void lor_map__drop_prepared(const LorMapHeader *header, void *entry,
+                                   int owns_key) {
+    if (entry == NULL) return;
+    if (owns_key)
+        header->values.config.drop(entry, header->values.key_size,
+                                   header->values.config.context);
+    lor_map__free(entry);
+}
+
+LorStatus lor_map_set_raw(void *map_ref, size_t entry_size, size_t key_size,
+                          const void *entry) {
+    if (map_ref == NULL || entry == NULL)
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *map = lor_map__read_ref(map_ref);
+    if (!lor_map__matches_layout(map, entry_size, key_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    int created = map == NULL;
+    if (created) {
+        LorStatus status =
+            lor_map_init_raw(map_ref, entry_size, key_size,
+                             lor_map_config_bytes());
+        if (status != LOR_STATUS_OK) return status;
+        map = lor_map__read_ref(map_ref);
+    }
+
+    LorMapHeader *header = lor_map__header(map);
+    if (!lor_map__key_valid(header, entry))
+        return LOR_STATUS_INVALID_ARGUMENT;
+    size_t bucket = lor_map__find_bucket(map, entry);
+    int alias = lor_map__entry_alias(map, entry);
+    if (alias < 0) return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *prepared = NULL;
+    LorStatus status =
+        lor_map__prepare_entry(header, entry, alias, &prepared);
+    if (status != LOR_STATUS_OK) return status;
+    const void *source = prepared != NULL ? prepared : entry;
+    int prepared_owns_key = header->values.config.clone != NULL;
+
+    if (bucket != SIZE_MAX) {
+        size_t index = header->values.buckets[bucket] - 1u;
+        void *destination = lor_map__entry(map, index);
+        if (prepared_owns_key)
+            header->values.config.drop(
+                destination, header->values.key_size,
+                header->values.config.context);
+        memmove(destination, source, header->values.entry_size);
+        lor_map__free(prepared);
+        return LOR_STATUS_OK;
+    }
+
+    size_t old_size = header->values.size;
+    if (old_size == SIZE_MAX) {
+        lor_map__drop_prepared(header, prepared, prepared_owns_key);
+        if (created) lor_map_deinit(map_ref);
+        return LOR_STATUS_OVERFLOW;
+    }
+
+    status = lor_map_reserve_raw(map_ref, entry_size, key_size, old_size + 1u);
+    if (status != LOR_STATUS_OK) {
+        lor_map__drop_prepared(header, prepared, prepared_owns_key);
+        if (created) lor_map_deinit(map_ref);
+        return status;
+    }
+
+    map = lor_map__read_ref(map_ref);
+    header = lor_map__header(map);
+    void *destination = lor_map__entry(map, old_size);
+    memcpy(destination, source, entry_size);
+    header->values.size = old_size + 1u;
+    lor_map__insert_bucket(map, old_size);
+    lor_map__free(prepared);
+    return LOR_STATUS_OK;
+}
+
+void *lor_map_find_raw(void *map, size_t entry_size, size_t key_size,
+                       const void *key) {
+    if (map == NULL || key == NULL ||
+        !lor_map__matches_layout(map, entry_size, key_size))
+        return NULL;
+
+    if (!lor_map__key_valid(lor_map__header_const(map), key)) return NULL;
+    size_t bucket = lor_map__find_bucket(map, key);
+    if (bucket == SIZE_MAX) return NULL;
+    return lor_map__entry(
+        map, lor_map__header(map)->values.buckets[bucket] - 1u);
+}
+
+const void *lor_map_find_const_raw(const void *map, size_t entry_size,
+                                   size_t key_size, const void *key) {
+    return lor_map_find_raw((void *)map, entry_size, key_size, key);
+}
+
+int lor_map_contains_raw(const void *map, size_t entry_size, size_t key_size,
+                         const void *key) {
+    return lor_map_find_const_raw(map, entry_size, key_size, key) != NULL;
+}
+
+static size_t lor_map__probe_distance(size_t ideal, size_t actual,
+                                      size_t mask) {
+    return (actual - ideal) & mask;
+}
+
+static void lor_map__erase_bucket(void *map, size_t bucket) {
+    LorMapHeader *header = lor_map__header(map);
+    size_t mask = header->values.bucket_capacity - 1u;
+    size_t hole = bucket;
+    size_t next = (hole + 1u) & mask;
+
+    while (header->values.buckets[next] != 0) {
+        size_t index = header->values.buckets[next] - 1u;
+        const void *key = lor_map__entry_const(map, index);
+        size_t ideal = lor_map__bucket_for(header, lor_map__hash(header, key));
+        if (lor_map__probe_distance(ideal, next, mask) >
+            lor_map__probe_distance(ideal, hole, mask)) {
+            header->values.buckets[hole] =
+                header->values.buckets[next];
+            hole = next;
+        }
+        next = (next + 1u) & mask;
+    }
+    header->values.buckets[hole] = 0;
+}
+
+int lor_map_remove_raw(void *map, size_t entry_size, size_t key_size,
+                       const void *key) {
+    if (map == NULL || key == NULL ||
+        !lor_map__matches_layout(map, entry_size, key_size))
+        return 0;
+
+    LorMapHeader *header = lor_map__header(map);
+    if (!lor_map__key_valid(header, key)) return 0;
+    size_t bucket = lor_map__find_bucket(map, key);
+    if (bucket == SIZE_MAX) return 0;
+
+    size_t index = header->values.buckets[bucket] - 1u;
+    size_t last = header->values.size - 1u;
+    lor_map__erase_bucket(map, bucket);
+
+    void *removed = lor_map__entry(map, index);
+    if (header->values.config.drop != NULL)
+        header->values.config.drop(
+            removed, header->values.key_size,
+            header->values.config.context);
+
+    if (index != last) {
+        void *last_entry = lor_map__entry(map, last);
+        memcpy(removed, last_entry, header->values.entry_size);
+
+        size_t moved_bucket = lor_map__find_bucket(map, removed);
+        if (moved_bucket != SIZE_MAX)
+            header->values.buckets[moved_bucket] = index + 1u;
+    }
+
+    header->values.size = last;
+    return 1;
+}
+
+void lor_map_clear(void *map) {
+    if (map == NULL) return;
+
+    LorMapHeader *header = lor_map__header(map);
+    if (header->values.config.drop != NULL) {
+        for (size_t i = 0; i < header->values.size; ++i)
+            header->values.config.drop(
+                lor_map__entry(map, i), header->values.key_size,
+                header->values.config.context);
+    }
+    header->values.size = 0;
+    if (header->values.buckets != NULL)
+        memset(header->values.buckets, 0,
+               header->values.bucket_capacity * sizeof(size_t));
+}
+
+void lor_map_deinit(void *map_ref) {
+    if (map_ref == NULL) return;
+
+    void *map = lor_map__read_ref(map_ref);
+    if (map != NULL) {
+        LorMapHeader *header = lor_map__header(map);
+        lor_map_clear(map);
+        lor_map__free(header->values.buckets);
+        lor_map__free(header);
+    }
+    lor_map__write_ref(map_ref, NULL);
+}
+#endif
+
+// === set: implementation ===
+#ifdef LOR_ENABLE_SET
+#include <stdint.h>
+#include <string.h>
+
+typedef enum LorSetOperation {
+    LOR_SET_OPERATION_UNION,
+    LOR_SET_OPERATION_INTERSECTION,
+    LOR_SET_OPERATION_DIFFERENCE,
+    LOR_SET_OPERATION_SYMMETRIC_DIFFERENCE
+} LorSetOperation;
+
+static void *lor_set__read_ref(const void *set_ref) {
+    void *set = NULL;
+    if (set_ref != NULL) memcpy(&set, set_ref, sizeof(set));
+    return set;
+}
+
+static void lor_set__write_ref(void *set_ref, void *set) {
+    memcpy(set_ref, &set, sizeof(set));
+}
+
+LorSetConfig lor_set_config_bytes(void) {
+    return lor_map_config_bytes();
+}
+
+LorSetConfig lor_set_config_string_view(LorSetKeyOwnership ownership) {
+    return lor_map_config_string_view(ownership);
+}
+
+LorStatus lor_set_init_raw(void *set_ref, size_t element_size,
+                           LorSetConfig config) {
+    return lor_map_init_raw(set_ref, element_size, element_size, config);
+}
+
+size_t lor_set_size(const void *set) {
+    return lor_map_size(set);
+}
+
+size_t lor_set_capacity(const void *set) {
+    return lor_map_capacity(set);
+}
+
+LorStatus lor_set_reserve_raw(void *set_ref, size_t element_size,
+                              size_t capacity) {
+    return lor_map_reserve_raw(set_ref, element_size, element_size, capacity);
+}
+
+LorStatus lor_set_add_raw(void *set_ref, size_t element_size,
+                          const void *key) {
+    return lor_map_set_raw(set_ref, element_size, element_size, key);
+}
+
+int lor_set_contains_raw(const void *set, size_t element_size,
+                         const void *key) {
+    return lor_map_contains_raw(set, element_size, element_size, key);
+}
+
+int lor_set_remove_raw(void *set, size_t element_size, const void *key) {
+    return lor_map_remove_raw(set, element_size, element_size, key);
+}
+
+void lor_set_clear(void *set) {
+    lor_map_clear(set);
+}
+
+void lor_set_deinit(void *set_ref) {
+    lor_map_deinit(set_ref);
+}
+
+static int lor_set__layout_valid(const void *set, size_t element_size) {
+    return set == NULL ||
+           (element_size != 0 &&
+            lor_map_entry_size(set) == element_size &&
+            lor_map_key_size(set) == element_size);
+}
+
+static int lor_set__configs_compatible(LorSetConfig a, LorSetConfig b) {
+    if (a.hash != b.hash || a.equal != b.equal ||
+        a.key_valid != b.key_valid || a.context != b.context)
+        return 0;
+
+    return a.clone == NULL || b.clone == NULL ||
+           (a.clone == b.clone && a.drop == b.drop);
+}
+
+static int lor_set__nonempty_configs_compatible(const void *a,
+                                                const void *b) {
+    return lor_set_size(a) == 0 || lor_set_size(b) == 0 ||
+           lor_set__configs_compatible(lor_map_get_config(a),
+                                       lor_map_get_config(b));
+}
+
+static LorSetConfig lor_set__result_config(const void *a, const void *b) {
+    LorSetConfig a_config = lor_map_get_config(a);
+    LorSetConfig b_config = lor_map_get_config(b);
+    if (a != NULL && a_config.clone != NULL) return a_config;
+    if (b != NULL && b_config.clone != NULL) return b_config;
+    if (lor_set_size(a) != 0) return lor_map_get_config(a);
+    if (lor_set_size(b) != 0) return lor_map_get_config(b);
+    if (a != NULL) return a_config;
+    if (b != NULL) return b_config;
+    return lor_set_config_bytes();
+}
+
+static const void *lor_set__key(const void *set, size_t element_size,
+                                size_t index) {
+    return (const unsigned char *)set + index * element_size;
+}
+
+static LorStatus lor_set__reserve_for_operation(void *result_ref,
+                                                size_t element_size,
+                                                const void *a,
+                                                const void *b,
+                                                LorSetOperation operation) {
+    size_t a_size = lor_set_size(a);
+    size_t b_size = lor_set_size(b);
+    size_t capacity = 0;
+
+    switch (operation) {
+    case LOR_SET_OPERATION_UNION:
+    case LOR_SET_OPERATION_SYMMETRIC_DIFFERENCE:
+        if (b_size > SIZE_MAX - a_size) return LOR_STATUS_OVERFLOW;
+        capacity = a_size + b_size;
+        break;
+    case LOR_SET_OPERATION_INTERSECTION:
+        capacity = a_size < b_size ? a_size : b_size;
+        break;
+    case LOR_SET_OPERATION_DIFFERENCE:
+        capacity = a_size;
+        break;
+    }
+
+    return capacity != 0
+               ? lor_set_reserve_raw(result_ref, element_size, capacity)
+               : LOR_STATUS_OK;
+}
+
+static LorStatus lor_set__add_all(void *result_ref, size_t element_size,
+                                  const void *source) {
+    for (size_t i = 0; i < lor_set_size(source); ++i) {
+        LorStatus status = lor_set_add_raw(
+            result_ref, element_size,
+            lor_set__key(source, element_size, i));
+        if (status != LOR_STATUS_OK) return status;
+    }
+    return LOR_STATUS_OK;
+}
+
+static LorStatus lor_set__operation(void *result_ref, size_t element_size,
+                                    const void *a, const void *b,
+                                    LorSetOperation operation) {
+    if (result_ref == NULL || lor_set__read_ref(result_ref) != NULL ||
+        element_size == 0 || !lor_set__layout_valid(a, element_size) ||
+        !lor_set__layout_valid(b, element_size) ||
+        !lor_set__nonempty_configs_compatible(a, b))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *result = NULL;
+    LorStatus status = lor_set_init_raw(
+        &result, element_size, lor_set__result_config(a, b));
+    if (status != LOR_STATUS_OK) return status;
+
+    status = lor_set__reserve_for_operation(
+        &result, element_size, a, b, operation);
+    if (status != LOR_STATUS_OK) {
+        lor_set_deinit(&result);
+        return status;
+    }
+
+    if (operation == LOR_SET_OPERATION_UNION) {
+        status = lor_set__add_all(&result, element_size, a);
+        if (status == LOR_STATUS_OK)
+            status = lor_set__add_all(&result, element_size, b);
+    } else {
+        for (size_t i = 0; i < lor_set_size(a); ++i) {
+            const void *key = lor_set__key(a, element_size, i);
+            int in_b = lor_set_contains_raw(b, element_size, key);
+            int include =
+                operation == LOR_SET_OPERATION_INTERSECTION ? in_b : !in_b;
+            if (include) {
+                status =
+                    lor_set_add_raw(&result, element_size, key);
+                if (status != LOR_STATUS_OK) break;
+            }
+        }
+
+        if (status == LOR_STATUS_OK &&
+            operation == LOR_SET_OPERATION_SYMMETRIC_DIFFERENCE) {
+            for (size_t i = 0; i < lor_set_size(b); ++i) {
+                const void *key = lor_set__key(b, element_size, i);
+                if (!lor_set_contains_raw(a, element_size, key)) {
+                    status =
+                        lor_set_add_raw(&result, element_size, key);
+                    if (status != LOR_STATUS_OK) break;
+                }
+            }
+        }
+    }
+
+    if (status != LOR_STATUS_OK) {
+        lor_set_deinit(&result);
+        return status;
+    }
+
+    lor_set__write_ref(result_ref, result);
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_set_union_raw(void *result_ref, size_t element_size,
+                            const void *a, const void *b) {
+    return lor_set__operation(result_ref, element_size, a, b,
+                              LOR_SET_OPERATION_UNION);
+}
+
+LorStatus lor_set_intersection_raw(void *result_ref, size_t element_size,
+                                   const void *a, const void *b) {
+    return lor_set__operation(result_ref, element_size, a, b,
+                              LOR_SET_OPERATION_INTERSECTION);
+}
+
+LorStatus lor_set_difference_raw(void *result_ref, size_t element_size,
+                                 const void *a, const void *b) {
+    return lor_set__operation(result_ref, element_size, a, b,
+                              LOR_SET_OPERATION_DIFFERENCE);
+}
+
+LorStatus lor_set_symmetric_difference_raw(void *result_ref,
+                                           size_t element_size,
+                                           const void *a, const void *b) {
+    return lor_set__operation(
+        result_ref, element_size, a, b,
+        LOR_SET_OPERATION_SYMMETRIC_DIFFERENCE);
+}
+
+static int lor_set__relations_valid(const void *a, const void *b,
+                                    size_t element_size) {
+    return element_size != 0 &&
+           lor_set__layout_valid(a, element_size) &&
+           lor_set__layout_valid(b, element_size) &&
+           lor_set__nonempty_configs_compatible(a, b);
+}
+
+int lor_set_is_subset_raw(const void *a, const void *b,
+                          size_t element_size) {
+    if (!lor_set__relations_valid(a, b, element_size) ||
+        lor_set_size(a) > lor_set_size(b))
+        return 0;
+
+    for (size_t i = 0; i < lor_set_size(a); ++i) {
+        if (!lor_set_contains_raw(
+                b, element_size,
+                lor_set__key(a, element_size, i)))
+            return 0;
+    }
+    return 1;
+}
+
+int lor_set_equal_raw(const void *a, const void *b, size_t element_size) {
+    return lor_set_size(a) == lor_set_size(b) &&
+           lor_set_is_subset_raw(a, b, element_size);
+}
+
+int lor_set_is_proper_subset_raw(const void *a, const void *b,
+                                 size_t element_size) {
+    return lor_set_size(a) < lor_set_size(b) &&
+           lor_set_is_subset_raw(a, b, element_size);
+}
+
+int lor_set_is_superset_raw(const void *a, const void *b,
+                            size_t element_size) {
+    return lor_set_is_subset_raw(b, a, element_size);
+}
+
+int lor_set_is_proper_superset_raw(const void *a, const void *b,
+                                   size_t element_size) {
+    return lor_set_is_proper_subset_raw(b, a, element_size);
+}
+
+int lor_set_is_disjoint_raw(const void *a, const void *b,
+                            size_t element_size) {
+    if (!lor_set__relations_valid(a, b, element_size)) return 0;
+
+    const void *small = lor_set_size(a) <= lor_set_size(b) ? a : b;
+    const void *large = small == a ? b : a;
+    for (size_t i = 0; i < lor_set_size(small); ++i) {
+        if (lor_set_contains_raw(
+                large, element_size,
+                lor_set__key(small, element_size, i)))
+            return 0;
+    }
+    return 1;
+}
+#endif
+
 #endif
 /* Optional short-name aliases
    These are preprocessor aliases only. They do not change compiled
@@ -2658,6 +3977,105 @@ void lor_array_deinit(void *array_ref) {
 #define array_remove_range lor_array_remove_range
 #define array_remove_unordered lor_array_remove_unordered
 #define array_deinit lor_array_deinit
+#endif
+#ifdef LOR_ENABLE_MAP
+#define MapHashFn LorMapHashFn
+#define MapEqualFn LorMapEqualFn
+#define MapKeyValidFn LorMapKeyValidFn
+#define MapKeyCloneFn LorMapKeyCloneFn
+#define MapKeyDropFn LorMapKeyDropFn
+#define MapConfig LorMapConfig
+#define MapKeyOwnership LorMapKeyOwnership
+#define MAP_ENTRY LOR_MAP_ENTRY
+#define MAP_INIT LOR_MAP_INIT
+#define MAP_KEY_BORROWED LOR_MAP_KEY_BORROWED
+#define MAP_KEY_OWNED LOR_MAP_KEY_OWNED
+#define map_init lor_map_init
+#define map_reserve lor_map_reserve
+#define map_set lor_map_set
+#define map_set_as lor_map_set_as
+#define map_put_as lor_map_put_as
+#define map_find lor_map_find
+#define map_find_const lor_map_find_const
+#define map_find_as lor_map_find_as
+#define map_contains lor_map_contains
+#define map_contains_as lor_map_contains_as
+#define map_remove lor_map_remove
+#define map_remove_as lor_map_remove_as
+#define HAS_MAP_AUTO LOR_HAS_MAP_AUTO
+#define map_put_auto lor_map_put_auto
+#define map_find_auto lor_map_find_auto
+#define map_contains_auto lor_map_contains_auto
+#define map_remove_auto lor_map_remove_auto
+#define AUTO_MAP LOR_AUTO_MAP
+#define map_config_bytes lor_map_config_bytes
+#define map_config_string_view lor_map_config_string_view
+#define map_get_config lor_map_get_config
+#define map_config_equal lor_map_config_equal
+#define map_init_raw lor_map_init_raw
+#define map_size lor_map_size
+#define map_capacity lor_map_capacity
+#define map_entry_size lor_map_entry_size
+#define map_key_size lor_map_key_size
+#define map_reserve_raw lor_map_reserve_raw
+#define map_set_raw lor_map_set_raw
+#define map_find_raw lor_map_find_raw
+#define map_find_const_raw lor_map_find_const_raw
+#define map_contains_raw lor_map_contains_raw
+#define map_remove_raw lor_map_remove_raw
+#define map_clear lor_map_clear
+#define map_deinit lor_map_deinit
+#endif
+#ifdef LOR_ENABLE_SET
+#define SetConfig LorSetConfig
+#define SetKeyOwnership LorSetKeyOwnership
+#define SET_INIT LOR_SET_INIT
+#define SET_KEY_BORROWED LOR_SET_KEY_BORROWED
+#define SET_KEY_OWNED LOR_SET_KEY_OWNED
+#define set_init lor_set_init
+#define set_reserve lor_set_reserve
+#define set_add lor_set_add
+#define set_add_as lor_set_add_as
+#define set_contains lor_set_contains
+#define set_contains_as lor_set_contains_as
+#define set_remove lor_set_remove
+#define set_remove_as lor_set_remove_as
+#define set_union lor_set_union
+#define set_intersection lor_set_intersection
+#define set_difference lor_set_difference
+#define set_symmetric_difference lor_set_symmetric_difference
+#define set_equal lor_set_equal
+#define set_is_subset lor_set_is_subset
+#define set_is_proper_subset lor_set_is_proper_subset
+#define set_is_superset lor_set_is_superset
+#define set_is_proper_superset lor_set_is_proper_superset
+#define set_is_disjoint lor_set_is_disjoint
+#define HAS_SET_AUTO LOR_HAS_SET_AUTO
+#define set_add_auto lor_set_add_auto
+#define set_contains_auto lor_set_contains_auto
+#define set_remove_auto lor_set_remove_auto
+#define AUTO_SET LOR_AUTO_SET
+#define set_config_bytes lor_set_config_bytes
+#define set_config_string_view lor_set_config_string_view
+#define set_init_raw lor_set_init_raw
+#define set_size lor_set_size
+#define set_capacity lor_set_capacity
+#define set_reserve_raw lor_set_reserve_raw
+#define set_add_raw lor_set_add_raw
+#define set_contains_raw lor_set_contains_raw
+#define set_remove_raw lor_set_remove_raw
+#define set_clear lor_set_clear
+#define set_deinit lor_set_deinit
+#define set_union_raw lor_set_union_raw
+#define set_intersection_raw lor_set_intersection_raw
+#define set_difference_raw lor_set_difference_raw
+#define set_symmetric_difference_raw lor_set_symmetric_difference_raw
+#define set_equal_raw lor_set_equal_raw
+#define set_is_subset_raw lor_set_is_subset_raw
+#define set_is_proper_subset_raw lor_set_is_proper_subset_raw
+#define set_is_superset_raw lor_set_is_superset_raw
+#define set_is_proper_superset_raw lor_set_is_proper_superset_raw
+#define set_is_disjoint_raw lor_set_is_disjoint_raw
 #endif
 #endif
 

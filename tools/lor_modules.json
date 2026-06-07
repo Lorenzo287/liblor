@@ -196,6 +196,135 @@
                     ["LOR_AUTO_ARRAY", "AUTO_ARRAY"]
                 ]
             }
+        },
+        {
+            "name": "map",
+            "enable_macro": "LOR_ENABLE_MAP",
+            "dependencies": [
+                "string"
+            ],
+            "header": "include/lor/map.h",
+            "source": "src/map.c",
+            "symbols": {
+                "functions": [
+                    ["lor_map_config_bytes", "map_config_bytes"],
+                    ["lor_map_config_string_view", "map_config_string_view"],
+                    ["lor_map_get_config", "map_get_config"],
+                    ["lor_map_config_equal", "map_config_equal"],
+                    ["lor_map_init_raw", "map_init_raw"],
+                    ["lor_map_size", "map_size"],
+                    ["lor_map_capacity", "map_capacity"],
+                    ["lor_map_entry_size", "map_entry_size"],
+                    ["lor_map_key_size", "map_key_size"],
+                    ["lor_map_reserve_raw", "map_reserve_raw"],
+                    ["lor_map_set_raw", "map_set_raw"],
+                    ["lor_map_find_raw", "map_find_raw"],
+                    ["lor_map_find_const_raw", "map_find_const_raw"],
+                    ["lor_map_contains_raw", "map_contains_raw"],
+                    ["lor_map_remove_raw", "map_remove_raw"],
+                    ["lor_map_clear", "map_clear"],
+                    ["lor_map_deinit", "map_deinit"]
+                ],
+                "types": [
+                    ["LorMapHashFn", "MapHashFn"],
+                    ["LorMapEqualFn", "MapEqualFn"],
+                    ["LorMapKeyValidFn", "MapKeyValidFn"],
+                    ["LorMapKeyCloneFn", "MapKeyCloneFn"],
+                    ["LorMapKeyDropFn", "MapKeyDropFn"],
+                    ["LorMapConfig", "MapConfig"],
+                    ["LorMapKeyOwnership", "MapKeyOwnership"]
+                ],
+                "macros": [
+                    ["LOR_MAP_ENTRY", "MAP_ENTRY"],
+                    ["LOR_MAP_INIT", "MAP_INIT"],
+                    ["LOR_MAP_KEY_BORROWED", "MAP_KEY_BORROWED"],
+                    ["LOR_MAP_KEY_OWNED", "MAP_KEY_OWNED"],
+                    ["lor_map_init", "map_init"],
+                    ["lor_map_reserve", "map_reserve"],
+                    ["lor_map_set", "map_set"],
+                    ["lor_map_set_as", "map_set_as"],
+                    ["lor_map_put_as", "map_put_as"],
+                    ["lor_map_find", "map_find"],
+                    ["lor_map_find_const", "map_find_const"],
+                    ["lor_map_find_as", "map_find_as"],
+                    ["lor_map_contains", "map_contains"],
+                    ["lor_map_contains_as", "map_contains_as"],
+                    ["lor_map_remove", "map_remove"],
+                    ["lor_map_remove_as", "map_remove_as"],
+                    ["LOR_HAS_MAP_AUTO", "HAS_MAP_AUTO"],
+                    ["lor_map_put_auto", "map_put_auto"],
+                    ["lor_map_find_auto", "map_find_auto"],
+                    ["lor_map_contains_auto", "map_contains_auto"],
+                    ["lor_map_remove_auto", "map_remove_auto"],
+                    ["LOR_AUTO_MAP", "AUTO_MAP"]
+                ]
+            }
+        },
+        {
+            "name": "set",
+            "enable_macro": "LOR_ENABLE_SET",
+            "dependencies": [
+                "map"
+            ],
+            "header": "include/lor/set.h",
+            "source": "src/set.c",
+            "symbols": {
+                "functions": [
+                    ["lor_set_config_bytes", "set_config_bytes"],
+                    ["lor_set_config_string_view", "set_config_string_view"],
+                    ["lor_set_init_raw", "set_init_raw"],
+                    ["lor_set_size", "set_size"],
+                    ["lor_set_capacity", "set_capacity"],
+                    ["lor_set_reserve_raw", "set_reserve_raw"],
+                    ["lor_set_add_raw", "set_add_raw"],
+                    ["lor_set_contains_raw", "set_contains_raw"],
+                    ["lor_set_remove_raw", "set_remove_raw"],
+                    ["lor_set_clear", "set_clear"],
+                    ["lor_set_deinit", "set_deinit"],
+                    ["lor_set_union_raw", "set_union_raw"],
+                    ["lor_set_intersection_raw", "set_intersection_raw"],
+                    ["lor_set_difference_raw", "set_difference_raw"],
+                    ["lor_set_symmetric_difference_raw", "set_symmetric_difference_raw"],
+                    ["lor_set_equal_raw", "set_equal_raw"],
+                    ["lor_set_is_subset_raw", "set_is_subset_raw"],
+                    ["lor_set_is_proper_subset_raw", "set_is_proper_subset_raw"],
+                    ["lor_set_is_superset_raw", "set_is_superset_raw"],
+                    ["lor_set_is_proper_superset_raw", "set_is_proper_superset_raw"],
+                    ["lor_set_is_disjoint_raw", "set_is_disjoint_raw"]
+                ],
+                "types": [
+                    ["LorSetConfig", "SetConfig"],
+                    ["LorSetKeyOwnership", "SetKeyOwnership"]
+                ],
+                "macros": [
+                    ["LOR_SET_INIT", "SET_INIT"],
+                    ["LOR_SET_KEY_BORROWED", "SET_KEY_BORROWED"],
+                    ["LOR_SET_KEY_OWNED", "SET_KEY_OWNED"],
+                    ["lor_set_init", "set_init"],
+                    ["lor_set_reserve", "set_reserve"],
+                    ["lor_set_add", "set_add"],
+                    ["lor_set_add_as", "set_add_as"],
+                    ["lor_set_contains", "set_contains"],
+                    ["lor_set_contains_as", "set_contains_as"],
+                    ["lor_set_remove", "set_remove"],
+                    ["lor_set_remove_as", "set_remove_as"],
+                    ["lor_set_union", "set_union"],
+                    ["lor_set_intersection", "set_intersection"],
+                    ["lor_set_difference", "set_difference"],
+                    ["lor_set_symmetric_difference", "set_symmetric_difference"],
+                    ["lor_set_equal", "set_equal"],
+                    ["lor_set_is_subset", "set_is_subset"],
+                    ["lor_set_is_proper_subset", "set_is_proper_subset"],
+                    ["lor_set_is_superset", "set_is_superset"],
+                    ["lor_set_is_proper_superset", "set_is_proper_superset"],
+                    ["lor_set_is_disjoint", "set_is_disjoint"],
+                    ["LOR_HAS_SET_AUTO", "HAS_SET_AUTO"],
+                    ["lor_set_add_auto", "set_add_auto"],
+                    ["lor_set_contains_auto", "set_contains_auto"],
+                    ["lor_set_remove_auto", "set_remove_auto"],
+                    ["LOR_AUTO_SET", "AUTO_SET"]
+                ]
+            }
         }
     ]
 }

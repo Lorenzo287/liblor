@@ -4,19 +4,20 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Use the completed memory, string, and dynamic-array foundations to design the
-first hash map.
+Use the completed memory and container foundations to choose the next
+practical module.
 
-1. Reassess allocator customization with two owned prefix-header modules.
-2. Define hash-map key, value, and ownership strategies.
-3. Reuse the dynamic-array macro and failure conventions where appropriate.
+1. Exercise the containers in a larger feature before widening their APIs.
+2. Choose between random-number helpers and a CLI argument parser.
+3. Consider a reusable test harness when the next module adds repeated test
+   infrastructure.
 
 ## Open Decisions
 
 - Reusable test harness shape.
 - Single-header generator hardening as more modules are added.
 - Shared allocator customization versus heap-only owned containers.
-- Hash-map type and macro strategy.
+- Next data or ergonomics module.
 
 ## Done
 
@@ -40,6 +41,9 @@ first hash map.
 - [x] Add borrowed string views and owned dynamic strings.
 - [x] Add single-header module dependencies.
 - [x] Add typed-pointer dynamic arrays with checked growth.
+- [x] Add typed hash maps with byte, custom, borrowed-string, and owned-string
+      key policies.
+- [x] Add typed hash sets with map-backed storage and mathematical operations.
 
 ## Backlog
 
@@ -60,7 +64,8 @@ first hash map.
 - [x] string view;
 - [x] owned dynamic string;
 - [x] dynamic array;
-- [ ] hash map;
+- [x] hash map;
+- [x] set;
 - [ ] random-number helpers.
 
 ### Ergonomics

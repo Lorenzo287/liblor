@@ -29,13 +29,16 @@ is present as an alternative.
 Current modules include:
 
 - `lor/array.h`: typed-pointer dynamic arrays with checked growth.
+- `lor/map.h`: typed hash maps with configurable key ownership.
 - `lor/status.h`: small shared failure statuses.
 - `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in
   leak checking.
+- `lor/set.h`: typed hash sets with Python-style mathematical operations.
 - `lor/string.h`: borrowed string views and owned dynamic strings.
 
 See [API Conventions](docs/api-conventions.md), [Dynamic Arrays](docs/array.md),
-[Memory](docs/memory.md), and [Strings](docs/string.md).
+[Hash Maps](docs/map.md), [Memory](docs/memory.md), [Sets](docs/set.md), and
+[Strings](docs/string.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/memory.h"`.
@@ -75,6 +78,8 @@ Optional module and alias controls:
 - `LOR_ENABLE_MEMORY`: include only the memory module.
 - `LOR_ENABLE_STRING`: include the string module and its status dependency.
 - `LOR_ENABLE_ARRAY`: include the array module and its status dependency.
+- `LOR_ENABLE_MAP`: include the map module and its string/status dependencies.
+- `LOR_ENABLE_SET`: include the set module and its map dependencies.
 - `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
 - `LOR_LEAKCHECK`: development build mode for location-aware leak checking
   across liblor memory calls and stdlib heap calls. It automatically includes

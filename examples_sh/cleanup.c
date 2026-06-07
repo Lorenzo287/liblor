@@ -89,6 +89,24 @@ static void test_auto_array(void) {
     // lor_array_deinit(&numbers) is called automatically at scope exit.
 }
 
+typedef LOR_MAP_ENTRY(int, int) CleanupMapEntry;
+
+static void test_auto_map(void) {
+    printf("--- LOR_AUTO_MAP ---\n");
+    LOR_AUTO_MAP CleanupMapEntry *map = LOR_MAP_INIT;
+    if (lor_map_put_as(map, CleanupMapEntry, 10, 20) == LOR_STATUS_OK)
+        printf("Built map with %zu entry.\n", lor_map_size(map));
+    // lor_map_deinit(&map) is called automatically at scope exit.
+}
+
+static void test_auto_set(void) {
+    printf("--- LOR_AUTO_SET ---\n");
+    LOR_AUTO_SET int *set = LOR_SET_INIT;
+    if (lor_set_add_as(set, int, 10) == LOR_STATUS_OK)
+        printf("Built set with %zu key.\n", lor_set_size(set));
+    // lor_set_deinit(&set) is called automatically at scope exit.
+}
+
 int main(void) {
     printf("Starting auto cleanup tests...\n\n");
 
@@ -99,6 +117,8 @@ int main(void) {
     test_auto_file();
     test_auto_string();
     test_auto_array();
+    test_auto_map();
+    test_auto_set();
 
     printf("\nAll scopes exited. The leak checker should report 0 leaks below:\n");
     size_t leaks = lor_leakcheck_report(stdout);

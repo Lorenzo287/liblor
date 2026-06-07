@@ -18,6 +18,9 @@ them.
 
 There is no public `LorAllocator`. Add one only when at least two concrete
 modules need configurable allocation and their requirements are understood.
+Strings, arrays, and maps currently share heap, leak-check, and cleanup
+behavior without exposing allocator state. The map design did not reveal a
+concrete allocator requirement, so introducing one remains deferred.
 
 Generic typed containers may use function-like macros to infer information
 that C cannot pass generically, such as `sizeof *(array)`. Compiler-extension
