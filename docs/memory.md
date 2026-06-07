@@ -50,6 +50,10 @@ Single-header development build:
 #include "lor.h"
 ```
 
+`LOR_LEAKCHECK` automatically enables the memory module in selective
+single-header builds, so `LOR_ENABLE_STRING` plus `LOR_LEAKCHECK` is sufficient
+to track dynamic-string allocations.
+
 Multi-file development build:
 
 ```powershell
@@ -169,6 +173,7 @@ matching explicit release function when a local variable leaves scope:
 - `LOR_AUTO_SCRATCH`: `lor_scratch_end`
 - `LOR_AUTO_MMAP`: `lor_mmap_unmap`
 - `LOR_AUTO_FILE`: `fclose`
+- `LOR_AUTO_STRING`: `lor_string_deinit` (declared by `lor/string.h`)
 
 They are deterministic cleanup conveniences, not leak checking. Use them for
 local variables with obvious ownership; avoid them when ownership is transferred

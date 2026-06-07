@@ -72,6 +72,14 @@ static void test_auto_file(void) {
     remove(dummy_path);
 }
 
+static void test_auto_string(void) {
+    printf("--- LOR_AUTO_STRING ---\n");
+    LOR_AUTO_STRING LorString text = LOR_STRING_INIT;
+    if (lor_string_append_cstr(&text, "automatic string") == LOR_STATUS_OK)
+        printf("Built: %s\n", text);
+    // lor_string_deinit(&text) is called automatically at scope exit.
+}
+
 int main(void) {
     printf("Starting auto cleanup tests...\n\n");
 
@@ -80,6 +88,7 @@ int main(void) {
     test_auto_scratch();
     test_auto_mmap();
     test_auto_file();
+    test_auto_string();
 
     printf("\nAll scopes exited. The leak checker should report 0 leaks below:\n");
     size_t leaks = lor_leakcheck_report(stdout);

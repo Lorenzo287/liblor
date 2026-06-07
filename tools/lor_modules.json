@@ -1,8 +1,31 @@
 {
     "modules": [
         {
+            "name": "status",
+            "enable_macro": "LOR_ENABLE_STATUS",
+            "header": "include/lor/status.h",
+            "source": "src/status.c",
+            "symbols": {
+                "functions": [
+                    ["lor_status_name", "status_name"]
+                ],
+                "types": [
+                    ["LorStatus", "Status"]
+                ],
+                "macros": [
+                    ["LOR_STATUS_OK", "STATUS_OK"],
+                    ["LOR_STATUS_INVALID_ARGUMENT", "STATUS_INVALID_ARGUMENT"],
+                    ["LOR_STATUS_OUT_OF_MEMORY", "STATUS_OUT_OF_MEMORY"],
+                    ["LOR_STATUS_OVERFLOW", "STATUS_OVERFLOW"]
+                ]
+            }
+        },
+        {
             "name": "memory",
             "enable_macro": "LOR_ENABLE_MEMORY",
+            "enabled_by": [
+                "LOR_LEAKCHECK"
+            ],
             "header": "include/lor/memory.h",
             "source": "src/memory.c",
             "symbols": {
@@ -64,6 +87,67 @@
                     ["LOR_AUTO_SCRATCH", "AUTO_SCRATCH"],
                     ["LOR_AUTO_MMAP", "AUTO_MMAP"],
                     ["LOR_AUTO_FILE", "AUTO_FILE"]
+                ]
+            }
+        },
+        {
+            "name": "string",
+            "enable_macro": "LOR_ENABLE_STRING",
+            "dependencies": [
+                "status"
+            ],
+            "header": "include/lor/string.h",
+            "source": "src/string.c",
+            "symbols": {
+                "functions": [
+                    ["lor_sv_from_parts", "sv_from_parts"],
+                    ["lor_sv_from_cstr", "sv_from_cstr"],
+                    ["lor_sv_is_valid", "sv_is_valid"],
+                    ["lor_sv_is_empty", "sv_is_empty"],
+                    ["lor_sv_equal", "sv_equal"],
+                    ["lor_sv_starts_with", "sv_starts_with"],
+                    ["lor_sv_ends_with", "sv_ends_with"],
+                    ["lor_sv_trim_left", "sv_trim_left"],
+                    ["lor_sv_trim_right", "sv_trim_right"],
+                    ["lor_sv_trim", "sv_trim"],
+                    ["lor_sv_slice", "sv_slice"],
+                    ["lor_sv_take_left", "sv_take_left"],
+                    ["lor_sv_take_right", "sv_take_right"],
+                    ["lor_sv_chop_left", "sv_chop_left"],
+                    ["lor_sv_chop_right", "sv_chop_right"],
+                    ["lor_sv_find", "sv_find"],
+                    ["lor_sv_find_char", "sv_find_char"],
+                    ["lor_sv_split_once", "sv_split_once"],
+                    ["lor_sv_split_once_char", "sv_split_once_char"],
+                    ["lor_sv_chop", "sv_chop"],
+                    ["lor_sv_chop_char", "sv_chop_char"],
+                    ["lor_sv_fprint", "sv_fprint"],
+                    ["lor_sv_print", "sv_print"],
+                    ["lor_string_init", "string_init"],
+                    ["lor_string_init_view", "string_init_view"],
+                    ["lor_string_init_cstr", "string_init_cstr"],
+                    ["lor_string_deinit", "string_deinit"],
+                    ["lor_string_clear", "string_clear"],
+                    ["lor_string_size", "string_size"],
+                    ["lor_string_capacity", "string_capacity"],
+                    ["lor_string_view", "string_view"],
+                    ["lor_string_cstr", "string_cstr"],
+                    ["lor_string_reserve", "string_reserve"],
+                    ["lor_string_assign", "string_assign"],
+                    ["lor_string_assign_cstr", "string_assign_cstr"],
+                    ["lor_string_append", "string_append"],
+                    ["lor_string_append_cstr", "string_append_cstr"],
+                    ["lor_string_append_char", "string_append_char"]
+                ],
+                "types": [
+                    ["LorStringView", "StringView"],
+                    ["LorString", "String"]
+                ],
+                "macros": [
+                    ["LOR_STRING_VIEW_INIT", "STRING_VIEW_INIT"],
+                    ["LOR_SV_LITERAL", "SV_LITERAL"],
+                    ["LOR_STRING_INIT", "STRING_INIT"],
+                    ["LOR_AUTO_STRING", "AUTO_STRING"]
                 ]
             }
         }

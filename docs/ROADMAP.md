@@ -4,21 +4,18 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Build the memory subsystem foundation. See `docs/memory.md`.
+Use the completed memory and string foundations to design the first generic
+container.
 
-1. Decide the first container memory policy when dynamic arrays/hash maps begin.
-2. Define the initial error/result convention for memory failures.
-3. Revisit reference counting only after a real shared-ownership use case exists.
-
-Reference counting and garbage collection are later memory features. They need
-real use cases before implementation.
+1. Define the first dynamic-array API and type strategy.
+2. Apply the heap-by-default ownership and `LorStatus` failure conventions.
+3. Reassess allocator customization only after another owned module exists.
 
 ## Open Decisions
 
-- Error/result convention.
 - Reusable test harness shape.
-- Next module: string view or dynamic array.
 - Single-header generator hardening as more modules are added.
+- Dynamic-array type and macro strategy.
 
 ## Done
 
@@ -37,6 +34,10 @@ real use cases before implementation.
 - [x] Add consolidated memory module with arenas, mmap, cleanup helpers, and
       opt-in leak checking.
 - [x] Simplify Makefile source, test, example, and header discovery.
+- [x] Define initial ownership, allocator, and failure conventions.
+- [x] Add shared `LorStatus` values.
+- [x] Add borrowed string views and owned dynamic strings.
+- [x] Add single-header module dependencies.
 
 ## Backlog
 
@@ -47,15 +48,15 @@ real use cases before implementation.
 - [x] scratch arenas;
 - [x] mmap file mapping;
 - [x] opt-in leak checking;
-- [ ] error/result conventions;
+- [x] error/result conventions;
 - [x] consolidated memory module;
 - [x] cleanup helpers;
 - [ ] reusable test harness;
 
 ### Data
 
-- [ ] string view;
-- [ ] owned dynamic string;
+- [x] string view;
+- [x] owned dynamic string;
 - [ ] dynamic array;
 - [ ] hash map;
 - [ ] random-number helpers.

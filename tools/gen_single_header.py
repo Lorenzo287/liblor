@@ -147,6 +147,34 @@ def module_enabled_condition(module: dict) -> str:
     return module["enable_macro"]
 
 
+def module_dependency_macros(module: dict, modules: list[dict]) -> list[str]:
+    modules_by_name = {item["name"]: item for item in modules}
+    result = []
+    visiting = set()
+    visited = set()
+
+    def visit(name: str) -> None:
+        if name in visited:
+            return
+        if name in visiting:
+            raise ValueError(f"cyclic module dependency involving {name}")
+        if name not in modules_by_name:
+            raise ValueError(f"unknown module dependency: {name}")
+
+        visiting.add(name)
+        dependency = modules_by_name[name]
+        for nested in dependency.get("dependencies", []):
+            visit(nested)
+        visiting.remove(name)
+        visited.add(name)
+        result.append(dependency["enable_macro"])
+
+    for dependency in module.get("dependencies", []):
+        visit(dependency)
+
+    return result
+
+
 def emit_module_selection(modules: list[dict]) -> str:
     enable_macros = [module["enable_macro"] for module in modules]
     no_modules = " && ".join(f"!defined({macro})" for macro in enable_macros)
@@ -164,6 +192,27 @@ def emit_module_selection(modules: list[dict]) -> str:
     for macro in enable_macros:
         out.append(f"#define {macro}")
     out.append("#endif")
+
+    for module in modules:
+        enabled_by = module.get("enabled_by", [])
+        if not enabled_by:
+            continue
+        condition = " || ".join(f"defined({macro})" for macro in enabled_by)
+        out.append("")
+        out.append(f"#if {condition}")
+        out.append(f"#define {module['enable_macro']}")
+        out.append("#endif")
+
+    for module in modules:
+        dependencies = module_dependency_macros(module, modules)
+        if not dependencies:
+            continue
+        out.append("")
+        out.append(f"#ifdef {module['enable_macro']}")
+        for macro in dependencies:
+            out.append(f"#define {macro}")
+        out.append("#endif")
+
     return "\n".join(out) + "\n"
 
 

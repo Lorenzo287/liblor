@@ -11,12 +11,43 @@
    If no LOR_ENABLE_* macro is defined, every stable module is enabled.
    Define one or more LOR_ENABLE_* macros before including this header
    to include only those modules. */
-#if !defined(LOR_ENABLE_MEMORY)
+#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_STRING)
 #define LOR_ENABLE_ALL
 #endif
 
 #ifdef LOR_ENABLE_ALL
+#define LOR_ENABLE_STATUS
 #define LOR_ENABLE_MEMORY
+#define LOR_ENABLE_STRING
+#endif
+
+#if defined(LOR_LEAKCHECK)
+#define LOR_ENABLE_MEMORY
+#endif
+
+#ifdef LOR_ENABLE_STRING
+#define LOR_ENABLE_STATUS
+#endif
+
+// === status: declarations ===
+#ifdef LOR_ENABLE_STATUS
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum LorStatus {
+    LOR_STATUS_OK = 0,
+    LOR_STATUS_INVALID_ARGUMENT,
+    LOR_STATUS_OUT_OF_MEMORY,
+    LOR_STATUS_OVERFLOW
+} LorStatus;
+
+// Returns a stable lowercase name for `status`, or "unknown".
+const char *lor_status_name(LorStatus status);
+
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 // === memory: declarations ===
@@ -352,7 +383,214 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_file_(void *file) {
 }
 #endif
 #endif
+
+// === string: declarations ===
+#ifdef LOR_ENABLE_STRING
+#include <stddef.h>
+#include <stdio.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Borrowed byte string.
+
+   A view does not own `data`, does not require a NUL terminator, and remains
+   valid only while the referenced bytes remain valid and unmoved. `data` may
+   be `NULL` only when `size` is zero. */
+typedef struct LorStringView {
+    const char *data;
+    size_t size;
+} LorStringView;
+
+#define LOR_STRING_VIEW_INIT {NULL, 0u}
+#define LOR_SV_LITERAL(text) {(text), sizeof(text) - 1u}
+
+// Creates a view over `size` bytes. Invalid `NULL`/non-zero input returns empty.
+LorStringView lor_sv_from_parts(const char *data, size_t size);
+
+// Creates a view over a NUL-terminated C string. Passing `NULL` returns empty.
+LorStringView lor_sv_from_cstr(const char *text);
+
+// Returns non-zero when the view satisfies its pointer/size invariant.
+int lor_sv_is_valid(LorStringView view);
+
+// Returns non-zero when `view` contains no bytes.
+int lor_sv_is_empty(LorStringView view);
+
+// Compares the complete binary contents of two views.
+int lor_sv_equal(LorStringView a, LorStringView b);
+
+// Returns whether `view` begins with `prefix`.
+int lor_sv_starts_with(LorStringView view, LorStringView prefix);
+
+// Returns whether `view` ends with `suffix`.
+int lor_sv_ends_with(LorStringView view, LorStringView suffix);
+
+// Removes ASCII whitespace from the left side of `view`.
+LorStringView lor_sv_trim_left(LorStringView view);
+
+// Removes ASCII whitespace from the right side of `view`.
+LorStringView lor_sv_trim_right(LorStringView view);
+
+// Removes ASCII whitespace from both sides of `view`.
+LorStringView lor_sv_trim(LorStringView view);
+
+/* Returns at most `size` bytes starting at `offset`.
+
+   Out-of-range offsets and sizes are clamped to the view bounds. */
+LorStringView lor_sv_slice(LorStringView view, size_t offset, size_t size);
+
+// Returns at most the first `size` bytes of `view`.
+LorStringView lor_sv_take_left(LorStringView view, size_t size);
+
+// Returns at most the last `size` bytes of `view`.
+LorStringView lor_sv_take_right(LorStringView view, size_t size);
+
+// Removes and returns at most the first `size` bytes from `view`.
+LorStringView lor_sv_chop_left(LorStringView *view, size_t size);
+
+// Removes and returns at most the last `size` bytes from `view`.
+LorStringView lor_sv_chop_right(LorStringView *view, size_t size);
+
+/* Finds `needle` and writes its byte offset to `index`.
+
+   An empty needle is found at offset zero. `index` is unchanged on failure. */
+int lor_sv_find(LorStringView view, LorStringView needle, size_t *index);
+
+// Finds `needle` and writes its byte offset to `index`.
+int lor_sv_find_char(LorStringView view, char needle, size_t *index);
+
+/* Splits `view` around the first non-empty `delimiter`.
+
+   On success, writes the bytes before and after the delimiter and returns
+   non-zero. When not found, writes `view` to `before`, an empty view to
+   `after`, and returns zero. */
+int lor_sv_split_once(LorStringView view, LorStringView delimiter,
+                      LorStringView *before, LorStringView *after);
+
+// Character-delimiter form of `lor_sv_split_once`.
+int lor_sv_split_once_char(LorStringView view, char delimiter,
+                           LorStringView *before, LorStringView *after);
+
+/* Removes the next delimiter-separated part from `view`.
+
+   When the delimiter is found, consumes it and returns non-zero. Otherwise,
+   returns the remaining input as `part`, empties `view`, and returns zero.
+   An empty or invalid delimiter leaves `view` unchanged. */
+int lor_sv_chop(LorStringView *view, LorStringView delimiter,
+                LorStringView *part);
+
+// Character-delimiter form of `lor_sv_chop`.
+int lor_sv_chop_char(LorStringView *view, char delimiter, LorStringView *part);
+
+/* Writes exactly `view.size` bytes to `out` without adding a newline.
+
+   Returns non-zero when the complete view was written. Unlike `%s` and
+   `%.*s`, this preserves embedded NUL bytes and supports lengths above
+   `INT_MAX`. */
+int lor_sv_fprint(FILE *out, LorStringView view);
+
+// Writes `view` to stdout using `lor_sv_fprint`.
+int lor_sv_print(LorStringView view);
+
+/* Owned, mutable byte string.
+
+   The handle points directly to NUL-terminated content and can be indexed or
+   passed to read-only C string APIs when non-NULL. Size and capacity metadata
+   are stored in a private allocation header. Do not free the handle directly;
+   release it with `lor_string_deinit`. */
+typedef char *LorString;
+
+#define LOR_STRING_INIT NULL
+
+// Initializes an empty string without allocating.
+void lor_string_init(LorString *string);
+
+/* Initializes `string` with a copy of `view`.
+
+   On failure, `string` is left empty and can be safely deinitialized. */
+LorStatus lor_string_init_view(LorString *string, LorStringView view);
+
+// NUL-terminated C-string form of `lor_string_init_view`.
+LorStatus lor_string_init_cstr(LorString *string, const char *text);
+
+// Releases owned storage and resets `string` to `LOR_STRING_INIT`.
+void lor_string_deinit(LorString *string);
+
+/* Scope-exit cleanup for `LorString` on GCC and Clang.
+
+   Unsupported compilers leave `LOR_AUTO_STRING` empty, so explicit
+   `lor_string_deinit` remains required for portable ownership paths. */
+#if defined(__GNUC__) || defined(__clang__)
+static inline void __attribute__((unused))
+lor_string_cleanup_(LorString *string) {
+    lor_string_deinit(string);
+}
+#define LOR_AUTO_STRING __attribute__((cleanup(lor_string_cleanup_)))
+#else
+#define LOR_AUTO_STRING
+#endif
+
+// Removes all contents while retaining allocated capacity.
+void lor_string_clear(LorString string);
+
+// Returns the number of content bytes, excluding the trailing NUL.
+size_t lor_string_size(LorString string);
+
+// Returns the writable content capacity, excluding the trailing NUL.
+size_t lor_string_capacity(LorString string);
+
+// Returns a borrowed view of `string`, or an empty view for `NULL`.
+LorStringView lor_string_view(LorString string);
+
+// Returns a stable empty C string when `string` is `NULL`.
+const char *lor_string_cstr(LorString string);
+
+/* Ensures room for at least `capacity` content bytes.
+
+   The string is unchanged on failure. */
+LorStatus lor_string_reserve(LorString *string, size_t capacity);
+
+// Replaces the contents with `view`. The string is unchanged on failure.
+LorStatus lor_string_assign(LorString *string, LorStringView view);
+
+// NUL-terminated C-string form of `lor_string_assign`.
+LorStatus lor_string_assign_cstr(LorString *string, const char *text);
+
+// Appends `view`. The string is unchanged on failure.
+LorStatus lor_string_append(LorString *string, LorStringView view);
+
+// NUL-terminated C-string form of `lor_string_append`.
+LorStatus lor_string_append_cstr(LorString *string, const char *text);
+
+// Appends one byte. The string is unchanged on failure.
+LorStatus lor_string_append_char(LorString *string, char value);
+
+#ifdef __cplusplus
+}
+#endif
+#endif
 #ifdef LOR_IMPLEMENTATION
+
+// === status: implementation ===
+#ifdef LOR_ENABLE_STATUS
+const char *lor_status_name(LorStatus status) {
+    switch (status) {
+    case LOR_STATUS_OK:
+        return "ok";
+    case LOR_STATUS_INVALID_ARGUMENT:
+        return "invalid argument";
+    case LOR_STATUS_OUT_OF_MEMORY:
+        return "out of memory";
+    case LOR_STATUS_OVERFLOW:
+        return "overflow";
+    }
+
+    return "unknown";
+}
+#endif
 
 // === memory: implementation ===
 #ifdef LOR_ENABLE_MEMORY
@@ -1316,11 +1554,428 @@ void lor_mmap_unmap(LorMmap *map) {
 }
 #endif
 
+// === string: implementation ===
+#ifdef LOR_ENABLE_STRING
+#if defined(LOR_LEAKCHECK)
+#endif
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+static int lor_sv__ascii_space(unsigned char value) {
+    return value == ' ' || value == '\t' || value == '\n' || value == '\r' ||
+           value == '\f' || value == '\v';
+}
+
+static const char *lor_sv__offset(LorStringView view, size_t offset) {
+    return view.data != NULL ? view.data + offset : NULL;
+}
+
+LorStringView lor_sv_from_parts(const char *data, size_t size) {
+    if (data == NULL && size != 0) return (LorStringView)LOR_STRING_VIEW_INIT;
+    return (LorStringView){.data = data, .size = size};
+}
+
+LorStringView lor_sv_from_cstr(const char *text) {
+    if (text == NULL) return (LorStringView)LOR_STRING_VIEW_INIT;
+    return lor_sv_from_parts(text, strlen(text));
+}
+
+int lor_sv_is_valid(LorStringView view) {
+    return view.data != NULL || view.size == 0;
+}
+
+int lor_sv_is_empty(LorStringView view) {
+    return view.size == 0;
+}
+
+int lor_sv_equal(LorStringView a, LorStringView b) {
+    if (!lor_sv_is_valid(a) || !lor_sv_is_valid(b) || a.size != b.size) return 0;
+    if (a.size == 0) return 1;
+    return memcmp(a.data, b.data, a.size) == 0;
+}
+
+int lor_sv_starts_with(LorStringView view, LorStringView prefix) {
+    if (!lor_sv_is_valid(view) || !lor_sv_is_valid(prefix) ||
+        prefix.size > view.size)
+        return 0;
+
+    return lor_sv_equal(lor_sv_take_left(view, prefix.size), prefix);
+}
+
+int lor_sv_ends_with(LorStringView view, LorStringView suffix) {
+    if (!lor_sv_is_valid(view) || !lor_sv_is_valid(suffix) ||
+        suffix.size > view.size)
+        return 0;
+
+    return lor_sv_equal(lor_sv_take_right(view, suffix.size), suffix);
+}
+
+LorStringView lor_sv_trim_left(LorStringView view) {
+    if (!lor_sv_is_valid(view)) return (LorStringView)LOR_STRING_VIEW_INIT;
+
+    size_t offset = 0;
+    while (offset < view.size &&
+           lor_sv__ascii_space((unsigned char)view.data[offset]))
+        offset += 1u;
+
+    return lor_sv_slice(view, offset, view.size - offset);
+}
+
+LorStringView lor_sv_trim_right(LorStringView view) {
+    if (!lor_sv_is_valid(view)) return (LorStringView)LOR_STRING_VIEW_INIT;
+
+    size_t size = view.size;
+    while (size > 0 && lor_sv__ascii_space((unsigned char)view.data[size - 1u]))
+        size -= 1u;
+
+    return lor_sv_slice(view, 0, size);
+}
+
+LorStringView lor_sv_trim(LorStringView view) {
+    return lor_sv_trim_right(lor_sv_trim_left(view));
+}
+
+LorStringView lor_sv_slice(LorStringView view, size_t offset, size_t size) {
+    if (!lor_sv_is_valid(view)) return (LorStringView)LOR_STRING_VIEW_INIT;
+    if (offset > view.size) offset = view.size;
+    if (size > view.size - offset) size = view.size - offset;
+    return lor_sv_from_parts(lor_sv__offset(view, offset), size);
+}
+
+LorStringView lor_sv_take_left(LorStringView view, size_t size) {
+    return lor_sv_slice(view, 0, size);
+}
+
+LorStringView lor_sv_take_right(LorStringView view, size_t size) {
+    if (!lor_sv_is_valid(view)) return (LorStringView)LOR_STRING_VIEW_INIT;
+    if (size > view.size) size = view.size;
+    return lor_sv_slice(view, view.size - size, size);
+}
+
+LorStringView lor_sv_chop_left(LorStringView *view, size_t size) {
+    if (view == NULL || !lor_sv_is_valid(*view))
+        return (LorStringView)LOR_STRING_VIEW_INIT;
+
+    LorStringView result = lor_sv_take_left(*view, size);
+    *view = lor_sv_slice(*view, result.size, view->size - result.size);
+    return result;
+}
+
+LorStringView lor_sv_chop_right(LorStringView *view, size_t size) {
+    if (view == NULL || !lor_sv_is_valid(*view))
+        return (LorStringView)LOR_STRING_VIEW_INIT;
+
+    LorStringView result = lor_sv_take_right(*view, size);
+    view->size -= result.size;
+    return result;
+}
+
+int lor_sv_find(LorStringView view, LorStringView needle, size_t *index) {
+    if (!lor_sv_is_valid(view) || !lor_sv_is_valid(needle) ||
+        needle.size > view.size)
+        return 0;
+
+    if (needle.size == 0) {
+        if (index != NULL) *index = 0;
+        return 1;
+    }
+
+    size_t limit = view.size - needle.size;
+    for (size_t i = 0; i <= limit; ++i) {
+        if (view.data[i] == needle.data[0] &&
+            memcmp(view.data + i, needle.data, needle.size) == 0) {
+            if (index != NULL) *index = i;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int lor_sv_find_char(LorStringView view, char needle, size_t *index) {
+    if (!lor_sv_is_valid(view)) return 0;
+
+    const char *found = view.size != 0 ? memchr(view.data, needle, view.size) : NULL;
+    if (found == NULL) return 0;
+    if (index != NULL) *index = (size_t)(found - view.data);
+    return 1;
+}
+
+int lor_sv_split_once(LorStringView view, LorStringView delimiter,
+                      LorStringView *before, LorStringView *after) {
+    size_t index = 0;
+    int found = delimiter.size != 0 && lor_sv_find(view, delimiter, &index);
+
+    if (before != NULL) *before = found ? lor_sv_take_left(view, index) : view;
+    if (after != NULL) {
+        *after = found
+                     ? lor_sv_slice(view, index + delimiter.size,
+                                    view.size - index - delimiter.size)
+                     : (LorStringView)LOR_STRING_VIEW_INIT;
+    }
+
+    return found;
+}
+
+int lor_sv_split_once_char(LorStringView view, char delimiter,
+                           LorStringView *before, LorStringView *after) {
+    return lor_sv_split_once(view, lor_sv_from_parts(&delimiter, 1), before,
+                             after);
+}
+
+int lor_sv_chop(LorStringView *view, LorStringView delimiter,
+                LorStringView *part) {
+    if (view == NULL || !lor_sv_is_valid(*view) ||
+        !lor_sv_is_valid(delimiter) || delimiter.size == 0) {
+        if (part != NULL) *part = (LorStringView)LOR_STRING_VIEW_INIT;
+        return 0;
+    }
+
+    LorStringView before;
+    LorStringView after;
+    int found = lor_sv_split_once(*view, delimiter, &before, &after);
+    if (part != NULL) *part = before;
+
+    if (found) {
+        *view = after;
+    } else {
+        *view = lor_sv_slice(*view, view->size, 0);
+    }
+
+    return found;
+}
+
+int lor_sv_chop_char(LorStringView *view, char delimiter, LorStringView *part) {
+    return lor_sv_chop(view, lor_sv_from_parts(&delimiter, 1), part);
+}
+
+int lor_sv_fprint(FILE *out, LorStringView view) {
+    if (out == NULL || !lor_sv_is_valid(view)) return 0;
+    if (view.size == 0) return 1;
+    return fwrite(view.data, 1, view.size, out) == view.size;
+}
+
+int lor_sv_print(LorStringView view) {
+    return lor_sv_fprint(stdout, view);
+}
+
+typedef struct LorStringHeader {
+    size_t size;
+    size_t capacity;
+    char data[];
+} LorStringHeader;
+
+static LorStringHeader *lor_string__header(LorString string) {
+    return (LorStringHeader *)((unsigned char *)string -
+                               offsetof(LorStringHeader, data));
+}
+
+static const LorStringHeader *lor_string__header_const(LorString string) {
+    return (const LorStringHeader *)((const unsigned char *)string -
+                                     offsetof(LorStringHeader, data));
+}
+
+static void *lor_string__realloc(void *ptr, size_t size) {
+#if defined(LOR_LEAKCHECK)
+    return lor_realloc_debug(ptr, size, __FILE__, __LINE__);
+#else
+    return realloc(ptr, size);
+#endif
+}
+
+static void lor_string__free(void *ptr) {
+#if defined(LOR_LEAKCHECK)
+    lor_free_debug(ptr, __FILE__, __LINE__);
+#else
+    free(ptr);
+#endif
+}
+
+/* Returns one for a valid alias, zero for no alias, and negative one when a
+   view begins inside the string but extends beyond its initialized bytes. */
+static int lor_string__view_offset(LorString string, LorStringView view,
+                                   size_t *offset) {
+    if (string == NULL || view.data == NULL) return 0;
+
+    size_t string_size = lor_string__header_const(string)->size;
+    uintptr_t base = (uintptr_t)(const void *)string;
+    uintptr_t start = (uintptr_t)(const void *)view.data;
+    if (string_size > UINTPTR_MAX - base) return 0;
+
+    uintptr_t end = base + string_size;
+    if (start < base || start > end) return 0;
+
+    size_t result = (size_t)(start - base);
+    if (view.size > string_size - result) return -1;
+    if (offset != NULL) *offset = result;
+    return 1;
+}
+
+static LorStatus lor_string__growth_capacity(size_t current, size_t required,
+                                             size_t *capacity) {
+    if (required == SIZE_MAX) return LOR_STATUS_OVERFLOW;
+
+    size_t result = current < 16u ? 16u : current;
+    while (result < required) {
+        if (result > SIZE_MAX / 2u) {
+            result = required;
+            break;
+        }
+        result *= 2u;
+    }
+
+    if (result == SIZE_MAX) return LOR_STATUS_OVERFLOW;
+    *capacity = result;
+    return LOR_STATUS_OK;
+}
+
+void lor_string_init(LorString *string) {
+    if (string != NULL) *string = LOR_STRING_INIT;
+}
+
+LorStatus lor_string_init_view(LorString *string, LorStringView view) {
+    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+    *string = LOR_STRING_INIT;
+    return lor_string_assign(string, view);
+}
+
+LorStatus lor_string_init_cstr(LorString *string, const char *text) {
+    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+    *string = LOR_STRING_INIT;
+    if (text == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+    return lor_string_assign(string, lor_sv_from_cstr(text));
+}
+
+void lor_string_deinit(LorString *string) {
+    if (string == NULL) return;
+    if (*string != NULL) lor_string__free(lor_string__header(*string));
+    *string = LOR_STRING_INIT;
+}
+
+void lor_string_clear(LorString string) {
+    if (string == NULL) return;
+    lor_string__header(string)->size = 0;
+    string[0] = '\0';
+}
+
+size_t lor_string_size(LorString string) {
+    return string != NULL ? lor_string__header_const(string)->size : 0;
+}
+
+size_t lor_string_capacity(LorString string) {
+    return string != NULL ? lor_string__header_const(string)->capacity : 0;
+}
+
+LorStringView lor_string_view(LorString string) {
+    return lor_sv_from_parts(string, lor_string_size(string));
+}
+
+const char *lor_string_cstr(LorString string) {
+    return string != NULL ? string : "";
+}
+
+LorStatus lor_string_reserve(LorString *string, size_t capacity) {
+    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t current_capacity = lor_string_capacity(*string);
+    if (capacity <= current_capacity) return LOR_STATUS_OK;
+
+    size_t new_capacity = 0;
+    LorStatus status =
+        lor_string__growth_capacity(current_capacity, capacity, &new_capacity);
+    if (status != LOR_STATUS_OK) return status;
+
+    size_t header_size = offsetof(LorStringHeader, data);
+    if (new_capacity > SIZE_MAX - header_size - 1u)
+        return LOR_STATUS_OVERFLOW;
+
+    size_t size = lor_string_size(*string);
+    LorStringHeader *header =
+        *string != NULL ? lor_string__header(*string) : NULL;
+    LorStringHeader *new_header = (LorStringHeader *)lor_string__realloc(
+        header, header_size + new_capacity + 1u);
+    if (new_header == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+
+    new_header->size = size;
+    new_header->capacity = new_capacity;
+    new_header->data[size] = '\0';
+    *string = new_header->data;
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_string_assign(LorString *string, LorStringView view) {
+    if (string == NULL || !lor_sv_is_valid(view))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t offset = 0;
+    int alias = lor_string__view_offset(*string, view, &offset);
+    if (alias < 0) return LOR_STATUS_INVALID_ARGUMENT;
+
+    LorStatus status = lor_string_reserve(string, view.size);
+    if (status != LOR_STATUS_OK) return status;
+    if (alias > 0) view.data = *string + offset;
+
+    if (view.size != 0) memmove(*string, view.data, view.size);
+    if (*string != NULL) {
+        lor_string__header(*string)->size = view.size;
+        (*string)[view.size] = '\0';
+    }
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_string_assign_cstr(LorString *string, const char *text) {
+    if (text == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+    return lor_string_assign(string, lor_sv_from_cstr(text));
+}
+
+LorStatus lor_string_append(LorString *string, LorStringView view) {
+    if (string == NULL || !lor_sv_is_valid(view))
+        return LOR_STATUS_INVALID_ARGUMENT;
+    if (view.size == 0) return LOR_STATUS_OK;
+
+    size_t old_size = lor_string_size(*string);
+    if (view.size > SIZE_MAX - old_size) return LOR_STATUS_OVERFLOW;
+
+    size_t offset = 0;
+    int alias = lor_string__view_offset(*string, view, &offset);
+    if (alias < 0) return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t new_size = old_size + view.size;
+    LorStatus status = lor_string_reserve(string, new_size);
+    if (status != LOR_STATUS_OK) return status;
+    if (alias > 0) view.data = *string + offset;
+
+    memmove(*string + old_size, view.data, view.size);
+    lor_string__header(*string)->size = new_size;
+    (*string)[new_size] = '\0';
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_string_append_cstr(LorString *string, const char *text) {
+    if (text == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+    return lor_string_append(string, lor_sv_from_cstr(text));
+}
+
+LorStatus lor_string_append_char(LorString *string, char value) {
+    return lor_string_append(string, lor_sv_from_parts(&value, 1));
+}
+#endif
+
 #endif
 /* Optional short-name aliases
    These are preprocessor aliases only. They do not change compiled
    symbol names. */
 #ifdef LOR_STRIP_PREFIX
+#ifdef LOR_ENABLE_STATUS
+#define Status LorStatus
+#define STATUS_OK LOR_STATUS_OK
+#define STATUS_INVALID_ARGUMENT LOR_STATUS_INVALID_ARGUMENT
+#define STATUS_OUT_OF_MEMORY LOR_STATUS_OUT_OF_MEMORY
+#define STATUS_OVERFLOW LOR_STATUS_OVERFLOW
+#define status_name lor_status_name
+#endif
 #ifdef LOR_ENABLE_MEMORY
 #define ArenaBackend LorArenaBackend
 #define ArenaConfig LorArenaConfig
@@ -1375,6 +2030,52 @@ void lor_mmap_unmap(LorMmap *map) {
 #define leakcheck_stats lor_leakcheck_stats
 #define leakcheck_count lor_leakcheck_count
 #define leakcheck_report lor_leakcheck_report
+#endif
+#ifdef LOR_ENABLE_STRING
+#define StringView LorStringView
+#define String LorString
+#define STRING_VIEW_INIT LOR_STRING_VIEW_INIT
+#define SV_LITERAL LOR_SV_LITERAL
+#define STRING_INIT LOR_STRING_INIT
+#define AUTO_STRING LOR_AUTO_STRING
+#define sv_from_parts lor_sv_from_parts
+#define sv_from_cstr lor_sv_from_cstr
+#define sv_is_valid lor_sv_is_valid
+#define sv_is_empty lor_sv_is_empty
+#define sv_equal lor_sv_equal
+#define sv_starts_with lor_sv_starts_with
+#define sv_ends_with lor_sv_ends_with
+#define sv_trim_left lor_sv_trim_left
+#define sv_trim_right lor_sv_trim_right
+#define sv_trim lor_sv_trim
+#define sv_slice lor_sv_slice
+#define sv_take_left lor_sv_take_left
+#define sv_take_right lor_sv_take_right
+#define sv_chop_left lor_sv_chop_left
+#define sv_chop_right lor_sv_chop_right
+#define sv_find lor_sv_find
+#define sv_find_char lor_sv_find_char
+#define sv_split_once lor_sv_split_once
+#define sv_split_once_char lor_sv_split_once_char
+#define sv_chop lor_sv_chop
+#define sv_chop_char lor_sv_chop_char
+#define sv_fprint lor_sv_fprint
+#define sv_print lor_sv_print
+#define string_init lor_string_init
+#define string_init_view lor_string_init_view
+#define string_init_cstr lor_string_init_cstr
+#define string_deinit lor_string_deinit
+#define string_clear lor_string_clear
+#define string_size lor_string_size
+#define string_capacity lor_string_capacity
+#define string_view lor_string_view
+#define string_cstr lor_string_cstr
+#define string_reserve lor_string_reserve
+#define string_assign lor_string_assign
+#define string_assign_cstr lor_string_assign_cstr
+#define string_append lor_string_append
+#define string_append_cstr lor_string_append_cstr
+#define string_append_char lor_string_append_char
 #endif
 #endif
 

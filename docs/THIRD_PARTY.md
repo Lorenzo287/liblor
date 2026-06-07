@@ -8,7 +8,8 @@ Status labels:
 
 - `reference`: present in the repository as study material, not part of liblor's
   public implementation.
-- `inspiration`: influenced liblor design, but no code was copied.
+- `inspiration`: influenced liblor design, but no code was copied. The study
+  copy may have been removed after the design was settled.
 - `adapted`: liblor contains code closely derived from the source.
 - `copied`: liblor contains source code copied from the project.
 - `needs audit`: do not use until license/source details are clear.
@@ -20,25 +21,25 @@ source tree yet.
 
 ## Reference And Inspiration Inventory
 
-| Path                                         | Source / Author                                     | License              | Status      | Notes                                                                                |
-| -------------------------------------------- | --------------------------------------------------- | -------------------- | ----------- | ------------------------------------------------------------------------------------ |
-| `references/arena/tsoding/`                  | Alexey Kutepov / Tsoding                            | MIT                  | inspiration | Arena allocator reference. Current `src/memory.c` is liblor-owned code, not copied.  |
-| `references/arena/magicalbait/`              | MagicalBait                                         | MIT                  | inspiration | Interesting arena and PRNG snippets.                                                 |
-| `references/arena/raddebugger/`              | Epic Games Tools / RAD Debugger                     | MIT                  | inspiration | Production arena reference. Current `src/memory.c` is liblor-owned code, not copied. |
-| `references/build/nob/`                      | Alexey Kutepov / Tsoding                            | MIT or public domain | inspiration | C-native build tooling reference. Current `Makefile` is liblor-owned, not copied.    |
-| `references/strings/sds/`                    | Salvatore Sanfilippo, Oran Agra, Redis contributors | BSD-style            | reference   | Dynamic string reference. Preserve notices if adapted.                               |
-| `references/strings/string_view/`            | Alexey Kutepov / Tsoding                            | MIT                  | reference   | String-view reference.                                                               |
-| `references/dynamic_array/stb_ds.h`          | Sean Barrett / stb                                  | MIT or public domain | reference   | Dynamic array/hash map reference.                                                    |
-| `references/dynamic_array/stretchy_buffer.h` | Sean Barrett / stb                                  | MIT or public domain | reference   | Stretchy-buffer reference.                                                           |
-| `references/hash_table/stb/`                 | Sean Barrett / stb                                  | MIT or public domain | reference   | Hash-table reference.                                                                |
-| `references/hash_table/tsoding/`             | Alexey Kutepov / Tsoding                            | MIT or public domain | reference   | Hash-table reference.                                                                |
-| `references/leakcheck/stb_leakcheck.h`       | Sean Barrett / stb                                  | MIT or public domain | reference   | Leak-checking reference.                                                             |
-| `references/libCello/`                       | Daniel Holden                                       | BSD-style            | inspiration | Higher-level C design reference.                                                     |
-| `references/mman/`                           | Viktor Kutuzov, Klaus Post, Hermann Seib            | MIT                  | reference   | Windows mmap compatibility reference.                                                |
-| `references/rand/`                           | MagicalBait; PCG inspiration by Melissa O'Neill     | Apache-2.0           | reference   | Treat carefully if reused; Apache-2.0 obligations apply to copied/adapted code.      |
-| `references/concurrency/libdill/`            | Martin Sustrik and contributors                     | MIT-like permissive  | reference   | Coroutine/concurrency reference. Preserve notices if adapted.                        |
-| `references/concurrency/libmill/`            | Martin Sustrik                                      | MIT-like permissive  | reference   | Coroutine/concurrency reference. Audit before use.                                   |
-| `references/stb_misc/stb.h`                  | Sean Barrett / stb                                  | MIT or public domain | reference   | Large utility header. Read only for specific needs.                                  |
+| Source / Path                                | Author                                              | License              | Status      | Notes                                                                              |
+| -------------------------------------------- | --------------------------------------------------- | -------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| Tsoding arena allocator                      | Alexey Kutepov / Tsoding                            | MIT                  | inspiration | Arena study copy removed. Current `src/memory.c` is liblor-owned code, not copied. |
+| MagicalBait arena snippets                   | MagicalBait                                         | MIT                  | inspiration | Arena and scratch design study copy removed.                                       |
+| RAD Debugger arena                           | Epic Games Tools / RAD Debugger                     | MIT                  | inspiration | Production arena study copy removed. Current memory code is original.              |
+| `references/build/nob/`                      | Alexey Kutepov / Tsoding                            | MIT or public domain | inspiration | C-native build tooling reference. Current `Makefile` is liblor-owned, not copied.  |
+| `references/strings/sds/`                    | Salvatore Sanfilippo, Oran Agra, Redis contributors | BSD-style            | inspiration | Influenced dynamic strings and prefix headers; liblor code is original.            |
+| `references/strings/string_view/`            | Alexey Kutepov / Tsoding                            | MIT                  | inspiration | Influenced string-view operations; liblor code is original.                        |
+| `references/dynamic_array/stb_ds.h`          | Sean Barrett / stb                                  | MIT or public domain | reference   | Dynamic array/hash map reference.                                                  |
+| `references/dynamic_array/stretchy_buffer.h` | Sean Barrett / stb                                  | MIT or public domain | reference   | Stretchy-buffer reference.                                                         |
+| `references/hash_table/stb/`                 | Sean Barrett / stb                                  | MIT or public domain | reference   | Hash-table reference.                                                              |
+| `references/hash_table/tsoding/`             | Alexey Kutepov / Tsoding                            | MIT or public domain | reference   | Hash-table reference.                                                              |
+| stb leakcheck                                | Sean Barrett / stb                                  | MIT or public domain | inspiration | Leak-checking study copy removed; liblor implementation is original.               |
+| `references/libCello/`                       | Daniel Holden                                       | BSD-style            | inspiration | Higher-level C design reference.                                                   |
+| mman-win32                                   | Viktor Kutuzov, Klaus Post, Hermann Seib            | MIT                  | inspiration | Windows mmap study copy removed; liblor uses a narrower native abstraction.        |
+| `references/rand/`                           | MagicalBait; PCG inspiration by Melissa O'Neill     | Apache-2.0           | reference   | Treat carefully if reused; Apache-2.0 obligations apply to copied/adapted code.    |
+| `references/concurrency/libdill/`            | Martin Sustrik and contributors                     | MIT-like permissive  | reference   | Coroutine/concurrency reference. Preserve notices if adapted.                      |
+| `references/concurrency/libmill/`            | Martin Sustrik                                      | MIT-like permissive  | reference   | Coroutine/concurrency reference. Audit before use.                                 |
+| `references/stb_misc/stb.h`                  | Sean Barrett / stb                                  | MIT or public domain | reference   | Large utility header. Read only for specific needs.                                |
 
 Smaller experiment folders should be audited and added here before their ideas
 or code move into liblor.

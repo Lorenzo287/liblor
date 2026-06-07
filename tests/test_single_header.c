@@ -4,6 +4,7 @@
 
 #define LOR_IMPLEMENTATION
 #define LOR_ENABLE_MEMORY
+#define LOR_ENABLE_STRING
 #define LOR_LEAKCHECK
 #define LOR_STRIP_PREFIX
 #include "../lor.h"
@@ -74,6 +75,12 @@ int main(void) {
     CHECK(heap != NULL);
     CHECK(leakcheck_count() == 1);
     free(heap);
+    CHECK(leakcheck_count() == 0);
+
+    String text = STRING_INIT;
+    CHECK(string_append_cstr(&text, "tracked string") == STATUS_OK);
+    CHECK(leakcheck_count() == 1);
+    string_deinit(&text);
     CHECK(leakcheck_count() == 0);
 
     CHECK(test_lazy_arena_leak_location() == 0);
