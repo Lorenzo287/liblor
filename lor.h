@@ -196,8 +196,11 @@ void lor_scratch_cleanup(void);
 size_t lor_page_size(void);
 
 typedef enum LorMmapMode {
+    // Read-only mapping. Writes through `data` are invalid.
     LOR_MMAP_READ = 0,
+    // Writable private copy. Changes are not written to the file.
     LOR_MMAP_COPY = 1,
+    // Writable shared mapping. Changes are visible in the mapped file.
     LOR_MMAP_SHARED = 2
 } LorMmapMode;
 
@@ -209,8 +212,8 @@ typedef struct LorMmap {
 /* Maps the file at `path` using `mode`.
 
    Returns `{0}` when `path` is `NULL`, the file cannot be opened, the file is
-   empty or too large, or the mapping fails. Successful mappings must be released
-   with `lor_mmap_unmap`. */
+   empty or too large, `mode` is invalid, or the mapping fails. Successful
+   mappings must be released with `lor_mmap_unmap`. */
 LorMmap lor_mmap_file(const char *path, LorMmapMode mode);
 
 /* Unmaps `map` and resets it to `{0}`.
@@ -1210,6 +1213,11 @@ static DWORD lor_mmap__windows_access(LorMmapMode mode) {
 }
 #endif
 
+static int lor_mmap__mode_valid(LorMmapMode mode) {
+    return mode == LOR_MMAP_READ || mode == LOR_MMAP_COPY ||
+           mode == LOR_MMAP_SHARED;
+}
+
 static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
                                  const char *file, int line) {
     LorMmap map = {0};
@@ -1217,7 +1225,7 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
     (void)file;
     (void)line;
 #endif
-    if (path == NULL) return map;
+    if (path == NULL || !lor_mmap__mode_valid(mode)) return map;
 
 #if defined(_WIN32)
     {

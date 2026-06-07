@@ -860,6 +860,11 @@ static DWORD lor_mmap__windows_access(LorMmapMode mode) {
 }
 #endif
 
+static int lor_mmap__mode_valid(LorMmapMode mode) {
+    return mode == LOR_MMAP_READ || mode == LOR_MMAP_COPY ||
+           mode == LOR_MMAP_SHARED;
+}
+
 static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
                                  const char *file, int line) {
     LorMmap map = {0};
@@ -867,7 +872,7 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
     (void)file;
     (void)line;
 #endif
-    if (path == NULL) return map;
+    if (path == NULL || !lor_mmap__mode_valid(mode)) return map;
 
 #if defined(_WIN32)
     {

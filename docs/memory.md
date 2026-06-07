@@ -23,6 +23,10 @@ a concrete container or subsystem needs user-supplied allocation behavior.
 The arena virtual-memory backend is an implementation detail. A public manual
 virtual-memory API can be added later if common liblor use cases justify it.
 
+`lor_mmap_file` maps a complete non-empty file. `LOR_MMAP_READ` is read-only,
+`LOR_MMAP_COPY` allows private changes that do not modify the file, and
+`LOR_MMAP_SHARED` allows changes that are reflected in the file.
+
 ## Principles
 
 - Prefer useful features over wrapper APIs.
