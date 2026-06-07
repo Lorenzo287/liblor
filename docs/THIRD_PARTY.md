@@ -31,8 +31,8 @@ source tree yet.
 | Tsoding string view               | Alexey Kutepov / Tsoding                            | MIT                  | inspiration | String-view study copy removed. Influenced parsing operations; liblor code is original.  |
 | stb_ds dynamic arrays             | Sean Barrett / stb                                  | MIT or public domain | inspiration | Array study copy removed. Informed typed-pointer arrays; liblor code is original.        |
 | stb stretchy buffer               | Sean Barrett / stb                                  | MIT or public domain | inspiration | Array study copy removed. Informed prefix headers and indexing; liblor code is original. |
-| `references/hash_table/stb/`      | Sean Barrett / stb                                  | MIT or public domain | inspiration | Informed dense hash-map entries and string-key policy; liblor code is original.          |
-| `references/hash_table/tsoding/`  | Alexey Kutepov / Tsoding                            | MIT or public domain | inspiration | Informed typed generic hash/equality APIs; liblor code is original.                      |
+| stb_ds hash table                 | Sean Barrett / stb                                  | MIT or public domain | inspiration | Removed. Informed dense hash-map entries and string-key policy; liblor code is original. |
+| Tsoding hash table                | Alexey Kutepov / Tsoding                            | MIT or public domain | inspiration | Removed. Informed typed generic hash/equality APIs; liblor code is original.             |
 | stb leakcheck                     | Sean Barrett / stb                                  | MIT or public domain | inspiration | Leak-checking study copy removed; liblor implementation is original.                     |
 | `references/libCello/`            | Daniel Holden                                       | BSD-style            | inspiration | Higher-level C design reference.                                                         |
 | mman-win32                        | Viktor Kutuzov, Klaus Post, Hermann Seib            | MIT                  | inspiration | Windows mmap study copy removed; liblor uses a narrower native abstraction.              |
@@ -40,6 +40,7 @@ source tree yet.
 | `references/concurrency/libdill/` | Martin Sustrik and contributors                     | MIT-like permissive  | reference   | Coroutine/concurrency reference. Preserve notices if adapted.                            |
 | `references/concurrency/libmill/` | Martin Sustrik                                      | MIT-like permissive  | reference   | Coroutine/concurrency reference. Audit before use.                                       |
 | `references/stb_misc/stb.h`       | Sean Barrett / stb                                  | MIT or public domain | reference   | Large utility header. Read only for specific needs.                                      |
+| EasyArgs cli parser               | Xander Gouws                                        | MIT                  | inspiration | Removed. EasyArgs informed basic CLI scope; liblor uses an original function API.        |
 
 Smaller experiment folders should be audited and added here before their ideas
 or code move into liblor.

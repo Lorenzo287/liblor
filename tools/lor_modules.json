@@ -325,6 +325,70 @@
                     ["LOR_AUTO_SET", "AUTO_SET"]
                 ]
             }
+        },
+        {
+            "name": "cli",
+            "enable_macro": "LOR_ENABLE_CLI",
+            "dependencies": [
+                "array",
+                "string"
+            ],
+            "header": "include/lor/cli.h",
+            "source": "src/cli.c",
+            "symbols": {
+                "functions": [
+                    ["lor_cli_init", "cli_init"],
+                    ["lor_cli_deinit", "cli_deinit"],
+                    ["lor_cli_code_name", "cli_code_name"],
+                    ["lor_cli_add_flag", "cli_add_flag"],
+                    ["lor_cli_add_count", "cli_add_count"],
+                    ["lor_cli_add_string", "cli_add_string"],
+                    ["lor_cli_add_int", "cli_add_int"],
+                    ["lor_cli_add_double", "cli_add_double"],
+                    ["lor_cli_add_flag_option", "cli_add_flag_option"],
+                    ["lor_cli_add_count_option", "cli_add_count_option"],
+                    ["lor_cli_add_string_option", "cli_add_string_option"],
+                    ["lor_cli_add_int_option", "cli_add_int_option"],
+                    ["lor_cli_add_double_option", "cli_add_double_option"],
+                    ["lor_cli_add_strings_option", "cli_add_strings_option"],
+                    ["lor_cli_add_ints_option", "cli_add_ints_option"],
+                    ["lor_cli_add_doubles_option", "cli_add_doubles_option"],
+                    ["lor_cli_add_positional_string", "cli_add_positional_string"],
+                    ["lor_cli_add_positional_int", "cli_add_positional_int"],
+                    ["lor_cli_add_positional_double", "cli_add_positional_double"],
+                    ["lor_cli_add_positionals", "cli_add_positionals"],
+                    ["lor_cli_parse", "cli_parse"],
+                    ["lor_cli_fprint_error", "cli_fprint_error"],
+                    ["lor_cli_fprint_help", "cli_fprint_help"],
+                    ["lor_cli_print_help", "cli_print_help"]
+                ],
+                "types": [
+                    ["LorCli", "Cli"],
+                    ["LorCliOption", "CliOption"],
+                    ["LorCliPositional", "CliPositional"],
+                    ["LorCliCode", "CliCode"],
+                    ["LorCliResult", "CliResult"]
+                ],
+                "macros": [
+                    ["LOR_CLI_INIT", "CLI_INIT"],
+                    ["LOR_CLI_OPTION_INIT", "CLI_OPTION_INIT"],
+                    ["LOR_CLI_POSITIONAL_INIT", "CLI_POSITIONAL_INIT"],
+                    ["LOR_CLI_RESULT_INIT", "CLI_RESULT_INIT"],
+                    ["LOR_CLI_OK", "CLI_OK"],
+                    ["LOR_CLI_HELP_REQUESTED", "CLI_HELP_REQUESTED"],
+                    ["LOR_CLI_INVALID_STATE", "CLI_INVALID_STATE"],
+                    ["LOR_CLI_UNKNOWN_OPTION", "CLI_UNKNOWN_OPTION"],
+                    ["LOR_CLI_MISSING_VALUE", "CLI_MISSING_VALUE"],
+                    ["LOR_CLI_UNEXPECTED_VALUE", "CLI_UNEXPECTED_VALUE"],
+                    ["LOR_CLI_INVALID_VALUE", "CLI_INVALID_VALUE"],
+                    ["LOR_CLI_DUPLICATE_OPTION", "CLI_DUPLICATE_OPTION"],
+                    ["LOR_CLI_MISSING_REQUIRED_OPTION", "CLI_MISSING_REQUIRED_OPTION"],
+                    ["LOR_CLI_MISSING_POSITIONAL", "CLI_MISSING_POSITIONAL"],
+                    ["LOR_CLI_UNEXPECTED_POSITIONAL", "CLI_UNEXPECTED_POSITIONAL"],
+                    ["LOR_CLI_OUT_OF_MEMORY", "CLI_OUT_OF_MEMORY"],
+                    ["LOR_AUTO_CLI", "AUTO_CLI"]
+                ]
+            }
         }
     ]
 }

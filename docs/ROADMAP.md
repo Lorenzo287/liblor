@@ -4,13 +4,11 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Use the completed memory and container foundations to choose the next
-practical module.
+Use the completed memory, container, and CLI foundations in larger programs.
 
-1. Exercise the containers in a larger feature before widening their APIs.
-2. Choose between random-number helpers and a CLI argument parser.
-3. Consider a reusable test harness when the next module adds repeated test
-   infrastructure.
+1. Exercise the modules together before widening their APIs.
+2. Choose between random-number helpers and the first `lor` tool prototype.
+3. Consider a reusable test harness as test infrastructure repeats.
 
 ## Open Decisions
 
@@ -44,6 +42,7 @@ practical module.
 - [x] Add typed hash maps with byte, custom, borrowed-string, and owned-string
       key policies.
 - [x] Add typed hash sets with map-backed storage and mathematical operations.
+- [x] Add function-based CLI parsing with generated help and typed values.
 
 ## Backlog
 
@@ -71,7 +70,7 @@ practical module.
 ### Ergonomics
 
 - [x] automatic cleanup helper;
-- [ ] CLI argument parser;
+- [x] CLI argument parser;
 - [ ] generic print helpers;
 - [ ] type helper macros.
 

@@ -17,6 +17,7 @@ CLAUDE.md
 .vscode/
 .idea/
 .clang-format
+.clangd
 *.suo
 *.user
 *.userosscache

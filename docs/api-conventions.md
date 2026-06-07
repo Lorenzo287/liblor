@@ -18,9 +18,10 @@ them.
 
 There is no public `LorAllocator`. Add one only when at least two concrete
 modules need configurable allocation and their requirements are understood.
-Strings, arrays, and maps currently share heap, leak-check, and cleanup
-behavior without exposing allocator state. The map design did not reveal a
-concrete allocator requirement, so introducing one remains deferred.
+Strings, arrays, maps, sets, and CLI parser metadata currently share heap,
+leak-check, and cleanup behavior without exposing allocator state. These
+modules have not revealed a concrete allocator requirement, so introducing one
+remains deferred.
 
 Generic typed containers may use function-like macros to infer information
 that C cannot pass generically, such as `sizeof *(array)`. Compiler-extension
@@ -36,7 +37,8 @@ ordinary implementation functions rather than duplicating them in macros.
   additional values are needed. A normal "not found" result is not an error.
 - Operations with multiple meaningful failure reasons return `LorStatus`.
 - Module-specific result structures may be added when callers need context that
-  a status alone cannot carry.
+  a status alone cannot carry. `LorCliResult` follows this rule for parse
+  errors that include an argument index, token, and option or positional name.
 - Allocating mutators leave the original owned object unchanged on failure.
 - Initializing constructors leave their output safely deinitializable on
   failure.

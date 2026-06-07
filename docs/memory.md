@@ -177,6 +177,7 @@ matching explicit release function when a local variable leaves scope:
 - `LOR_AUTO_ARRAY`: `lor_array_deinit` (declared by `lor/array.h`)
 - `LOR_AUTO_MAP`: `lor_map_deinit` (declared by `lor/map.h`)
 - `LOR_AUTO_SET`: `lor_set_deinit` (declared by `lor/set.h`)
+- `LOR_AUTO_CLI`: `lor_cli_deinit` (declared by `lor/cli.h`)
 
 They are deterministic cleanup conveniences, not leak checking. Use them for
 local variables with obvious ownership; avoid them when ownership is transferred

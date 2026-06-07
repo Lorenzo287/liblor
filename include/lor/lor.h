@@ -4,6 +4,7 @@
 #define LOR_H
 
 #include "lor/array.h"   // IWYU pragma: export
+#include "lor/cli.h"     // IWYU pragma: export
 #include "lor/map.h"     // IWYU pragma: export
 #include "lor/memory.h"  // IWYU pragma: export
 #include "lor/set.h"     // IWYU pragma: export
