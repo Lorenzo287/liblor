@@ -89,16 +89,15 @@ int lor_sv_split_once(LorStringView view, LorStringView delimiter,
                       LorStringView *before, LorStringView *after);
 
 // Character-delimiter form of `lor_sv_split_once`.
-int lor_sv_split_once_char(LorStringView view, char delimiter,
-                           LorStringView *before, LorStringView *after);
+int lor_sv_split_once_char(LorStringView view, char delimiter, LorStringView *before,
+                           LorStringView *after);
 
 /* Removes the next delimiter-separated part from `view`.
 
    When the delimiter is found, consumes it and returns non-zero. Otherwise,
    returns the remaining input as `part`, empties `view`, and returns zero.
    An empty or invalid delimiter leaves `view` unchanged. */
-int lor_sv_chop(LorStringView *view, LorStringView delimiter,
-                LorStringView *part);
+int lor_sv_chop(LorStringView *view, LorStringView delimiter, LorStringView *part);
 
 // Character-delimiter form of `lor_sv_chop`.
 int lor_sv_chop_char(LorStringView *view, char delimiter, LorStringView *part);
@@ -142,8 +141,7 @@ void lor_string_deinit(LorString *string);
    Unsupported compilers leave `LOR_AUTO_STRING` empty, so explicit
    `lor_string_deinit` remains required for portable ownership paths. */
 #if defined(__GNUC__) || defined(__clang__)
-static inline void __attribute__((unused))
-lor_string_cleanup_(LorString *string) {
+static inline void __attribute__((unused)) lor_string_cleanup_(LorString *string) {
     lor_string_deinit(string);
 }
 #define LOR_AUTO_STRING __attribute__((cleanup(lor_string_cleanup_)))

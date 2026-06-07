@@ -11,7 +11,7 @@
    If no LOR_ENABLE_* macro is defined, every stable module is enabled.
    Define one or more LOR_ENABLE_* macros before including this header
    to include only those modules. */
-#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_STRING)
+#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_STRING) && !defined(LOR_ENABLE_ARRAY)
 #define LOR_ENABLE_ALL
 #endif
 
@@ -19,6 +19,7 @@
 #define LOR_ENABLE_STATUS
 #define LOR_ENABLE_MEMORY
 #define LOR_ENABLE_STRING
+#define LOR_ENABLE_ARRAY
 #endif
 
 #if defined(LOR_LEAKCHECK)
@@ -26,6 +27,10 @@
 #endif
 
 #ifdef LOR_ENABLE_STRING
+#define LOR_ENABLE_STATUS
+#endif
+
+#ifdef LOR_ENABLE_ARRAY
 #define LOR_ENABLE_STATUS
 #endif
 
@@ -471,16 +476,15 @@ int lor_sv_split_once(LorStringView view, LorStringView delimiter,
                       LorStringView *before, LorStringView *after);
 
 // Character-delimiter form of `lor_sv_split_once`.
-int lor_sv_split_once_char(LorStringView view, char delimiter,
-                           LorStringView *before, LorStringView *after);
+int lor_sv_split_once_char(LorStringView view, char delimiter, LorStringView *before,
+                           LorStringView *after);
 
 /* Removes the next delimiter-separated part from `view`.
 
    When the delimiter is found, consumes it and returns non-zero. Otherwise,
    returns the remaining input as `part`, empties `view`, and returns zero.
    An empty or invalid delimiter leaves `view` unchanged. */
-int lor_sv_chop(LorStringView *view, LorStringView delimiter,
-                LorStringView *part);
+int lor_sv_chop(LorStringView *view, LorStringView delimiter, LorStringView *part);
 
 // Character-delimiter form of `lor_sv_chop`.
 int lor_sv_chop_char(LorStringView *view, char delimiter, LorStringView *part);
@@ -524,8 +528,7 @@ void lor_string_deinit(LorString *string);
    Unsupported compilers leave `LOR_AUTO_STRING` empty, so explicit
    `lor_string_deinit` remains required for portable ownership paths. */
 #if defined(__GNUC__) || defined(__clang__)
-static inline void __attribute__((unused))
-lor_string_cleanup_(LorString *string) {
+static inline void __attribute__((unused)) lor_string_cleanup_(LorString *string) {
     lor_string_deinit(string);
 }
 #define LOR_AUTO_STRING __attribute__((cleanup(lor_string_cleanup_)))
@@ -567,6 +570,155 @@ LorStatus lor_string_append_cstr(LorString *string, const char *text);
 
 // Appends one byte. The string is unchanged on failure.
 LorStatus lor_string_append_char(LorString *string, char value);
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+// === array: declarations ===
+#ifdef LOR_ENABLE_ARRAY
+#include <stddef.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Generic owned dynamic array.
+
+   An array handle is an ordinary typed pointer initialized to `NULL`. Elements
+   can be indexed directly, while size and capacity metadata live in a private
+   prefix header. Operations that may grow the array receive the address of the
+   handle so they can replace it after reallocation. */
+#define LOR_ARRAY_INIT NULL
+
+// Returns the number of initialized elements, or zero for `NULL`.
+size_t lor_array_size(const void *array);
+
+// Returns the allocated element capacity, or zero for `NULL`.
+size_t lor_array_capacity(const void *array);
+
+// Returns the stored element size, or zero for `NULL`.
+size_t lor_array_element_size(const void *array);
+
+/* Ensures capacity for at least `capacity` elements.
+
+   `array_ref` must point to a typed array handle and `element_size` must equal
+   `sizeof *array`. The original array is unchanged on failure. */
+LorStatus lor_array_reserve_raw(void *array_ref, size_t element_size,
+                                size_t capacity);
+
+/* Changes the initialized element count.
+
+   New elements are zero-initialized. Shrinking retains allocated capacity. */
+LorStatus lor_array_resize_raw(void *array_ref, size_t element_size, size_t size);
+
+/* Appends `count` elements copied from `elements`.
+
+   `elements` may point into the same array; aliases remain valid across
+   reallocation. Passing `NULL` is valid only when `count` is zero. */
+LorStatus lor_array_append_raw(void *array_ref, size_t element_size,
+                               const void *elements, size_t count);
+
+/* Appends every element from another dynamic array.
+
+   The source and destination element sizes must match. Self-append is valid. */
+LorStatus lor_array_append_array_raw(void *array_ref, size_t element_size,
+                                     const void *source,
+                                     size_t source_element_size);
+
+/* Inserts `count` copied elements before `index`.
+
+   `index` may equal the current size to append. `elements` may point into the
+   same array, including across the insertion point. */
+LorStatus lor_array_insert_raw(void *array_ref, size_t element_size,
+                               size_t index, const void *elements,
+                               size_t count);
+
+// Reduces capacity to the current size. An empty array becomes `NULL`.
+LorStatus lor_array_shrink_to_fit_raw(void *array_ref, size_t element_size);
+
+// Removes all elements while retaining allocated capacity.
+void lor_array_clear(void *array);
+
+// Removes and optionally copies the last element. Returns zero when empty.
+int lor_array_pop(void *array, void *out_element);
+
+/* Removes the element at `index`, preserving order.
+
+   The removed value is copied to `out_element` when non-NULL. */
+int lor_array_remove(void *array, size_t index, void *out_element);
+
+// Removes `count` elements from `index`, preserving order.
+int lor_array_remove_range(void *array, size_t index, size_t count);
+
+/* Removes the element at `index` by moving the last element into its slot.
+
+   This is O(1) but does not preserve order. */
+int lor_array_remove_unordered(void *array, size_t index, void *out_element);
+
+// Releases owned storage and resets the handle to `NULL`.
+void lor_array_deinit(void *array_ref);
+
+/* Typed convenience operations.
+
+   `lor_array_push` takes an lvalue of the exact element type so its address
+   can be copied portably.
+   Use `lor_array_push_as` for literals and inline aggregate initialization.
+   On GCC and Clang, `lor_array_push_auto` accepts any assignable expression
+   and infers the destination element type with `__typeof__`. */
+#define lor_array_reserve(array, capacity) \
+    lor_array_reserve_raw(&(array), sizeof *(array), (capacity))
+#define lor_array_resize(array, size) \
+    lor_array_resize_raw(&(array), sizeof *(array), (size))
+#define lor_array_append(array, elements, count) \
+    lor_array_append_raw(&(array), sizeof *(array), (elements), (count))
+#define lor_array_append_array(array, source) \
+    lor_array_append_array_raw(&(array), sizeof *(array), (source), \
+                               sizeof *(source))
+#define lor_array_push(array, value) \
+    lor_array_append_raw(&(array), sizeof *(array), &(value), 1u)
+#define lor_array_push_as(array, type, ...) \
+    lor_array_append_raw(&(array), sizeof *(array), &(type){__VA_ARGS__}, 1u)
+#if defined(__GNUC__) || defined(__clang__)
+#define LOR_HAS_ARRAY_PUSH_AUTO 1
+#define lor_array_push_auto(array, value) \
+    __extension__({ \
+        __typeof__(*(array)) lor_array__push_value = (value); \
+        lor_array_append_raw(&(array), sizeof *(array), \
+                             &lor_array__push_value, 1u); \
+    })
+#else
+#define LOR_HAS_ARRAY_PUSH_AUTO 0
+#endif
+#define lor_array_insert_many(array, index, elements, count) \
+    lor_array_insert_raw(&(array), sizeof *(array), (index), (elements), \
+                         (count))
+#define lor_array_insert(array, index, value) \
+    lor_array_insert_raw(&(array), sizeof *(array), (index), &(value), 1u)
+#define lor_array_insert_as(array, index, type, ...) \
+    lor_array_insert_raw(&(array), sizeof *(array), (index), \
+                         &(type){__VA_ARGS__}, 1u)
+#define lor_array_last(array) \
+    (lor_array_size(array) != 0 \
+         ? &(array)[lor_array_size(array) - 1u] \
+         : NULL)
+#define lor_array_shrink_to_fit(array) \
+    lor_array_shrink_to_fit_raw(&(array), sizeof *(array))
+
+/* Scope-exit cleanup for dynamic arrays on GCC and Clang.
+
+   Unsupported compilers leave `LOR_AUTO_ARRAY` empty, so explicit
+   `lor_array_deinit` remains required for portable ownership paths. */
+#if defined(__GNUC__) || defined(__clang__)
+static inline void __attribute__((unused)) lor_array_cleanup_(void *array_ref) {
+    lor_array_deinit(array_ref);
+}
+#define LOR_AUTO_ARRAY __attribute__((cleanup(lor_array_cleanup_)))
+#else
+#define LOR_AUTO_ARRAY
+#endif
 
 #ifdef __cplusplus
 }
@@ -1963,6 +2115,404 @@ LorStatus lor_string_append_char(LorString *string, char value) {
 }
 #endif
 
+// === array: implementation ===
+#ifdef LOR_ENABLE_ARRAY
+#if defined(LOR_LEAKCHECK)
+#endif
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+typedef max_align_t LorArrayAlignment;
+#else
+typedef union LorArrayAlignment {
+    void *pointer;
+    long double long_double;
+    long long long_long;
+} LorArrayAlignment;
+#endif
+
+typedef union LorArrayHeader {
+    struct {
+        size_t size;
+        size_t capacity;
+        size_t element_size;
+    } values;
+    LorArrayAlignment alignment;
+} LorArrayHeader;
+
+static LorArrayHeader *lor_array__header(void *array) {
+    return (LorArrayHeader *)array - 1;
+}
+
+static const LorArrayHeader *lor_array__header_const(const void *array) {
+    return (const LorArrayHeader *)array - 1;
+}
+
+static void *lor_array__read_ref(const void *array_ref) {
+    void *array = NULL;
+    if (array_ref != NULL) memcpy(&array, array_ref, sizeof(array));
+    return array;
+}
+
+static void lor_array__write_ref(void *array_ref, void *array) {
+    memcpy(array_ref, &array, sizeof(array));
+}
+
+static void *lor_array__realloc(void *ptr, size_t size) {
+#if defined(LOR_LEAKCHECK)
+    return lor_realloc_debug(ptr, size, __FILE__, __LINE__);
+#else
+    return realloc(ptr, size);
+#endif
+}
+
+static void lor_array__free(void *ptr) {
+#if defined(LOR_LEAKCHECK)
+    lor_free_debug(ptr, __FILE__, __LINE__);
+#else
+    free(ptr);
+#endif
+}
+
+static int lor_array__valid_element_size(const void *array,
+                                         size_t element_size) {
+    if (element_size == 0) return 0;
+    return array == NULL ||
+           lor_array__header_const(array)->values.element_size == element_size;
+}
+
+static LorStatus lor_array__growth_capacity(size_t current, size_t required,
+                                            size_t *capacity) {
+    size_t result = current < 8u ? 8u : current;
+    while (result < required) {
+        if (result > SIZE_MAX / 2u) {
+            result = required;
+            break;
+        }
+        result *= 2u;
+    }
+
+    *capacity = result;
+    return LOR_STATUS_OK;
+}
+
+/* Returns one for a valid alias, zero for no alias, and negative one when the
+   source begins inside initialized array storage but extends beyond it. */
+static int lor_array__source_offset(const void *array, const void *source,
+                                    size_t byte_count, size_t *offset) {
+    if (array == NULL || source == NULL) return 0;
+
+    const LorArrayHeader *header = lor_array__header_const(array);
+    if (header->values.capacity > SIZE_MAX / header->values.element_size)
+        return -1;
+
+    size_t initialized_bytes =
+        header->values.size * header->values.element_size;
+    size_t allocated_bytes =
+        header->values.capacity * header->values.element_size;
+    uintptr_t base = (uintptr_t)array;
+    uintptr_t start = (uintptr_t)source;
+    if (allocated_bytes > UINTPTR_MAX - base) return 0;
+
+    uintptr_t allocation_end = base + allocated_bytes;
+    if (start < base || start > allocation_end) return 0;
+
+    size_t result = (size_t)(start - base);
+    if (result > initialized_bytes) return -1;
+    if (byte_count > initialized_bytes - result) return -1;
+    if (offset != NULL) *offset = result;
+    return 1;
+}
+
+size_t lor_array_size(const void *array) {
+    return array != NULL ? lor_array__header_const(array)->values.size : 0;
+}
+
+size_t lor_array_capacity(const void *array) {
+    return array != NULL ? lor_array__header_const(array)->values.capacity : 0;
+}
+
+size_t lor_array_element_size(const void *array) {
+    return array != NULL
+               ? lor_array__header_const(array)->values.element_size
+               : 0;
+}
+
+LorStatus lor_array_reserve_raw(void *array_ref, size_t element_size,
+                                size_t capacity) {
+    if (array_ref == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *array = lor_array__read_ref(array_ref);
+    if (!lor_array__valid_element_size(array, element_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t current_capacity = lor_array_capacity(array);
+    if (capacity <= current_capacity) return LOR_STATUS_OK;
+
+    size_t new_capacity = 0;
+    LorStatus status =
+        lor_array__growth_capacity(current_capacity, capacity, &new_capacity);
+    if (status != LOR_STATUS_OK) return status;
+
+    if (new_capacity > (SIZE_MAX - sizeof(LorArrayHeader)) / element_size)
+        return LOR_STATUS_OVERFLOW;
+
+    size_t allocation_size =
+        sizeof(LorArrayHeader) + new_capacity * element_size;
+    LorArrayHeader *header =
+        array != NULL ? lor_array__header(array) : NULL;
+    LorArrayHeader *new_header =
+        (LorArrayHeader *)lor_array__realloc(header, allocation_size);
+    if (new_header == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+
+    if (array == NULL) {
+        new_header->values.size = 0;
+        new_header->values.element_size = element_size;
+    }
+    new_header->values.capacity = new_capacity;
+    lor_array__write_ref(array_ref, new_header + 1);
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_array_resize_raw(void *array_ref, size_t element_size,
+                               size_t size) {
+    if (array_ref == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *array = lor_array__read_ref(array_ref);
+    if (!lor_array__valid_element_size(array, element_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t old_size = lor_array_size(array);
+    if (size > old_size) {
+        LorStatus status =
+            lor_array_reserve_raw(array_ref, element_size, size);
+        if (status != LOR_STATUS_OK) return status;
+
+        array = lor_array__read_ref(array_ref);
+        memset((unsigned char *)array + old_size * element_size, 0,
+               (size - old_size) * element_size);
+    }
+
+    if (array != NULL)
+        lor_array__header(array)->values.size = size;
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_array_append_raw(void *array_ref, size_t element_size,
+                               const void *elements, size_t count) {
+    if (array_ref == NULL || (elements == NULL && count != 0))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *array = lor_array__read_ref(array_ref);
+    if (!lor_array__valid_element_size(array, element_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+    if (count == 0) return LOR_STATUS_OK;
+    if (count > SIZE_MAX / element_size) return LOR_STATUS_OVERFLOW;
+
+    size_t old_size = lor_array_size(array);
+    if (count > SIZE_MAX - old_size) return LOR_STATUS_OVERFLOW;
+
+    size_t byte_count = count * element_size;
+    size_t source_offset = 0;
+    int alias =
+        lor_array__source_offset(array, elements, byte_count, &source_offset);
+    if (alias < 0) return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t new_size = old_size + count;
+    LorStatus status =
+        lor_array_reserve_raw(array_ref, element_size, new_size);
+    if (status != LOR_STATUS_OK) return status;
+
+    array = lor_array__read_ref(array_ref);
+    if (alias > 0)
+        elements = (const unsigned char *)array + source_offset;
+
+    memmove((unsigned char *)array + old_size * element_size, elements,
+            byte_count);
+    lor_array__header(array)->values.size = new_size;
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_array_append_array_raw(void *array_ref, size_t element_size,
+                                     const void *source,
+                                     size_t source_element_size) {
+    if (element_size == 0 || source_element_size != element_size)
+        return LOR_STATUS_INVALID_ARGUMENT;
+    if (source != NULL &&
+        lor_array_element_size(source) != source_element_size)
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    return lor_array_append_raw(array_ref, element_size, source,
+                                lor_array_size(source));
+}
+
+LorStatus lor_array_insert_raw(void *array_ref, size_t element_size,
+                               size_t index, const void *elements,
+                               size_t count) {
+    if (array_ref == NULL || (elements == NULL && count != 0))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *array = lor_array__read_ref(array_ref);
+    if (!lor_array__valid_element_size(array, element_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    size_t old_size = lor_array_size(array);
+    if (index > old_size) return LOR_STATUS_INVALID_ARGUMENT;
+    if (count == 0) return LOR_STATUS_OK;
+    if (count > SIZE_MAX / element_size) return LOR_STATUS_OVERFLOW;
+    if (count > SIZE_MAX - old_size) return LOR_STATUS_OVERFLOW;
+
+    size_t byte_count = count * element_size;
+    size_t source_offset = 0;
+    int alias =
+        lor_array__source_offset(array, elements, byte_count, &source_offset);
+    if (alias < 0) return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *copy = NULL;
+    if (alias > 0) {
+        copy = lor_array__realloc(NULL, byte_count);
+        if (copy == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+        memcpy(copy, (const unsigned char *)array + source_offset,
+               byte_count);
+        elements = copy;
+    }
+
+    LorStatus status =
+        lor_array_reserve_raw(array_ref, element_size, old_size + count);
+    if (status != LOR_STATUS_OK) {
+        lor_array__free(copy);
+        return status;
+    }
+
+    array = lor_array__read_ref(array_ref);
+    unsigned char *destination =
+        (unsigned char *)array + index * element_size;
+    size_t tail_count = old_size - index;
+    if (tail_count != 0)
+        memmove(destination + byte_count, destination,
+                tail_count * element_size);
+    memcpy(destination, elements, byte_count);
+    lor_array__header(array)->values.size = old_size + count;
+    lor_array__free(copy);
+    return LOR_STATUS_OK;
+}
+
+LorStatus lor_array_shrink_to_fit_raw(void *array_ref, size_t element_size) {
+    if (array_ref == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+
+    void *array = lor_array__read_ref(array_ref);
+    if (!lor_array__valid_element_size(array, element_size))
+        return LOR_STATUS_INVALID_ARGUMENT;
+    if (array == NULL) return LOR_STATUS_OK;
+
+    LorArrayHeader *header = lor_array__header(array);
+    size_t size = header->values.size;
+    if (size == header->values.capacity) return LOR_STATUS_OK;
+
+    if (size == 0) {
+        lor_array__free(header);
+        lor_array__write_ref(array_ref, NULL);
+        return LOR_STATUS_OK;
+    }
+
+    if (size > (SIZE_MAX - sizeof(LorArrayHeader)) / element_size)
+        return LOR_STATUS_OVERFLOW;
+
+    size_t allocation_size = sizeof(LorArrayHeader) + size * element_size;
+    LorArrayHeader *new_header =
+        (LorArrayHeader *)lor_array__realloc(header, allocation_size);
+    if (new_header == NULL) return LOR_STATUS_OUT_OF_MEMORY;
+
+    new_header->values.capacity = size;
+    lor_array__write_ref(array_ref, new_header + 1);
+    return LOR_STATUS_OK;
+}
+
+void lor_array_clear(void *array) {
+    if (array != NULL) lor_array__header(array)->values.size = 0;
+}
+
+int lor_array_pop(void *array, void *out_element) {
+    if (array == NULL) return 0;
+
+    LorArrayHeader *header = lor_array__header(array);
+    if (header->values.size == 0) return 0;
+
+    size_t index = header->values.size - 1u;
+    unsigned char *element =
+        (unsigned char *)array + index * header->values.element_size;
+    if (out_element != NULL)
+        memcpy(out_element, element, header->values.element_size);
+    header->values.size = index;
+    return 1;
+}
+
+int lor_array_remove(void *array, size_t index, void *out_element) {
+    if (array == NULL) return 0;
+
+    LorArrayHeader *header = lor_array__header(array);
+    if (index >= header->values.size) return 0;
+
+    size_t element_size = header->values.element_size;
+    unsigned char *element = (unsigned char *)array + index * element_size;
+    if (out_element != NULL) memcpy(out_element, element, element_size);
+
+    size_t remaining = header->values.size - index - 1u;
+    if (remaining != 0)
+        memmove(element, element + element_size, remaining * element_size);
+    header->values.size -= 1u;
+    return 1;
+}
+
+int lor_array_remove_range(void *array, size_t index, size_t count) {
+    if (array == NULL) return 0;
+
+    LorArrayHeader *header = lor_array__header(array);
+    if (index > header->values.size ||
+        count > header->values.size - index)
+        return 0;
+    if (count == 0) return 1;
+
+    size_t element_size = header->values.element_size;
+    size_t remaining = header->values.size - index - count;
+    if (remaining != 0)
+        memmove((unsigned char *)array + index * element_size,
+                (unsigned char *)array + (index + count) * element_size,
+                remaining * element_size);
+    header->values.size -= count;
+    return 1;
+}
+
+int lor_array_remove_unordered(void *array, size_t index, void *out_element) {
+    if (array == NULL) return 0;
+
+    LorArrayHeader *header = lor_array__header(array);
+    if (index >= header->values.size) return 0;
+
+    size_t element_size = header->values.element_size;
+    unsigned char *element = (unsigned char *)array + index * element_size;
+    if (out_element != NULL) memcpy(out_element, element, element_size);
+
+    size_t last = header->values.size - 1u;
+    if (index != last)
+        memcpy(element, (unsigned char *)array + last * element_size,
+               element_size);
+    header->values.size = last;
+    return 1;
+}
+
+void lor_array_deinit(void *array_ref) {
+    if (array_ref == NULL) return;
+
+    void *array = lor_array__read_ref(array_ref);
+    if (array != NULL) lor_array__free(lor_array__header(array));
+    lor_array__write_ref(array_ref, NULL);
+}
+#endif
+
 #endif
 /* Optional short-name aliases
    These are preprocessor aliases only. They do not change compiled
@@ -2076,6 +2626,38 @@ LorStatus lor_string_append_char(LorString *string, char value) {
 #define string_append lor_string_append
 #define string_append_cstr lor_string_append_cstr
 #define string_append_char lor_string_append_char
+#endif
+#ifdef LOR_ENABLE_ARRAY
+#define ARRAY_INIT LOR_ARRAY_INIT
+#define array_reserve lor_array_reserve
+#define array_resize lor_array_resize
+#define array_append lor_array_append
+#define array_append_array lor_array_append_array
+#define array_push lor_array_push
+#define array_push_as lor_array_push_as
+#define HAS_ARRAY_PUSH_AUTO LOR_HAS_ARRAY_PUSH_AUTO
+#define array_push_auto lor_array_push_auto
+#define array_insert_many lor_array_insert_many
+#define array_insert lor_array_insert
+#define array_insert_as lor_array_insert_as
+#define array_last lor_array_last
+#define array_shrink_to_fit lor_array_shrink_to_fit
+#define AUTO_ARRAY LOR_AUTO_ARRAY
+#define array_size lor_array_size
+#define array_capacity lor_array_capacity
+#define array_element_size lor_array_element_size
+#define array_reserve_raw lor_array_reserve_raw
+#define array_resize_raw lor_array_resize_raw
+#define array_append_raw lor_array_append_raw
+#define array_append_array_raw lor_array_append_array_raw
+#define array_insert_raw lor_array_insert_raw
+#define array_shrink_to_fit_raw lor_array_shrink_to_fit_raw
+#define array_clear lor_array_clear
+#define array_pop lor_array_pop
+#define array_remove lor_array_remove
+#define array_remove_range lor_array_remove_range
+#define array_remove_unordered lor_array_remove_unordered
+#define array_deinit lor_array_deinit
 #endif
 #endif
 

@@ -80,6 +80,15 @@ static void test_auto_string(void) {
     // lor_string_deinit(&text) is called automatically at scope exit.
 }
 
+static void test_auto_array(void) {
+    printf("--- LOR_AUTO_ARRAY ---\n");
+    LOR_AUTO_ARRAY int *numbers = LOR_ARRAY_INIT;
+    if (lor_array_push_as(numbers, int, 10) == LOR_STATUS_OK &&
+        lor_array_push_as(numbers, int, 20) == LOR_STATUS_OK)
+        printf("Built array with %zu elements.\n", lor_array_size(numbers));
+    // lor_array_deinit(&numbers) is called automatically at scope exit.
+}
+
 int main(void) {
     printf("Starting auto cleanup tests...\n\n");
 
@@ -89,6 +98,7 @@ int main(void) {
     test_auto_mmap();
     test_auto_file();
     test_auto_string();
+    test_auto_array();
 
     printf("\nAll scopes exited. The leak checker should report 0 leaks below:\n");
     size_t leaks = lor_leakcheck_report(stdout);

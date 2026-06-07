@@ -174,6 +174,7 @@ matching explicit release function when a local variable leaves scope:
 - `LOR_AUTO_MMAP`: `lor_mmap_unmap`
 - `LOR_AUTO_FILE`: `fclose`
 - `LOR_AUTO_STRING`: `lor_string_deinit` (declared by `lor/string.h`)
+- `LOR_AUTO_ARRAY`: `lor_array_deinit` (declared by `lor/array.h`)
 
 They are deterministic cleanup conveniences, not leak checking. Use them for
 local variables with obvious ownership; avoid them when ownership is transferred
@@ -181,5 +182,5 @@ out of the scope.
 
 ## Next Work
 
-- Decide the first container memory policy when dynamic arrays/hash maps begin.
+- Reassess allocator customization before or during hash-map design.
 - Add richer leak reports only if the current report format is insufficient.

@@ -4,18 +4,19 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Use the completed memory and string foundations to design the first generic
-container.
+Use the completed memory, string, and dynamic-array foundations to design the
+first hash map.
 
-1. Define the first dynamic-array API and type strategy.
-2. Apply the heap-by-default ownership and `LorStatus` failure conventions.
-3. Reassess allocator customization only after another owned module exists.
+1. Reassess allocator customization with two owned prefix-header modules.
+2. Define hash-map key, value, and ownership strategies.
+3. Reuse the dynamic-array macro and failure conventions where appropriate.
 
 ## Open Decisions
 
 - Reusable test harness shape.
 - Single-header generator hardening as more modules are added.
-- Dynamic-array type and macro strategy.
+- Shared allocator customization versus heap-only owned containers.
+- Hash-map type and macro strategy.
 
 ## Done
 
@@ -38,6 +39,7 @@ container.
 - [x] Add shared `LorStatus` values.
 - [x] Add borrowed string views and owned dynamic strings.
 - [x] Add single-header module dependencies.
+- [x] Add typed-pointer dynamic arrays with checked growth.
 
 ## Backlog
 
@@ -57,7 +59,7 @@ container.
 
 - [x] string view;
 - [x] owned dynamic string;
-- [ ] dynamic array;
+- [x] dynamic array;
 - [ ] hash map;
 - [ ] random-number helpers.
 

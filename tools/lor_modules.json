@@ -150,6 +150,52 @@
                     ["LOR_AUTO_STRING", "AUTO_STRING"]
                 ]
             }
+        },
+        {
+            "name": "array",
+            "enable_macro": "LOR_ENABLE_ARRAY",
+            "dependencies": [
+                "status"
+            ],
+            "header": "include/lor/array.h",
+            "source": "src/array.c",
+            "symbols": {
+                "functions": [
+                    ["lor_array_size", "array_size"],
+                    ["lor_array_capacity", "array_capacity"],
+                    ["lor_array_element_size", "array_element_size"],
+                    ["lor_array_reserve_raw", "array_reserve_raw"],
+                    ["lor_array_resize_raw", "array_resize_raw"],
+                    ["lor_array_append_raw", "array_append_raw"],
+                    ["lor_array_append_array_raw", "array_append_array_raw"],
+                    ["lor_array_insert_raw", "array_insert_raw"],
+                    ["lor_array_shrink_to_fit_raw", "array_shrink_to_fit_raw"],
+                    ["lor_array_clear", "array_clear"],
+                    ["lor_array_pop", "array_pop"],
+                    ["lor_array_remove", "array_remove"],
+                    ["lor_array_remove_range", "array_remove_range"],
+                    ["lor_array_remove_unordered", "array_remove_unordered"],
+                    ["lor_array_deinit", "array_deinit"]
+                ],
+                "types": [],
+                "macros": [
+                    ["LOR_ARRAY_INIT", "ARRAY_INIT"],
+                    ["lor_array_reserve", "array_reserve"],
+                    ["lor_array_resize", "array_resize"],
+                    ["lor_array_append", "array_append"],
+                    ["lor_array_append_array", "array_append_array"],
+                    ["lor_array_push", "array_push"],
+                    ["lor_array_push_as", "array_push_as"],
+                    ["LOR_HAS_ARRAY_PUSH_AUTO", "HAS_ARRAY_PUSH_AUTO"],
+                    ["lor_array_push_auto", "array_push_auto"],
+                    ["lor_array_insert_many", "array_insert_many"],
+                    ["lor_array_insert", "array_insert"],
+                    ["lor_array_insert_as", "array_insert_as"],
+                    ["lor_array_last", "array_last"],
+                    ["lor_array_shrink_to_fit", "array_shrink_to_fit"],
+                    ["LOR_AUTO_ARRAY", "AUTO_ARRAY"]
+                ]
+            }
         }
     ]
 }

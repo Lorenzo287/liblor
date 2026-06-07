@@ -19,6 +19,12 @@ them.
 There is no public `LorAllocator`. Add one only when at least two concrete
 modules need configurable allocation and their requirements are understood.
 
+Generic typed containers may use function-like macros to infer information
+that C cannot pass generically, such as `sizeof *(array)`. Compiler-extension
+convenience macros must have a feature macro and a documented portable
+alternative. Keep allocation, overflow checking, and ownership changes in
+ordinary implementation functions rather than duplicating them in macros.
+
 ## Failure
 
 - Liblor does not print, terminate, or modify global error state for recoverable
