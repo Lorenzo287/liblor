@@ -16,7 +16,8 @@
                     ["LOR_STATUS_OK", "STATUS_OK"],
                     ["LOR_STATUS_INVALID_ARGUMENT", "STATUS_INVALID_ARGUMENT"],
                     ["LOR_STATUS_OUT_OF_MEMORY", "STATUS_OUT_OF_MEMORY"],
-                    ["LOR_STATUS_OVERFLOW", "STATUS_OVERFLOW"]
+                    ["LOR_STATUS_OVERFLOW", "STATUS_OVERFLOW"],
+                    ["LOR_STATUS_SYSTEM_ERROR", "STATUS_SYSTEM_ERROR"]
                 ]
             }
         },
@@ -387,6 +388,33 @@
                     ["LOR_CLI_UNEXPECTED_POSITIONAL", "CLI_UNEXPECTED_POSITIONAL"],
                     ["LOR_CLI_OUT_OF_MEMORY", "CLI_OUT_OF_MEMORY"],
                     ["LOR_AUTO_CLI", "AUTO_CLI"]
+                ]
+            }
+        },
+        {
+            "name": "random",
+            "enable_macro": "LOR_ENABLE_RANDOM",
+            "dependencies": [
+                "status"
+            ],
+            "header": "include/lor/random.h",
+            "source": "src/random.c",
+            "symbols": {
+                "functions": [
+                    ["lor_random_seed", "random_seed"],
+                    ["lor_random_seed_system", "random_seed_system"],
+                    ["lor_random_system_bytes", "random_system_bytes"],
+                    ["lor_random_u32", "random_u32"],
+                    ["lor_random_u64", "random_u64"],
+                    ["lor_random_bounded_u32", "random_bounded_u32"],
+                    ["lor_random_f32", "random_f32"],
+                    ["lor_random_f64", "random_f64"]
+                ],
+                "types": [
+                    ["LorRandom", "Random"]
+                ],
+                "macros": [
+                    ["LOR_RANDOM_INIT", "RANDOM_INIT"]
                 ]
             }
         }

@@ -11,7 +11,8 @@ typedef enum LorStatus {
     LOR_STATUS_OK = 0,
     LOR_STATUS_INVALID_ARGUMENT,
     LOR_STATUS_OUT_OF_MEMORY,
-    LOR_STATUS_OVERFLOW
+    LOR_STATUS_OVERFLOW,
+    LOR_STATUS_SYSTEM_ERROR
 } LorStatus;
 
 // Returns a stable lowercase name for `status`, or "unknown".

@@ -12,6 +12,8 @@ const char *lor_status_name(LorStatus status) {
         return "out of memory";
     case LOR_STATUS_OVERFLOW:
         return "overflow";
+    case LOR_STATUS_SYSTEM_ERROR:
+        return "system error";
     }
 
     return "unknown";

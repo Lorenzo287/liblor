@@ -4,18 +4,23 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Use the completed memory, container, and CLI foundations in larger programs.
+Complete the remaining small library modules before starting build tooling.
 
-1. Exercise the modules together before widening their APIs.
-2. Choose between random-number helpers and the first `lor` tool prototype.
-3. Consider a reusable test harness as test infrastructure repeats.
+1. Define a small portable type-helper layer, with compiler extensions kept
+   behind feature macros and portable alternatives.
+2. Build generic print helpers on the settled type-helper conventions.
+3. Scope concurrency separately before implementation.
+4. Leave the `lor` build/run tool and compile-backed REPL until the library
+   modules are otherwise complete.
 
 ## Open Decisions
 
 - Reusable test harness shape.
 - Single-header generator hardening as more modules are added.
 - Shared allocator customization versus heap-only owned containers.
-- Next data or ergonomics module.
+- Generic print support for user-defined types without excessive macros.
+- Concurrency scope: basic threading primitives versus structured
+  concurrency, channels, and asynchronous I/O.
 
 ## Done
 
@@ -43,6 +48,8 @@ Use the completed memory, container, and CLI foundations in larger programs.
       key policies.
 - [x] Add typed hash sets with map-backed storage and mathematical operations.
 - [x] Add function-based CLI parsing with generated help and typed values.
+- [x] Add explicit-state PCG32 generation, unbiased bounded values, and system
+      entropy.
 
 ## Backlog
 
@@ -65,7 +72,7 @@ Use the completed memory, container, and CLI foundations in larger programs.
 - [x] dynamic array;
 - [x] hash map;
 - [x] set;
-- [ ] random-number helpers.
+- [x] random-number helpers.
 
 ### Ergonomics
 
@@ -76,13 +83,14 @@ Use the completed memory, container, and CLI foundations in larger programs.
 
 ### Tooling
 
-- [ ] `lor run` / `lor build` design and prototype;
-- [ ] compile-backed C REPL design and prototype;
 - [x] optional single-header generation.
+- [ ] `lor run` / `lor build` design and prototype, after library modules;
+- [ ] compile-backed C REPL design and prototype, after build tooling.
 
 ### Platform
 
 - [x] mmap abstraction;
 - [ ] public virtual-memory API, if common use cases justify it;
-- [ ] concurrency primitives;
+- [ ] concurrency design and scope;
+- [ ] concurrency primitives, only after the design is settled;
 - [ ] custom entry-point helpers.

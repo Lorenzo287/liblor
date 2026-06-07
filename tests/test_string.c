@@ -28,6 +28,7 @@ static int test_status_names(void) {
     CHECK(strcmp(lor_status_name(LOR_STATUS_OUT_OF_MEMORY), "out of memory") ==
           0);
     CHECK(strcmp(lor_status_name(LOR_STATUS_OVERFLOW), "overflow") == 0);
+    CHECK(strcmp(lor_status_name(LOR_STATUS_SYSTEM_ERROR), "system error") == 0);
     CHECK(strcmp(lor_status_name((LorStatus)99), "unknown") == 0);
     return 0;
 }

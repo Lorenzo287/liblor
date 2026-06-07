@@ -52,6 +52,7 @@ The initial shared statuses are intentionally small:
 - `LOR_STATUS_INVALID_ARGUMENT`
 - `LOR_STATUS_OUT_OF_MEMORY`
 - `LOR_STATUS_OVERFLOW`
+- `LOR_STATUS_SYSTEM_ERROR`
 
 Add statuses only when a public operation needs callers to distinguish a new
 failure category.

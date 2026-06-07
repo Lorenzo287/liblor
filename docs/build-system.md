@@ -53,10 +53,16 @@ portability audits.
 
 ## Prerequisites
 
-Do not build this before the library foundation is clearer. Needed first:
+Build tooling is intentionally the final major project phase. Complete and
+exercise the remaining small library modules first:
 
-- allocator interface;
-- error/result conventions;
-- string/path utilities;
-- dynamic arrays;
-- process execution helpers.
+- type helpers;
+- generic printing;
+- a decision on the intended concurrency scope.
+
+An allocator interface is not a prerequisite. Existing modules have not shown
+a concrete need for public allocator customization.
+
+The first `lor run` prototype may keep path handling, process execution, and
+compiler invocation private. Extract reusable public modules only after the
+tool demonstrates stable requirements for them.
