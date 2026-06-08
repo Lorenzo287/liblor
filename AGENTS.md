@@ -6,7 +6,8 @@ liblor is a higher-level C library. Version 1 is feature complete.
 
 - `README.md`: public project overview.
 - `docs/ROADMAP.md`: current work and next decisions.
-- `docs/THIRD_PARTY.md`: attribution and license audit tracking.
+- `docs/ACKNOWLEDGEMENTS.md`: projects and authors that inspired liblor.
+- `docs/BUILD.md`: detailed local build, test, and release instructions.
 - `Makefile`: local development build/test entry point.
 - `compile_flags.txt`: clangd include/diagnostic flags.
 - `docs/memory.md`: memory subsystem implementation path.
@@ -33,7 +34,7 @@ liblor is a higher-level C library. Version 1 is feature complete.
 - Update `tools/lor_modules.json` when generated `lor.h` needs a new public
   module, enable macro, or prefix alias.
 - Record any future external design influence or adapted code in
-  `docs/THIRD_PARTY.md`.
+  `docs/ACKNOWLEDGEMENTS.md`.
 
 ## C Style
 
@@ -70,4 +71,4 @@ liblor is a higher-level C library. Version 1 is feature complete.
 - Do not remove upstream copyright notices.
 - Copied or closely adapted code must preserve required license text.
 - Inspiration-only rewrites may stay MIT, but meaningful influence should be
-  credited in `docs/THIRD_PARTY.md`.
+  credited in `docs/ACKNOWLEDGEMENTS.md`.

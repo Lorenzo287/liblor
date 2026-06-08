@@ -3,9 +3,6 @@
 liblor is a personal C library for bringing higher-level programming tools to C.
 The goal is a cohesive set of small, readable, portable utilities for everyday C code.
 
-Version 1 is feature complete. Further modules and major extensions will be
-driven by concrete use cases.
-
 ## Layout
 
 liblor is a normal multi-file library first. A generated single-header release
@@ -13,23 +10,21 @@ is present as an alternative.
 
 Current modules include:
 
+- `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in leak checking.
+- `lor/string.h`: borrowed string views and owned dynamic strings.
 - `lor/array.h`: typed-pointer dynamic arrays with checked growth.
-- `lor/cli.h`: function-based command-line parsing with generated help.
-- `lor/concurrency.h`: native threads, task groups, synchronization, and
-  channels.
-- `lor/features.h`: compiler capability checks used by optional conveniences.
 - `lor/map.h`: typed hash maps with configurable key ownership.
-- `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in
-  leak checking.
+- `lor/set.h`: typed hash sets with Python-style mathematical operations.
 - `lor/numeric.h`: single-evaluation minimum, maximum, and clamp helpers.
 - `lor/print.h`: type-directed scalar, liblor object, and container printing.
-- `lor/random.h`: explicit-state PCG32 generation and system entropy.
-- `lor/set.h`: typed hash sets with Python-style mathematical operations.
-- `lor/status.h`: small shared failure statuses.
-- `lor/string.h`: borrowed string views and owned dynamic strings.
 - `lor/type.h`: C11 names for built-in and concrete liblor value types.
+- `lor/random.h`: explicit-state PCG32 generation and system entropy.
+- `lor/cli.h`: function-based command-line parsing with generated help.
+- `lor/concurrency.h`: native threads, task groups, synchronization, and channels.
+- `lor/features.h`: compiler capability checks used by optional conveniences.
+- `lor/status.h`: small shared failure statuses.
 
-See [API Conventions](docs/api-conventions.md),
+See [API Conventions](docs/API-CONVENTIONS.md),
 [Command-Line Parsing](docs/cli.md), [Concurrency](docs/concurrency.md),
 [Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
 [Memory](docs/memory.md), [Generic Printing](docs/print.md),
@@ -92,42 +87,19 @@ Optional module and alias controls:
 
 ## Build And Test
 
-Use the Makefile for local development:
+```powershell
+make all
+make check
+make release-check
+```
 
-- `make test`: build and run tests.
-- `make example`: build examples.
-- `make clang`: build and test with Clang in `.build/clang/`.
-- `make gcc`: build and test with GCC in `.build/gcc/`.
-- `make strict`: run a warning-as-error Clang build.
-- `make leakcheck`: run a strict build with `LOR_LEAKCHECK`.
-- `make check`: run strict Clang, strict GCC, and leak-check builds.
-- `make release`: build optimized static and shared libraries.
-- `make release-check`: test the optimized build and produce release libraries.
-- `make release-lto`: build a compiler-specific link-time-optimized release.
-- `make release-lto-check`: test static and shared LTO library consumers.
-- `make single-header`: generate `lor.h`.
-- `make clean`: remove all generated files under `.build/`.
-
-Release builds use `-O3 -DNDEBUG` without CPU-specific flags, so the binaries
-remain usable on machines other than the one that built them. The optional LTO
-target performs additional whole-program optimization but is more tightly
-coupled to its compiler toolchain. Artifacts are written under
-`.build/release/<compiler>/`, with `-lto` appended for LTO builds:
-
-- Windows with Clang: `lor_static.lib`, `lor.dll`, and import library `lor.lib`.
-- Windows with GCC: `liblor.a`, `lor.dll`, and import library `liblor.dll.a`.
-- Linux: `liblor.a` and `liblor.so`.
-- macOS: `liblor.a` and `liblor.dylib`.
-
-The compiled libraries contain every multi-file module implementation. Programs
-still include the normal headers from `include/lor/`; the generated `lor.h` is
-not involved. On Windows, DLL exports are generated from
-`tools/lor_modules.json`, which remains the public-symbol source of truth.
+Build output is written under `.build/`. See [Building](docs/BUILD.md) for
+compiler profiles, release artifacts, LTO, and single-header generation.
 
 ## License
 
-liblor-owned code is licensed under the MIT License. Reference material is not
-automatically part of liblor; copied or closely adapted third-party code must be
-audited and keep required notices. See [Third Party](./docs/THIRD_PARTY.md).
+liblor is licensed under the MIT License. See
+[Acknowledgements](docs/ACKNOWLEDGEMENTS.md) for the projects and developers
+whose published work inspired its design.
 
 Start with [Roadmap](docs/ROADMAP.md) when continuing development.

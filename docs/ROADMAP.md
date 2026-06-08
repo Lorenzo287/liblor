@@ -10,8 +10,8 @@ portability, and documentation for the existing module set.
 ## Done
 
 - [x] Bootstrap README, AGENTS, ROADMAP, MIT license, and `.gitignore`.
-- [x] Move reference material under `references/`.
-- [x] Add `docs/THIRD_PARTY.md` for audit tracking.
+- [x] Study and remove external reference material.
+- [x] Credit design influences in `docs/ACKNOWLEDGEMENTS.md`.
 - [x] Choose normal multi-file source layout: `include/lor/` plus `src/`.
 - [x] Add Makefile-based local build/test workflow.
 - [x] Add `compile_flags.txt` for clangd include resolution.
