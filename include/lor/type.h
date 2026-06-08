@@ -4,9 +4,9 @@
 #define LOR_TYPE_H
 
 #include "lor/features.h"
-#include "lor/memory.h"
-#include "lor/random.h"
-#include "lor/string.h"
+#include "lor/memory.h"  // IWYU pragma: export
+#include "lor/random.h"  // IWYU pragma: export
+#include "lor/string.h"  // IWYU pragma: export
 
 #ifdef __cplusplus
 extern "C" {

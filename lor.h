@@ -1420,105 +1420,105 @@ typedef struct LorPrintEnd {
     LorStringView ending;
 } LorPrintEnd;
 
-static inline LorPrintValue lor_print_value_init(LorPrintKind kind) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_init(LorPrintKind kind) {
     LorPrintValue result;
     result.kind = kind;
     result.as.unsigned_integer = 0;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_bool(int value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_bool(int value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_BOOL);
     result.as.boolean = value != 0;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_char(char value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_char(char value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_CHAR);
     result.as.character = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_signed(intmax_t value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_signed(intmax_t value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_SIGNED);
     result.as.signed_integer = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_unsigned(uintmax_t value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_unsigned(uintmax_t value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_UNSIGNED);
     result.as.unsigned_integer = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_floating(double value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_floating(double value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_FLOATING);
     result.as.floating = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_cstring(const char *value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_cstring(const char *value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_CSTRING);
     result.as.cstring = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_view(LorStringView value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_view(LorStringView value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_STRING_VIEW);
     result.as.view = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_arena_config(LorArenaConfig value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_arena_config(LorArenaConfig value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_ARENA_CONFIG);
     result.as.arena_config = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_arena(LorArena value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_arena(LorArena value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_ARENA);
     result.as.arena = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_arena_mark(LorArenaMark value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_arena_mark(LorArenaMark value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_ARENA_MARK);
     result.as.arena_mark = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_scratch(LorScratch value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_scratch(LorScratch value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_SCRATCH);
     result.as.scratch = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_mmap(LorMmap value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_mmap(LorMmap value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_MMAP);
     result.as.mmap = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_leak_stats(LorLeakStats value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_leak_stats(LorLeakStats value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_LEAK_STATS);
     result.as.leak_stats = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_random(LorRandom value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_random(LorRandom value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_RANDOM);
     result.as.random = value;
     return result;
 }
 
 // Wraps an object pointer for generic printing with `%p`.
-static inline LorPrintValue lor_print_pointer(const void *value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_pointer(const void *value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_POINTER);
     result.as.pointer = value;
     return result;
 }
 
-static inline LorPrintValue lor_print_sequence_value(
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_sequence_value(
     LorPrintKind kind, const void *data, size_t count, size_t element_size,
     LorTypeKind element_kind, LorPrintCustomFn element_function) {
     LorPrintValue result = lor_print_value_init(kind);
@@ -1530,7 +1530,7 @@ static inline LorPrintValue lor_print_sequence_value(
     return result;
 }
 
-static inline LorPrintValue lor_print_map_value(
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_map_value(
     const void *data, size_t count, size_t entry_size, size_t key_offset,
     size_t key_size, LorTypeKind key_kind, LorPrintCustomFn key_function,
     size_t value_offset, size_t value_size, LorTypeKind value_kind,
@@ -1551,7 +1551,7 @@ static inline LorPrintValue lor_print_map_value(
 }
 
 // Wraps a user-defined value and its printer callback.
-static inline LorPrintValue lor_print_custom(const void *value,
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_custom(const void *value,
                                              LorPrintCustomFn function) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_CUSTOM);
     result.as.custom.value = value;
@@ -1560,26 +1560,26 @@ static inline LorPrintValue lor_print_custom(const void *value,
 }
 
 // Creates an ending marker from a NUL-terminated C string.
-static inline LorPrintEnd lor_end(const char *ending) {
+static inline LorPrintEnd LOR_MAYBE_UNUSED lor_end(const char *ending) {
     LorPrintEnd result;
     result.ending = lor_sv_from_cstr(ending);
     return result;
 }
 
 // Creates an ending marker from an exact-length string view.
-static inline LorPrintEnd lor_end_view(LorStringView ending) {
+static inline LorPrintEnd LOR_MAYBE_UNUSED lor_end_view(LorStringView ending) {
     LorPrintEnd result;
     result.ending = ending;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_end(LorPrintEnd value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_end(LorPrintEnd value) {
     LorPrintValue result = lor_print_value_init(LOR_PRINT_END);
     result.as.view = value.ending;
     return result;
 }
 
-static inline LorPrintValue lor_print_value_identity(LorPrintValue value) {
+static inline LorPrintValue LOR_MAYBE_UNUSED lor_print_value_identity(LorPrintValue value) {
     return value;
 }
 
