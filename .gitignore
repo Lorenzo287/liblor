@@ -1,7 +1,6 @@
 # liblor gitignore
 #
-# Keep this file conservative. Reference material lives under `references/`, so
-# do not add broad ignores that hide source folders.
+# Keep this file conservative so source folders are not hidden accidentally.
 
 # OS files
 .DS_Store

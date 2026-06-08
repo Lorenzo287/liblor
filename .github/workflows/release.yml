@@ -38,8 +38,12 @@ jobs:
       shell: bash
       run: |
         mkdir -p release_artifacts
-        cp lor.h release_artifacts/
-        cp .build/release/*/* release_artifacts/ || true
+        cp lor.h LICENSE README.md release_artifacts/
+        cp -R include release_artifacts/
+        find .build/release -type f \
+          \( -name '*.a' -o -name '*.so' -o -name '*.dylib' \
+             -o -name '*.dll' -o -name '*.lib' \) \
+          -exec cp {} release_artifacts/ \;
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4

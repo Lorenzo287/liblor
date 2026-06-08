@@ -3,6 +3,9 @@
 liblor is a personal C library for bringing higher-level programming tools to C.
 The goal is a cohesive set of small, readable, portable utilities for everyday C code.
 
+Version 1 is feature complete. Further modules and major extensions will be
+driven by concrete use cases.
+
 ## Layout
 
 liblor is a normal multi-file library first. A generated single-header release
