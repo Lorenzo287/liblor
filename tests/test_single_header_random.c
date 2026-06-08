@@ -8,13 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CHECK(expr)                          \
-    do {                                     \
-        if (!(expr)) {                       \
-            fprintf(stderr, "check failed"); \
-            return 1;                        \
-        }                                    \
-    } while (0)
+#include "lor_test.h"
 
 int main(void) {
     Random random = RANDOM_INIT;

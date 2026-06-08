@@ -8,6 +8,7 @@
 #include "lor/features.h"  // IWYU pragma: export
 #include "lor/map.h"       // IWYU pragma: export
 #include "lor/memory.h"    // IWYU pragma: export
+#include "lor/numeric.h"   // IWYU pragma: export
 #include "lor/print.h"     // IWYU pragma: export
 #include "lor/random.h"    // IWYU pragma: export
 #include "lor/set.h"       // IWYU pragma: export

@@ -50,6 +50,7 @@ Current modules include:
 - `lor/map.h`: typed hash maps with configurable key ownership.
 - `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in
   leak checking.
+- `lor/numeric.h`: single-evaluation minimum, maximum, and clamp helpers.
 - `lor/print.h`: type-directed scalar, liblor object, and container printing.
 - `lor/random.h`: explicit-state PCG32 generation and system entropy.
 - `lor/set.h`: typed hash sets with Python-style mathematical operations.
@@ -60,7 +61,7 @@ Current modules include:
 See [API Conventions](docs/api-conventions.md), [Command-Line Parsing](docs/cli.md),
 [Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
 [Memory](docs/memory.md), [Generic Printing](docs/print.md),
-[Random Numbers](docs/random.md), [Sets](docs/set.md),
+[Numeric Helpers](docs/numeric.md), [Random Numbers](docs/random.md), [Sets](docs/set.md),
 [Strings](docs/string.md), and [Type Helpers](docs/type.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
@@ -101,6 +102,7 @@ Optional module and alias controls:
 - `LOR_ENABLE_FEATURES`: include compiler feature detection only.
 - `LOR_ENABLE_TYPE`: include rich type inspection and its value-type dependencies.
 - `LOR_ENABLE_MEMORY`: include only the memory module.
+- `LOR_ENABLE_NUMERIC`: include numeric helpers and feature detection.
 - `LOR_ENABLE_STRING`: include the string module and its status dependency.
 - `LOR_ENABLE_PRINT`: include generic printing and supported container modules.
 - `LOR_ENABLE_ARRAY`: include the array module and its status/features dependencies.

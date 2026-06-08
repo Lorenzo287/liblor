@@ -8,13 +8,7 @@
 
 #include <stdio.h>
 
-#define CHECK(expr)                          \
-    do {                                     \
-        if (!(expr)) {                       \
-            fprintf(stderr, "check failed"); \
-            return 1;                        \
-        }                                    \
-    } while (0)
+#include "lor_test.h"
 
 typedef MAP_ENTRY(StringView, int) WordEntry;
 

@@ -52,6 +52,9 @@ Scope concurrency before deciding whether to implement it before or after the
 - [x] Add C11 names for built-in and concrete liblor value types.
 - [x] Add generic tagged-value printing, custom endings, container formatting,
       and custom callbacks.
+- [x] Audit and remove the STB utility header and Cello runtime experiments.
+- [x] Add single-evaluation numeric minimum, maximum, and clamp helpers.
+- [x] Consolidate repeated test assertions into a reusable internal header.
 
 ## Backlog
 
@@ -65,7 +68,7 @@ Scope concurrency before deciding whether to implement it before or after the
 - [x] error/result conventions;
 - [x] consolidated memory module;
 - [x] cleanup helpers;
-- [ ] reusable test harness;
+- [x] reusable test harness;
 
 ### Data
 
@@ -82,6 +85,7 @@ Scope concurrency before deciding whether to implement it before or after the
 - [x] CLI argument parser;
 - [x] generic print helpers;
 - [x] type helper macros.
+- [x] numeric minimum, maximum, and clamp helpers;
 
 ### Tooling
 

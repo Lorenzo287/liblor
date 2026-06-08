@@ -9,13 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CHECK(expr)                          \
-    do {                                     \
-        if (!(expr)) {                       \
-            fprintf(stderr, "check failed"); \
-            return 1;                        \
-        }                                    \
-    } while (0)
+#include "lor_test.h"
 
 static int file_equals(FILE *file, const char *expected) {
     char buffer[64];

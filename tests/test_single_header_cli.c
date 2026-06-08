@@ -7,13 +7,7 @@
 
 #include <stdio.h>
 
-#define CHECK(expr)                          \
-    do {                                     \
-        if (!(expr)) {                       \
-            fprintf(stderr, "check failed"); \
-            return 1;                        \
-        }                                    \
-    } while (0)
+#include "lor_test.h"
 
 int main(void) {
     Cli cli = CLI_INIT;

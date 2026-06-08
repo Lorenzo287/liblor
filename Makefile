@@ -92,6 +92,7 @@ PUBLIC_HEADERS := $(wildcard include/lor/*.h)
 LIB_OBJS := $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(LIB_SRCS))
 
 TEST_SRCS := $(wildcard tests/test_*.c)
+TEST_HEADERS := $(wildcard tests/*.h)
 SINGLE_HEADER_TEST_SRCS := $(wildcard tests/test_single_header*.c)
 LIB_TEST_SRCS := $(filter-out $(SINGLE_HEADER_TEST_SRCS),$(TEST_SRCS))
 LIB_TEST_BINS := $(patsubst tests/%.c,$(BUILD_DIR)/%$(EXE),$(LIB_TEST_SRCS))
@@ -196,10 +197,10 @@ $(RELEASE_STATIC_TEST): $(RELEASE_TEST_SRC) $(STATIC_LIB) $(PUBLIC_HEADERS) | $(
 $(RELEASE_SHARED_TEST): $(RELEASE_TEST_SRC) $(SHARED_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(SHARED_TEST_LINK) -o $@
 
-$(SINGLE_HEADER_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(SINGLE_HEADER) | $(BUILD_DIR)
+$(SINGLE_HEADER_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(SINGLE_HEADER) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(LIB_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
+$(LIB_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LIB_OBJS) $< -o $@
 
 $(EXAMPLE_BINS): $(BUILD_DIR)/example_%$(EXE): examples/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)

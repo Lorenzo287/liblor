@@ -12,13 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CHECK(expr)                            \
-    do {                                       \
-        if (!(expr)) {                         \
-            fprintf(stderr, "check failed\n"); \
-            return 1;                          \
-        }                                      \
-    } while (0)
+#include "lor_test.h"
 
 static int test_lazy_arena_leak_location(void) {
     Arena arena = ARENA_INIT;

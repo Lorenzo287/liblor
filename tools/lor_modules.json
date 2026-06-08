@@ -87,6 +87,28 @@
             }
         },
         {
+            "name": "numeric",
+            "enable_macro": "LOR_ENABLE_NUMERIC",
+            "dependencies": [
+                "features"
+            ],
+            "header": "include/lor/numeric.h",
+            "symbols": {
+                "functions": [],
+                "types": [],
+                "macros": [
+                    ["LOR_HAS_NUMERIC_AS", "HAS_NUMERIC_AS"],
+                    ["LOR_HAS_NUMERIC_AUTO", "HAS_NUMERIC_AUTO"],
+                    ["lor_min_as", "min_as"],
+                    ["lor_max_as", "max_as"],
+                    ["lor_clamp_as", "clamp_as"],
+                    ["lor_min", "min_value"],
+                    ["lor_max", "max_value"],
+                    ["lor_clamp", "clamp_value"]
+                ]
+            }
+        },
+        {
             "name": "memory",
             "enable_macro": "LOR_ENABLE_MEMORY",
             "enabled_by": [
