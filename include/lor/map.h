@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "lor/features.h"
 #include "lor/status.h"
 #include "lor/string.h"  // IWYU pragma: export
 
@@ -162,27 +163,27 @@ void lor_map_deinit(void *map_ref);
 
    These infer destination types, evaluate each supplied expression once, and
    perform normal assignment conversion into temporary key/value objects. */
-#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_MAP_AUTO 1
 #define lor_map_put_auto(map, key_value, value_value)                                     \
     __extension__({                                                                       \
-        __typeof__(*(map)) lor_map__entry = {.key = (key_value), .value = (value_value)}; \
+        lor_typeof(*(map)) lor_map__entry = {.key = (key_value), .value = (value_value)}; \
         lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &lor_map__entry);        \
     })
 #define lor_map_find_auto(map, key_value)                                         \
     __extension__({                                                               \
-        __typeof__((map)->key) lor_map__key = (key_value);                        \
-        (__typeof__(map))lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, \
+        lor_typeof((map)->key) lor_map__key = (key_value);                        \
+        (lor_typeof(map))lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, \
                                           &lor_map__key);                         \
     })
 #define lor_map_contains_auto(map, key_value)                                        \
     __extension__({                                                                  \
-        __typeof__((map)->key) lor_map__key = (key_value);                           \
+        lor_typeof((map)->key) lor_map__key = (key_value);                           \
         lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &lor_map__key); \
     })
 #define lor_map_remove_auto(map, key_value)                                        \
     __extension__({                                                                \
-        __typeof__((map)->key) lor_map__key = (key_value);                         \
+        lor_typeof((map)->key) lor_map__key = (key_value);                         \
         lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &lor_map__key); \
     })
 #else

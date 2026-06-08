@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 
+#include "lor/features.h"
 #include "lor/status.h"
 
 #ifdef __cplusplus
@@ -90,8 +91,8 @@ void lor_array_deinit(void *array_ref);
    `lor_array_push` takes an lvalue of the exact element type so its address
    can be copied portably.
    Use `lor_array_push_as` for literals and inline aggregate initialization.
-   On GCC and Clang, `lor_array_push_auto` accepts any assignable expression
-   and infers the destination element type with `__typeof__`. */
+   When supported, `lor_array_push_auto` accepts any assignable expression and
+   infers the destination element type with `lor_typeof`. */
 #define lor_array_reserve(array, capacity) \
     lor_array_reserve_raw(&(array), sizeof *(array), (capacity))
 #define lor_array_resize(array, size) \
@@ -104,11 +105,11 @@ void lor_array_deinit(void *array_ref);
     lor_array_append_raw(&(array), sizeof *(array), &(value), 1u)
 #define lor_array_push_as(array, type, ...) \
     lor_array_append_raw(&(array), sizeof *(array), &(type){__VA_ARGS__}, 1u)
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_ARRAY_PUSH_AUTO 1
 #define lor_array_push_auto(array, value)                                       \
     __extension__({                                                             \
-        __typeof__(*(array)) lor_array__push_value = (value);                   \
+        lor_typeof(*(array)) lor_array__push_value = (value);                   \
         lor_array_append_raw(&(array), sizeof *(array), &lor_array__push_value, 1u); \
     })
 #else

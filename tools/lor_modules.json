@@ -22,6 +22,71 @@
             }
         },
         {
+            "name": "features",
+            "enable_macro": "LOR_ENABLE_FEATURES",
+            "header": "include/lor/features.h",
+            "symbols": {
+                "functions": [],
+                "types": [],
+                "macros": [
+                    ["LOR_HAS_GENERIC_SELECTION", "HAS_GENERIC_SELECTION"],
+                    ["LOR_HAS_TYPEOF", "HAS_TYPEOF"],
+                    ["LOR_HAS_STATEMENT_EXPRESSIONS", "HAS_STATEMENT_EXPRESSIONS"],
+                    ["lor_typeof", "type_of"]
+                ]
+            }
+        },
+        {
+            "name": "type",
+            "enable_macro": "LOR_ENABLE_TYPE",
+            "dependencies": [
+                "features",
+                "memory",
+                "random",
+                "string"
+            ],
+            "header": "include/lor/type.h",
+            "source": "src/type.c",
+            "symbols": {
+                "functions": [
+                    ["lor_type_kind_name", "type_kind_name"]
+                ],
+                "types": [
+                    ["LorTypeKind", "TypeKind"]
+                ],
+                "macros": [
+                    ["LOR_TYPE_OTHER", "TYPE_OTHER"],
+                    ["LOR_TYPE_BOOL", "TYPE_BOOL"],
+                    ["LOR_TYPE_CHAR", "TYPE_CHAR"],
+                    ["LOR_TYPE_SIGNED_CHAR", "TYPE_SIGNED_CHAR"],
+                    ["LOR_TYPE_UNSIGNED_CHAR", "TYPE_UNSIGNED_CHAR"],
+                    ["LOR_TYPE_SHORT", "TYPE_SHORT"],
+                    ["LOR_TYPE_UNSIGNED_SHORT", "TYPE_UNSIGNED_SHORT"],
+                    ["LOR_TYPE_INT", "TYPE_INT"],
+                    ["LOR_TYPE_UNSIGNED_INT", "TYPE_UNSIGNED_INT"],
+                    ["LOR_TYPE_LONG", "TYPE_LONG"],
+                    ["LOR_TYPE_UNSIGNED_LONG", "TYPE_UNSIGNED_LONG"],
+                    ["LOR_TYPE_LONG_LONG", "TYPE_LONG_LONG"],
+                    ["LOR_TYPE_UNSIGNED_LONG_LONG", "TYPE_UNSIGNED_LONG_LONG"],
+                    ["LOR_TYPE_FLOAT", "TYPE_FLOAT"],
+                    ["LOR_TYPE_DOUBLE", "TYPE_DOUBLE"],
+                    ["LOR_TYPE_LONG_DOUBLE", "TYPE_LONG_DOUBLE"],
+                    ["LOR_TYPE_CSTRING", "TYPE_CSTRING"],
+                    ["LOR_TYPE_POINTER", "TYPE_POINTER"],
+                    ["LOR_TYPE_STRING_VIEW", "TYPE_STRING_VIEW"],
+                    ["LOR_TYPE_ARENA_CONFIG", "TYPE_ARENA_CONFIG"],
+                    ["LOR_TYPE_ARENA", "TYPE_ARENA"],
+                    ["LOR_TYPE_ARENA_MARK", "TYPE_ARENA_MARK"],
+                    ["LOR_TYPE_SCRATCH", "TYPE_SCRATCH"],
+                    ["LOR_TYPE_MMAP", "TYPE_MMAP"],
+                    ["LOR_TYPE_LEAK_STATS", "TYPE_LEAK_STATS"],
+                    ["LOR_TYPE_RANDOM", "TYPE_RANDOM"],
+                    ["lor_type_kind", "type_kind"],
+                    ["lor_type_name", "type_name"]
+                ]
+            }
+        },
+        {
             "name": "memory",
             "enable_macro": "LOR_ENABLE_MEMORY",
             "enabled_by": [
@@ -153,10 +218,80 @@
             }
         },
         {
+            "name": "print",
+            "enable_macro": "LOR_ENABLE_PRINT",
+            "dependencies": [
+                "array",
+                "map",
+                "set",
+                "type"
+            ],
+            "header": "include/lor/print.h",
+            "source": "src/print.c",
+            "symbols": {
+                "functions": [
+                    ["lor_fprint_values", "fprint_values"]
+                ],
+                "types": [
+                    ["LorPrintKind", "PrintKind"],
+                    ["LorPrintCustomFn", "PrintCustomFn"],
+                    ["LorPrintCustom", "PrintCustom"],
+                    ["LorPrintValue", "PrintValue"],
+                    ["LorPrintSequence", "PrintSequence"],
+                    ["LorPrintMap", "PrintMap"],
+                    ["LorPrintConfig", "PrintConfig"],
+                    ["LorPrintEnd", "PrintEnd"]
+                ],
+                "macros": [
+                    ["LOR_PRINT_BOOL", "PRINT_BOOL"],
+                    ["LOR_PRINT_CHAR", "PRINT_CHAR"],
+                    ["LOR_PRINT_SIGNED", "PRINT_SIGNED"],
+                    ["LOR_PRINT_UNSIGNED", "PRINT_UNSIGNED"],
+                    ["LOR_PRINT_FLOATING", "PRINT_FLOATING"],
+                    ["LOR_PRINT_CSTRING", "PRINT_CSTRING"],
+                    ["LOR_PRINT_STRING_VIEW", "PRINT_STRING_VIEW"],
+                    ["LOR_PRINT_POINTER", "PRINT_POINTER"],
+                    ["LOR_PRINT_ARENA_CONFIG", "PRINT_ARENA_CONFIG"],
+                    ["LOR_PRINT_ARENA", "PRINT_ARENA"],
+                    ["LOR_PRINT_ARENA_MARK", "PRINT_ARENA_MARK"],
+                    ["LOR_PRINT_SCRATCH", "PRINT_SCRATCH"],
+                    ["LOR_PRINT_MMAP", "PRINT_MMAP"],
+                    ["LOR_PRINT_LEAK_STATS", "PRINT_LEAK_STATS"],
+                    ["LOR_PRINT_RANDOM", "PRINT_RANDOM"],
+                    ["LOR_PRINT_ARRAY", "PRINT_ARRAY"],
+                    ["LOR_PRINT_SET", "PRINT_SET"],
+                    ["LOR_PRINT_MAP", "PRINT_MAP"],
+                    ["LOR_PRINT_CUSTOM", "PRINT_CUSTOM"],
+                    ["LOR_PRINT_END", "PRINT_END"],
+                    ["LOR_PRINT_CONFIG_INIT", "PRINT_CONFIG_INIT"],
+                    ["LOR_HAS_GENERIC_PRINT", "HAS_GENERIC_PRINT"],
+                    ["lor_print_value", "print_value"],
+                    ["lor_print_pointer", "print_pointer"],
+                    ["lor_print_custom", "print_custom"],
+                    ["lor_print_array", "print_array"],
+                    ["lor_print_array_with", "print_array_with"],
+                    ["lor_print_set", "print_set"],
+                    ["lor_print_set_with", "print_set_with"],
+                    ["lor_print_map_as", "print_map_as"],
+                    ["lor_print_map_as_with", "print_map_as_with"],
+                    ["LOR_HAS_PRINT_MAP_AUTO", "HAS_PRINT_MAP_AUTO"],
+                    ["lor_print_map", "print_map"],
+                    ["lor_print_map_with", "print_map_with"],
+                    ["lor_end", "end"],
+                    ["lor_end_view", "end_view"],
+                    ["lor_fprint_with", "fprint_with"],
+                    ["lor_print_with", "print_with"],
+                    ["lor_fprint", "fprint"],
+                    ["lor_print", "print"]
+                ]
+            }
+        },
+        {
             "name": "array",
             "enable_macro": "LOR_ENABLE_ARRAY",
             "dependencies": [
-                "status"
+                "status",
+                "features"
             ],
             "header": "include/lor/array.h",
             "source": "src/array.c",
@@ -202,7 +337,8 @@
             "name": "map",
             "enable_macro": "LOR_ENABLE_MAP",
             "dependencies": [
-                "string"
+                "string",
+                "features"
             ],
             "header": "include/lor/map.h",
             "source": "src/map.c",
@@ -265,6 +401,7 @@
             "name": "set",
             "enable_macro": "LOR_ENABLE_SET",
             "dependencies": [
+                "features",
                 "map"
             ],
             "header": "include/lor/set.h",

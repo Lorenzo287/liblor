@@ -3,18 +3,9 @@
 liblor is a personal C library for bringing higher-level programming tools to C.
 The goal is a cohesive set of small, readable, portable utilities for everyday C code.
 
-The project is early. APIs may change.
-
 ## Build And Test
 
 Use the Makefile for local development:
-
-```powershell
-make all
-make check
-```
-
-targets:
 
 - `make test`: build and run tests.
 - `make example`: build examples.
@@ -29,11 +20,6 @@ targets:
 - `make release-lto-check`: test static and shared LTO library consumers.
 - `make single-header`: generate `lor.h`.
 - `make clean`: remove all generated files under `.build/`.
-
-The default build uses `.build/default/`. Named configurations use their own
-subdirectories, so changing compilers or diagnostics does not leave executables
-or extra build directories in the repository root. Use `make -j all` for a
-parallel local build when needed.
 
 Release builds use `-O3 -DNDEBUG` without CPU-specific flags, so the binaries
 remain usable on machines other than the one that built them. The optional LTO
@@ -60,18 +46,22 @@ Current modules include:
 
 - `lor/array.h`: typed-pointer dynamic arrays with checked growth.
 - `lor/cli.h`: function-based command-line parsing with generated help.
+- `lor/features.h`: compiler capability checks used by optional conveniences.
 - `lor/map.h`: typed hash maps with configurable key ownership.
 - `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in
   leak checking.
+- `lor/print.h`: type-directed scalar, liblor object, and container printing.
 - `lor/random.h`: explicit-state PCG32 generation and system entropy.
 - `lor/set.h`: typed hash sets with Python-style mathematical operations.
 - `lor/status.h`: small shared failure statuses.
 - `lor/string.h`: borrowed string views and owned dynamic strings.
+- `lor/type.h`: C11 names for built-in and concrete liblor value types.
 
 See [API Conventions](docs/api-conventions.md), [Command-Line Parsing](docs/cli.md),
 [Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
-[Memory](docs/memory.md), [Random Numbers](docs/random.md),
-[Sets](docs/set.md), and [Strings](docs/string.md).
+[Memory](docs/memory.md), [Generic Printing](docs/print.md),
+[Random Numbers](docs/random.md), [Sets](docs/set.md),
+[Strings](docs/string.md), and [Type Helpers](docs/type.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/memory.h"`.
@@ -108,13 +98,16 @@ Basic use:
 Optional module and alias controls:
 
 - `LOR_ENABLE_STATUS`: include only the status module.
+- `LOR_ENABLE_FEATURES`: include compiler feature detection only.
+- `LOR_ENABLE_TYPE`: include rich type inspection and its value-type dependencies.
 - `LOR_ENABLE_MEMORY`: include only the memory module.
 - `LOR_ENABLE_STRING`: include the string module and its status dependency.
-- `LOR_ENABLE_ARRAY`: include the array module and its status dependency.
+- `LOR_ENABLE_PRINT`: include generic printing and supported container modules.
+- `LOR_ENABLE_ARRAY`: include the array module and its status/features dependencies.
 - `LOR_ENABLE_CLI`: include the CLI module and its array/string dependencies.
-- `LOR_ENABLE_MAP`: include the map module and its string/status dependencies.
+- `LOR_ENABLE_MAP`: include the map module and its string/features dependencies.
 - `LOR_ENABLE_RANDOM`: include the random module and its status dependency.
-- `LOR_ENABLE_SET`: include the set module and its map dependencies.
+- `LOR_ENABLE_SET`: include the set module and its map/features dependencies.
 - `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
 - `LOR_LEAKCHECK`: development build mode for location-aware leak checking
   across liblor memory calls and stdlib heap calls. It automatically includes

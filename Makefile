@@ -105,6 +105,7 @@ EXAMPLE_SH_BINS := $(patsubst examples_sh/%.c,$(BUILD_DIR)/example_sh_%$(EXE),$(
 SINGLE_HEADER := lor.h
 SINGLE_HEADER_INPUTS := tools/gen_single_header.py tools/lor_modules.json $(PUBLIC_HEADERS) $(LIB_SRCS)
 EXPORT_INPUTS := tools/gen_exports.py tools/lor_modules.json
+RELEASE_TEST_SRC := tests/test_print.c
 RELEASE_STATIC_TEST := $(BUILD_DIR)/test_release_static$(EXE)
 RELEASE_SHARED_TEST := $(BUILD_DIR)/test_release_shared$(EXE)
 
@@ -189,10 +190,10 @@ $(SHARED_LIB): $(LIB_OBJS) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(SHARED_LINK_FLAGS) $(LIB_OBJS) -o $@
 endif
 
-$(RELEASE_STATIC_TEST): tests/test_random.c $(STATIC_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
+$(RELEASE_STATIC_TEST): $(RELEASE_TEST_SRC) $(STATIC_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(STATIC_LIB) -o $@
 
-$(RELEASE_SHARED_TEST): tests/test_random.c $(SHARED_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
+$(RELEASE_SHARED_TEST): $(RELEASE_TEST_SRC) $(SHARED_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(SHARED_TEST_LINK) -o $@
 
 $(SINGLE_HEADER_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(SINGLE_HEADER) | $(BUILD_DIR)

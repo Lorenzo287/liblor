@@ -116,8 +116,8 @@ lor_set_add_as(numbers, int, 20);
 ```
 
 `lor_set_add` takes an lvalue of the exact key type. `lor_set_add_as` constructs
-a C99 compound literal. On GCC and Clang, `LOR_HAS_SET_AUTO` enables inferred
-expressions:
+a C99 compound literal. When the shared `lor_typeof` and statement-expression
+features are available, `LOR_HAS_SET_AUTO` enables inferred expressions:
 
 ```c
 #if LOR_HAS_SET_AUTO

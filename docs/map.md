@@ -121,9 +121,9 @@ Score *score = lor_map_find_auto(scores, 10u);
 #endif
 ```
 
-These use `__typeof__` and statement expressions, evaluate supplied expressions
-once, and perform normal assignment conversions. Use the portable forms when
-support for other compilers matters.
+These use the shared `lor_typeof` and statement-expression feature checks,
+evaluate supplied expressions once, and perform normal assignment conversions.
+Use the portable forms when support for other compilers matters.
 
 ## Failure And Lifetime
 

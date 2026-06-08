@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 
+#include "lor/features.h"
 #include "lor/map.h"
 
 #ifdef __cplusplus
@@ -122,21 +123,21 @@ int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
 #define lor_set_is_disjoint(a, b) \
     lor_set_is_disjoint_raw((a), (b), sizeof *(a))
 
-#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_SET_AUTO 1
 #define lor_set_add_auto(set, key_value)                       \
     __extension__({                                            \
-        __typeof__(*(set)) lor_set__key = (key_value);         \
+        lor_typeof(*(set)) lor_set__key = (key_value);         \
         lor_set_add_raw(&(set), sizeof *(set), &lor_set__key); \
     })
 #define lor_set_contains_auto(set, key_value)                      \
     __extension__({                                                \
-        __typeof__(*(set)) lor_set__key = (key_value);             \
+        lor_typeof(*(set)) lor_set__key = (key_value);             \
         lor_set_contains_raw((set), sizeof *(set), &lor_set__key); \
     })
 #define lor_set_remove_auto(set, key_value)                      \
     __extension__({                                              \
-        __typeof__(*(set)) lor_set__key = (key_value);           \
+        lor_typeof(*(set)) lor_set__key = (key_value);           \
         lor_set_remove_raw((set), sizeof *(set), &lor_set__key); \
     })
 #else

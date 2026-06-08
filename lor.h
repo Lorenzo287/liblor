@@ -11,52 +11,79 @@
    If no LOR_ENABLE_* macro is defined, every stable module is enabled.
    Define one or more LOR_ENABLE_* macros before including this header
    to include only those modules. */
-#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_STRING) && !defined(LOR_ENABLE_ARRAY) && !defined(LOR_ENABLE_MAP) && !defined(LOR_ENABLE_SET) && !defined(LOR_ENABLE_CLI) && !defined(LOR_ENABLE_RANDOM)
+#if !defined(LOR_ENABLE_STATUS) && !defined(LOR_ENABLE_FEATURES) && !defined(LOR_ENABLE_MEMORY) && !defined(LOR_ENABLE_RANDOM) && !defined(LOR_ENABLE_STRING) && !defined(LOR_ENABLE_TYPE) && !defined(LOR_ENABLE_ARRAY) && !defined(LOR_ENABLE_MAP) && !defined(LOR_ENABLE_SET) && !defined(LOR_ENABLE_PRINT) && !defined(LOR_ENABLE_CLI)
 #define LOR_ENABLE_ALL
 #endif
 
 #ifdef LOR_ENABLE_ALL
 #define LOR_ENABLE_STATUS
+#define LOR_ENABLE_FEATURES
 #define LOR_ENABLE_MEMORY
+#define LOR_ENABLE_RANDOM
 #define LOR_ENABLE_STRING
+#define LOR_ENABLE_TYPE
 #define LOR_ENABLE_ARRAY
 #define LOR_ENABLE_MAP
 #define LOR_ENABLE_SET
+#define LOR_ENABLE_PRINT
 #define LOR_ENABLE_CLI
-#define LOR_ENABLE_RANDOM
 #endif
 
 #if defined(LOR_LEAKCHECK)
 #define LOR_ENABLE_MEMORY
 #endif
 
+#ifdef LOR_ENABLE_RANDOM
+#define LOR_ENABLE_STATUS
+#endif
+
 #ifdef LOR_ENABLE_STRING
 #define LOR_ENABLE_STATUS
 #endif
 
+#ifdef LOR_ENABLE_TYPE
+#define LOR_ENABLE_FEATURES
+#define LOR_ENABLE_MEMORY
+#define LOR_ENABLE_STATUS
+#define LOR_ENABLE_RANDOM
+#define LOR_ENABLE_STRING
+#endif
+
 #ifdef LOR_ENABLE_ARRAY
 #define LOR_ENABLE_STATUS
+#define LOR_ENABLE_FEATURES
 #endif
 
 #ifdef LOR_ENABLE_MAP
 #define LOR_ENABLE_STATUS
 #define LOR_ENABLE_STRING
+#define LOR_ENABLE_FEATURES
 #endif
 
 #ifdef LOR_ENABLE_SET
+#define LOR_ENABLE_FEATURES
 #define LOR_ENABLE_STATUS
 #define LOR_ENABLE_STRING
 #define LOR_ENABLE_MAP
 #endif
 
-#ifdef LOR_ENABLE_CLI
+#ifdef LOR_ENABLE_PRINT
 #define LOR_ENABLE_STATUS
+#define LOR_ENABLE_FEATURES
 #define LOR_ENABLE_ARRAY
 #define LOR_ENABLE_STRING
+#define LOR_ENABLE_MAP
+#define LOR_ENABLE_SET
+#define LOR_ENABLE_MEMORY
+#define LOR_ENABLE_RANDOM
+#define LOR_ENABLE_TYPE
 #endif
 
-#ifdef LOR_ENABLE_RANDOM
+#ifdef LOR_ENABLE_CLI
 #define LOR_ENABLE_STATUS
+#define LOR_ENABLE_FEATURES
+#define LOR_ENABLE_ARRAY
+#define LOR_ENABLE_STRING
 #endif
 
 // === status: declarations ===
@@ -78,6 +105,38 @@ const char *lor_status_name(LorStatus status);
 
 #ifdef __cplusplus
 }
+#endif
+#endif
+
+// === features: declarations ===
+#ifdef LOR_ENABLE_FEATURES
+// Standard C11 generic selection.
+#if !defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define LOR_HAS_GENERIC_SELECTION 1
+#else
+#define LOR_HAS_GENERIC_SELECTION 0
+#endif
+
+/* Type declaration helper.
+
+   GCC and Clang provide `__typeof__` in C11 mode. C23 provides standard
+   `typeof`. */
+#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#define LOR_HAS_TYPEOF 1
+#define lor_typeof(value) __typeof__(value)
+#elif !defined(__cplusplus) && defined(__STDC_VERSION__) && \
+    __STDC_VERSION__ >= 202311L
+#define LOR_HAS_TYPEOF 1
+#define lor_typeof(value) typeof(value)
+#else
+#define LOR_HAS_TYPEOF 0
+#endif
+
+// Statement expressions are a separate GCC/Clang extension.
+#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#define LOR_HAS_STATEMENT_EXPRESSIONS 1
+#else
+#define LOR_HAS_STATEMENT_EXPRESSIONS 0
 #endif
 #endif
 
@@ -390,7 +449,8 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_scratch_(void *scratch) {
     LorScratch *value = (LorScratch *)scratch;
     if (value == NULL || value->arena == NULL) return;
     lor_scratch_end(*value);
-    *value = (LorScratch)LOR_SCRATCH_INIT;
+    LorScratch reset = LOR_SCRATCH_INIT;
+    *value = reset;
 }
 
 static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_mmap_(void *map) {
@@ -409,6 +469,72 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_file_(void *file) {
 #define LOR_AUTO_SCRATCH LOR_CLEANUP(lor_memory_cleanup_scratch_)
 #define LOR_AUTO_MMAP LOR_CLEANUP(lor_memory_cleanup_mmap_)
 #define LOR_AUTO_FILE LOR_CLEANUP(lor_memory_cleanup_file_)
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+// === random: declarations ===
+#ifdef LOR_ENABLE_RANDOM
+#include <stddef.h>
+#include <stdint.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Explicit PCG32 random state.
+
+   Separate states may be used concurrently. The same mutable state requires
+   external synchronization. This generator is intended for simulations,
+   games, tests, and randomized algorithms, not cryptographic use. */
+typedef struct LorRandom {
+    // Current position in the selected PCG sequence.
+    uint64_t state;
+    // Encoded stream selector. Must remain odd.
+    uint64_t increment;
+} LorRandom;
+
+/* A valid deterministic state equivalent to seed 0 and stream 0.
+
+   Use `lor_random_seed` for a chosen reproducible sequence or
+   `lor_random_seed_system` when each run should begin differently. */
+#define LOR_RANDOM_INIT {UINT64_C(6364136223846793006), UINT64_C(1)}
+
+// Selects a deterministic sequence from `seed` and `stream`.
+void lor_random_seed(LorRandom *random, uint64_t seed, uint64_t stream);
+
+/* Seeds `random` from the operating system's entropy source.
+
+   The state is unchanged on failure. This does not make later PCG output
+   cryptographically secure. */
+LorStatus lor_random_seed_system(LorRandom *random);
+
+/* Fills `data` with bytes from the operating system's entropy source.
+
+   This operation is suitable when unpredictable bytes are required. Passing
+   `NULL` is valid only when `size` is zero. */
+LorStatus lor_random_system_bytes(void *data, size_t size);
+
+// Returns the next uniformly distributed 32-bit value.
+uint32_t lor_random_u32(LorRandom *random);
+
+// Returns a 64-bit value composed from two consecutive 32-bit outputs.
+uint64_t lor_random_u64(LorRandom *random);
+
+/* Returns a uniformly distributed value in [0, bound).
+
+   Rejection sampling avoids modulo bias. A zero bound returns zero without
+   advancing the generator. */
+uint32_t lor_random_bounded_u32(LorRandom *random, uint32_t bound);
+
+// Returns a uniformly distributed float in [0, 1) with 24 random bits.
+float lor_random_f32(LorRandom *random);
+
+// Returns a uniformly distributed double in [0, 1) with 53 random bits.
+double lor_random_f64(LorRandom *random);
 
 #ifdef __cplusplus
 }
@@ -602,6 +728,92 @@ LorStatus lor_string_append_char(LorString *string, char value);
 #endif
 #endif
 
+// === type: declarations ===
+#ifdef LOR_ENABLE_TYPE
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum LorTypeKind {
+    LOR_TYPE_OTHER = 0,
+    LOR_TYPE_BOOL,
+    LOR_TYPE_CHAR,
+    LOR_TYPE_SIGNED_CHAR,
+    LOR_TYPE_UNSIGNED_CHAR,
+    LOR_TYPE_SHORT,
+    LOR_TYPE_UNSIGNED_SHORT,
+    LOR_TYPE_INT,
+    LOR_TYPE_UNSIGNED_INT,
+    LOR_TYPE_LONG,
+    LOR_TYPE_UNSIGNED_LONG,
+    LOR_TYPE_LONG_LONG,
+    LOR_TYPE_UNSIGNED_LONG_LONG,
+    LOR_TYPE_FLOAT,
+    LOR_TYPE_DOUBLE,
+    LOR_TYPE_LONG_DOUBLE,
+    LOR_TYPE_CSTRING,
+    LOR_TYPE_POINTER,
+    LOR_TYPE_STRING_VIEW,
+    LOR_TYPE_ARENA_CONFIG,
+    LOR_TYPE_ARENA,
+    LOR_TYPE_ARENA_MARK,
+    LOR_TYPE_SCRATCH,
+    LOR_TYPE_MMAP,
+    LOR_TYPE_LEAK_STATS,
+    LOR_TYPE_RANDOM
+} LorTypeKind;
+
+// Returns a stable name for `kind`, or "other".
+const char *lor_type_kind_name(LorTypeKind kind);
+
+/* Standard C11 generic type inspection.
+
+   The controlling expression is not evaluated. Typedefs resolve to their
+   compatible C type, and unlisted user-defined types return `LOR_TYPE_OTHER`.
+   C++ translation units use the explicit `LorTypeKind` API instead. */
+#if LOR_HAS_GENERIC_SELECTION
+#define lor_type_kind(value)                             \
+    _Generic((value),                                    \
+        _Bool: LOR_TYPE_BOOL,                            \
+        char: LOR_TYPE_CHAR,                             \
+        signed char: LOR_TYPE_SIGNED_CHAR,               \
+        unsigned char: LOR_TYPE_UNSIGNED_CHAR,           \
+        short: LOR_TYPE_SHORT,                           \
+        unsigned short: LOR_TYPE_UNSIGNED_SHORT,         \
+        int: LOR_TYPE_INT,                               \
+        unsigned int: LOR_TYPE_UNSIGNED_INT,             \
+        long: LOR_TYPE_LONG,                             \
+        unsigned long: LOR_TYPE_UNSIGNED_LONG,           \
+        long long: LOR_TYPE_LONG_LONG,                   \
+        unsigned long long: LOR_TYPE_UNSIGNED_LONG_LONG, \
+        float: LOR_TYPE_FLOAT,                           \
+        double: LOR_TYPE_DOUBLE,                         \
+        long double: LOR_TYPE_LONG_DOUBLE,               \
+        char *: LOR_TYPE_CSTRING,                        \
+        const char *: LOR_TYPE_CSTRING,                  \
+        volatile char *: LOR_TYPE_CSTRING,               \
+        const volatile char *: LOR_TYPE_CSTRING,         \
+        void *: LOR_TYPE_POINTER,                        \
+        const void *: LOR_TYPE_POINTER,                  \
+        volatile void *: LOR_TYPE_POINTER,               \
+        const volatile void *: LOR_TYPE_POINTER,         \
+        LorStringView: LOR_TYPE_STRING_VIEW,             \
+        LorArenaConfig: LOR_TYPE_ARENA_CONFIG,           \
+        LorArena: LOR_TYPE_ARENA,                        \
+        LorArenaMark: LOR_TYPE_ARENA_MARK,               \
+        LorScratch: LOR_TYPE_SCRATCH,                    \
+        LorMmap: LOR_TYPE_MMAP,                          \
+        LorLeakStats: LOR_TYPE_LEAK_STATS,               \
+        LorRandom: LOR_TYPE_RANDOM,                      \
+        default: LOR_TYPE_OTHER)
+#define lor_type_name(value) lor_type_kind_name(lor_type_kind(value))
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
 // === array: declarations ===
 #ifdef LOR_ENABLE_ARRAY
 #include <stddef.h>
@@ -690,8 +902,8 @@ void lor_array_deinit(void *array_ref);
    `lor_array_push` takes an lvalue of the exact element type so its address
    can be copied portably.
    Use `lor_array_push_as` for literals and inline aggregate initialization.
-   On GCC and Clang, `lor_array_push_auto` accepts any assignable expression
-   and infers the destination element type with `__typeof__`. */
+   When supported, `lor_array_push_auto` accepts any assignable expression and
+   infers the destination element type with `lor_typeof`. */
 #define lor_array_reserve(array, capacity) \
     lor_array_reserve_raw(&(array), sizeof *(array), (capacity))
 #define lor_array_resize(array, size) \
@@ -704,11 +916,11 @@ void lor_array_deinit(void *array_ref);
     lor_array_append_raw(&(array), sizeof *(array), &(value), 1u)
 #define lor_array_push_as(array, type, ...) \
     lor_array_append_raw(&(array), sizeof *(array), &(type){__VA_ARGS__}, 1u)
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_ARRAY_PUSH_AUTO 1
 #define lor_array_push_auto(array, value)                                       \
     __extension__({                                                             \
-        __typeof__(*(array)) lor_array__push_value = (value);                   \
+        lor_typeof(*(array)) lor_array__push_value = (value);                   \
         lor_array_append_raw(&(array), sizeof *(array), &lor_array__push_value, 1u); \
     })
 #else
@@ -902,27 +1114,27 @@ void lor_map_deinit(void *map_ref);
 
    These infer destination types, evaluate each supplied expression once, and
    perform normal assignment conversion into temporary key/value objects. */
-#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_MAP_AUTO 1
 #define lor_map_put_auto(map, key_value, value_value)                                     \
     __extension__({                                                                       \
-        __typeof__(*(map)) lor_map__entry = {.key = (key_value), .value = (value_value)}; \
+        lor_typeof(*(map)) lor_map__entry = {.key = (key_value), .value = (value_value)}; \
         lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &lor_map__entry);        \
     })
 #define lor_map_find_auto(map, key_value)                                         \
     __extension__({                                                               \
-        __typeof__((map)->key) lor_map__key = (key_value);                        \
-        (__typeof__(map))lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, \
+        lor_typeof((map)->key) lor_map__key = (key_value);                        \
+        (lor_typeof(map))lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, \
                                           &lor_map__key);                         \
     })
 #define lor_map_contains_auto(map, key_value)                                        \
     __extension__({                                                                  \
-        __typeof__((map)->key) lor_map__key = (key_value);                           \
+        lor_typeof((map)->key) lor_map__key = (key_value);                           \
         lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &lor_map__key); \
     })
 #define lor_map_remove_auto(map, key_value)                                        \
     __extension__({                                                                \
-        __typeof__((map)->key) lor_map__key = (key_value);                         \
+        lor_typeof((map)->key) lor_map__key = (key_value);                         \
         lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &lor_map__key); \
     })
 #else
@@ -1067,21 +1279,21 @@ int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
 #define lor_set_is_disjoint(a, b) \
     lor_set_is_disjoint_raw((a), (b), sizeof *(a))
 
-#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_SET_AUTO 1
 #define lor_set_add_auto(set, key_value)                       \
     __extension__({                                            \
-        __typeof__(*(set)) lor_set__key = (key_value);         \
+        lor_typeof(*(set)) lor_set__key = (key_value);         \
         lor_set_add_raw(&(set), sizeof *(set), &lor_set__key); \
     })
 #define lor_set_contains_auto(set, key_value)                      \
     __extension__({                                                \
-        __typeof__(*(set)) lor_set__key = (key_value);             \
+        lor_typeof(*(set)) lor_set__key = (key_value);             \
         lor_set_contains_raw((set), sizeof *(set), &lor_set__key); \
     })
 #define lor_set_remove_auto(set, key_value)                      \
     __extension__({                                              \
-        __typeof__(*(set)) lor_set__key = (key_value);           \
+        lor_typeof(*(set)) lor_set__key = (key_value);           \
         lor_set_remove_raw((set), sizeof *(set), &lor_set__key); \
     })
 #else
@@ -1099,6 +1311,414 @@ static inline void __attribute__((unused)) lor_set_cleanup_(void *set_ref) {
 #define LOR_AUTO_SET __attribute__((cleanup(lor_set_cleanup_)))
 #else
 #define LOR_AUTO_SET
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+// === print: declarations ===
+#ifdef LOR_ENABLE_PRINT
+#include <inttypes.h>
+#include <stddef.h>
+#include <stdio.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum LorPrintKind {
+    LOR_PRINT_BOOL = 0,
+    LOR_PRINT_CHAR,
+    LOR_PRINT_SIGNED,
+    LOR_PRINT_UNSIGNED,
+    LOR_PRINT_FLOATING,
+    LOR_PRINT_CSTRING,
+    LOR_PRINT_STRING_VIEW,
+    LOR_PRINT_POINTER,
+    LOR_PRINT_ARENA_CONFIG,
+    LOR_PRINT_ARENA,
+    LOR_PRINT_ARENA_MARK,
+    LOR_PRINT_SCRATCH,
+    LOR_PRINT_MMAP,
+    LOR_PRINT_LEAK_STATS,
+    LOR_PRINT_RANDOM,
+    LOR_PRINT_ARRAY,
+    LOR_PRINT_SET,
+    LOR_PRINT_MAP,
+    LOR_PRINT_CUSTOM,
+    LOR_PRINT_END
+} LorPrintKind;
+
+typedef LorStatus (*LorPrintCustomFn)(FILE *out, const void *value);
+
+typedef struct LorPrintCustom {
+    const void *value;
+    LorPrintCustomFn function;
+} LorPrintCustom;
+
+typedef struct LorPrintSequence {
+    const void *data;
+    size_t count;
+    size_t element_size;
+    LorTypeKind element_kind;
+    LorPrintCustomFn element_function;
+} LorPrintSequence;
+
+typedef struct LorPrintMap {
+    const void *data;
+    size_t count;
+    size_t entry_size;
+    size_t key_offset;
+    size_t key_size;
+    LorTypeKind key_kind;
+    LorPrintCustomFn key_function;
+    size_t value_offset;
+    size_t value_size;
+    LorTypeKind value_kind;
+    LorPrintCustomFn value_function;
+} LorPrintMap;
+
+typedef struct LorPrintValue {
+    LorPrintKind kind;
+    union {
+        int boolean;
+        char character;
+        intmax_t signed_integer;
+        uintmax_t unsigned_integer;
+        double floating;
+        const char *cstring;
+        LorStringView view;
+        const void *pointer;
+        LorArenaConfig arena_config;
+        LorArena arena;
+        LorArenaMark arena_mark;
+        LorScratch scratch;
+        LorMmap mmap;
+        LorLeakStats leak_stats;
+        LorRandom random;
+        LorPrintSequence sequence;
+        LorPrintMap map;
+        LorPrintCustom custom;
+    } as;
+} LorPrintValue;
+
+typedef struct LorPrintConfig {
+    LorStringView separator;
+    LorStringView ending;
+} LorPrintConfig;
+
+#define LOR_PRINT_CONFIG_INIT {{" ", 1u}, {"\n", 1u}}
+
+/* Typed marker that replaces the configured ending.
+
+   Markers may appear anywhere in a generic print call and do not participate
+   in separator placement. If several are supplied, the last marker wins. */
+typedef struct LorPrintEnd {
+    LorStringView ending;
+} LorPrintEnd;
+
+static inline LorPrintValue lor_print_value_init(LorPrintKind kind) {
+    LorPrintValue result;
+    result.kind = kind;
+    result.as.unsigned_integer = 0;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_bool(int value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_BOOL);
+    result.as.boolean = value != 0;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_char(char value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_CHAR);
+    result.as.character = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_signed(intmax_t value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_SIGNED);
+    result.as.signed_integer = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_unsigned(uintmax_t value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_UNSIGNED);
+    result.as.unsigned_integer = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_floating(double value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_FLOATING);
+    result.as.floating = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_cstring(const char *value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_CSTRING);
+    result.as.cstring = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_view(LorStringView value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_STRING_VIEW);
+    result.as.view = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_arena_config(LorArenaConfig value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_ARENA_CONFIG);
+    result.as.arena_config = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_arena(LorArena value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_ARENA);
+    result.as.arena = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_arena_mark(LorArenaMark value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_ARENA_MARK);
+    result.as.arena_mark = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_scratch(LorScratch value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_SCRATCH);
+    result.as.scratch = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_mmap(LorMmap value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_MMAP);
+    result.as.mmap = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_leak_stats(LorLeakStats value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_LEAK_STATS);
+    result.as.leak_stats = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_random(LorRandom value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_RANDOM);
+    result.as.random = value;
+    return result;
+}
+
+// Wraps an object pointer for generic printing with `%p`.
+static inline LorPrintValue lor_print_pointer(const void *value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_POINTER);
+    result.as.pointer = value;
+    return result;
+}
+
+static inline LorPrintValue lor_print_sequence_value(
+    LorPrintKind kind, const void *data, size_t count, size_t element_size,
+    LorTypeKind element_kind, LorPrintCustomFn element_function) {
+    LorPrintValue result = lor_print_value_init(kind);
+    result.as.sequence.data = data;
+    result.as.sequence.count = count;
+    result.as.sequence.element_size = element_size;
+    result.as.sequence.element_kind = element_kind;
+    result.as.sequence.element_function = element_function;
+    return result;
+}
+
+static inline LorPrintValue lor_print_map_value(
+    const void *data, size_t count, size_t entry_size, size_t key_offset,
+    size_t key_size, LorTypeKind key_kind, LorPrintCustomFn key_function,
+    size_t value_offset, size_t value_size, LorTypeKind value_kind,
+    LorPrintCustomFn value_function) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_MAP);
+    result.as.map.data = data;
+    result.as.map.count = count;
+    result.as.map.entry_size = entry_size;
+    result.as.map.key_offset = key_offset;
+    result.as.map.key_size = key_size;
+    result.as.map.key_kind = key_kind;
+    result.as.map.key_function = key_function;
+    result.as.map.value_offset = value_offset;
+    result.as.map.value_size = value_size;
+    result.as.map.value_kind = value_kind;
+    result.as.map.value_function = value_function;
+    return result;
+}
+
+// Wraps a user-defined value and its printer callback.
+static inline LorPrintValue lor_print_custom(const void *value,
+                                             LorPrintCustomFn function) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_CUSTOM);
+    result.as.custom.value = value;
+    result.as.custom.function = function;
+    return result;
+}
+
+// Creates an ending marker from a NUL-terminated C string.
+static inline LorPrintEnd lor_end(const char *ending) {
+    LorPrintEnd result;
+    result.ending = lor_sv_from_cstr(ending);
+    return result;
+}
+
+// Creates an ending marker from an exact-length string view.
+static inline LorPrintEnd lor_end_view(LorStringView ending) {
+    LorPrintEnd result;
+    result.ending = ending;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_end(LorPrintEnd value) {
+    LorPrintValue result = lor_print_value_init(LOR_PRINT_END);
+    result.as.view = value.ending;
+    return result;
+}
+
+static inline LorPrintValue lor_print_value_identity(LorPrintValue value) {
+    return value;
+}
+
+/* Prints an explicit array of tagged values.
+
+   Values are separated by `config.separator` and followed by `config.ending`,
+   unless an `LOR_PRINT_END` value replaces it. A zero-value array prints only
+   the ending. Returns `LOR_STATUS_SYSTEM_ERROR` on an output failure. */
+LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
+                            const LorPrintValue *values, size_t count);
+
+/* C11 generic convenience layer.
+
+   Each expression is evaluated once, although C does not specify evaluation
+   order within the generated initializer. Up to 16 arguments are supported.
+   Unsupported values fail to compile; wrap object pointers with
+   `lor_print_pointer` and user-defined types with `lor_print_custom`. */
+#if LOR_HAS_GENERIC_SELECTION
+#define LOR_HAS_GENERIC_PRINT 1
+#define lor_print_value(value)                        \
+    _Generic((value),                                 \
+        _Bool: lor_print_value_bool,                  \
+        char: lor_print_value_char,                   \
+        signed char: lor_print_value_signed,          \
+        unsigned char: lor_print_value_unsigned,      \
+        short: lor_print_value_signed,                \
+        unsigned short: lor_print_value_unsigned,     \
+        int: lor_print_value_signed,                  \
+        unsigned int: lor_print_value_unsigned,       \
+        long: lor_print_value_signed,                 \
+        unsigned long: lor_print_value_unsigned,      \
+        long long: lor_print_value_signed,            \
+        unsigned long long: lor_print_value_unsigned, \
+        float: lor_print_value_floating,              \
+        double: lor_print_value_floating,             \
+        long double: lor_print_value_floating,        \
+        char *: lor_print_value_cstring,              \
+        const char *: lor_print_value_cstring,        \
+        void *: lor_print_pointer,                    \
+        const void *: lor_print_pointer,              \
+        LorStringView: lor_print_value_view,          \
+        LorArenaConfig: lor_print_value_arena_config, \
+        LorArena: lor_print_value_arena,              \
+        LorArenaMark: lor_print_value_arena_mark,     \
+        LorScratch: lor_print_value_scratch,          \
+        LorMmap: lor_print_value_mmap,                \
+        LorLeakStats: lor_print_value_leak_stats,     \
+        LorRandom: lor_print_value_random,            \
+        LorPrintEnd: lor_print_value_end,             \
+        LorPrintValue: lor_print_value_identity)(value)
+
+/* Container wrappers retain information that a raw typed pointer does not.
+
+   Built-in scalar types, C strings, string views, and concrete liblor value
+   structs are inferred automatically. Use the `_with` forms when elements,
+   keys, or values are application-defined structures. */
+#define lor_print_array_with(array, function)                                 \
+    lor_print_sequence_value(LOR_PRINT_ARRAY, (array), lor_array_size(array), \
+                             sizeof *(array), lor_type_kind(*(array)), (function))
+#define lor_print_array(array) lor_print_array_with((array), NULL)
+#define lor_print_set_with(set, function)                             \
+    lor_print_sequence_value(LOR_PRINT_SET, (set), lor_set_size(set), \
+                             sizeof *(set), lor_type_kind(*(set)), (function))
+#define lor_print_set(set) lor_print_set_with((set), NULL)
+
+#define lor_print_map_as_with(map, type, key_function, value_function)     \
+    lor_print_map_value((map), lor_map_size(map), sizeof(type),            \
+                        offsetof(type, key), sizeof(((type *)0)->key),     \
+                        lor_type_kind(((type *)0)->key), (key_function),   \
+                        offsetof(type, value), sizeof(((type *)0)->value), \
+                        lor_type_kind(((type *)0)->value), (value_function))
+#define lor_print_map_as(map, type) lor_print_map_as_with((map), type, NULL, NULL)
+#if LOR_HAS_TYPEOF
+#define LOR_HAS_PRINT_MAP_AUTO 1
+#define lor_print_map_with(map, key_function, value_function)        \
+    lor_print_map_as_with((map), lor_typeof(*(map)), (key_function), \
+                          (value_function))
+#define lor_print_map(map) lor_print_map_with((map), NULL, NULL)
+#else
+#define LOR_HAS_PRINT_MAP_AUTO 0
+#endif
+
+#define lor_print__values_1(a) lor_print_value(a)
+#define lor_print__values_2(a, ...) \
+    lor_print_value(a), lor_print__values_1(__VA_ARGS__)
+#define lor_print__values_3(a, ...) \
+    lor_print_value(a), lor_print__values_2(__VA_ARGS__)
+#define lor_print__values_4(a, ...) \
+    lor_print_value(a), lor_print__values_3(__VA_ARGS__)
+#define lor_print__values_5(a, ...) \
+    lor_print_value(a), lor_print__values_4(__VA_ARGS__)
+#define lor_print__values_6(a, ...) \
+    lor_print_value(a), lor_print__values_5(__VA_ARGS__)
+#define lor_print__values_7(a, ...) \
+    lor_print_value(a), lor_print__values_6(__VA_ARGS__)
+#define lor_print__values_8(a, ...) \
+    lor_print_value(a), lor_print__values_7(__VA_ARGS__)
+#define lor_print__values_9(a, ...) \
+    lor_print_value(a), lor_print__values_8(__VA_ARGS__)
+#define lor_print__values_10(a, ...) \
+    lor_print_value(a), lor_print__values_9(__VA_ARGS__)
+#define lor_print__values_11(a, ...) \
+    lor_print_value(a), lor_print__values_10(__VA_ARGS__)
+#define lor_print__values_12(a, ...) \
+    lor_print_value(a), lor_print__values_11(__VA_ARGS__)
+#define lor_print__values_13(a, ...) \
+    lor_print_value(a), lor_print__values_12(__VA_ARGS__)
+#define lor_print__values_14(a, ...) \
+    lor_print_value(a), lor_print__values_13(__VA_ARGS__)
+#define lor_print__values_15(a, ...) \
+    lor_print_value(a), lor_print__values_14(__VA_ARGS__)
+#define lor_print__values_16(a, ...) \
+    lor_print_value(a), lor_print__values_15(__VA_ARGS__)
+
+#define lor_print__select(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, \
+                          _14, _15, _16, name, ...)                               \
+    name
+#define lor_print__values(...)                                            \
+    lor_print__select(                                                    \
+        __VA_ARGS__, lor_print__values_16, lor_print__values_15,          \
+        lor_print__values_14, lor_print__values_13, lor_print__values_12, \
+        lor_print__values_11, lor_print__values_10, lor_print__values_9,  \
+        lor_print__values_8, lor_print__values_7, lor_print__values_6,    \
+        lor_print__values_5, lor_print__values_4, lor_print__values_3,    \
+        lor_print__values_2, lor_print__values_1, 0)(__VA_ARGS__)
+#define lor_print__count(...)                                                     \
+    lor_print__select(__VA_ARGS__, 16u, 15u, 14u, 13u, 12u, 11u, 10u, 9u, 8u, 7u, \
+                      6u, 5u, 4u, 3u, 2u, 1u, 0u)
+
+#define lor_fprint_with(out, config, ...)                                \
+    lor_fprint_values((out), (config),                                   \
+                      (LorPrintValue[]){lor_print__values(__VA_ARGS__)}, \
+                      lor_print__count(__VA_ARGS__))
+#define lor_print_with(config, ...) lor_fprint_with(stdout, (config), __VA_ARGS__)
+#define lor_fprint(out, ...) \
+    lor_fprint_with((out), ((LorPrintConfig)LOR_PRINT_CONFIG_INIT), __VA_ARGS__)
+#define lor_print(...) lor_fprint(stdout, __VA_ARGS__)
+#else
+#define LOR_HAS_GENERIC_PRINT 0
 #endif
 
 #ifdef __cplusplus
@@ -1266,72 +1886,6 @@ static inline void __attribute__((unused)) lor_cli_cleanup_(LorCli *cli) {
 #else
 #define LOR_AUTO_CLI
 #endif
-
-#ifdef __cplusplus
-}
-#endif
-#endif
-
-// === random: declarations ===
-#ifdef LOR_ENABLE_RANDOM
-#include <stddef.h>
-#include <stdint.h>
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* Explicit PCG32 random state.
-
-   Separate states may be used concurrently. The same mutable state requires
-   external synchronization. This generator is intended for simulations,
-   games, tests, and randomized algorithms, not cryptographic use. */
-typedef struct LorRandom {
-    // Current position in the selected PCG sequence.
-    uint64_t state;
-    // Encoded stream selector. Must remain odd.
-    uint64_t increment;
-} LorRandom;
-
-/* A valid deterministic state equivalent to seed 0 and stream 0.
-
-   Use `lor_random_seed` for a chosen reproducible sequence or
-   `lor_random_seed_system` when each run should begin differently. */
-#define LOR_RANDOM_INIT {UINT64_C(6364136223846793006), UINT64_C(1)}
-
-// Selects a deterministic sequence from `seed` and `stream`.
-void lor_random_seed(LorRandom *random, uint64_t seed, uint64_t stream);
-
-/* Seeds `random` from the operating system's entropy source.
-
-   The state is unchanged on failure. This does not make later PCG output
-   cryptographically secure. */
-LorStatus lor_random_seed_system(LorRandom *random);
-
-/* Fills `data` with bytes from the operating system's entropy source.
-
-   This operation is suitable when unpredictable bytes are required. Passing
-   `NULL` is valid only when `size` is zero. */
-LorStatus lor_random_system_bytes(void *data, size_t size);
-
-// Returns the next uniformly distributed 32-bit value.
-uint32_t lor_random_u32(LorRandom *random);
-
-// Returns a 64-bit value composed from two consecutive 32-bit outputs.
-uint64_t lor_random_u64(LorRandom *random);
-
-/* Returns a uniformly distributed value in [0, bound).
-
-   Rejection sampling avoids modulo bias. A zero bound returns zero without
-   advancing the generator. */
-uint32_t lor_random_bounded_u32(LorRandom *random, uint32_t bound);
-
-// Returns a uniformly distributed float in [0, 1) with 24 random bits.
-float lor_random_f32(LorRandom *random);
-
-// Returns a uniformly distributed double in [0, 1) with 53 random bits.
-double lor_random_f64(LorRandom *random);
 
 #ifdef __cplusplus
 }
@@ -2321,6 +2875,129 @@ void lor_mmap_unmap(LorMmap *map) {
 }
 #endif
 
+// === random: implementation ===
+#ifdef LOR_ENABLE_RANDOM
+#include <string.h>
+
+#if defined(_WIN32)
+#include <stdlib.h>
+
+/* UCRT exposes rand_s only when _CRT_RAND_S is defined before stdlib.h.
+   Generated all-module headers may include stdlib.h before this module, so
+   declare its stable ABI directly instead of imposing a global feature macro. */
+#if defined(__cplusplus)
+extern "C" int __cdecl rand_s(unsigned int *value);
+#else
+extern int __cdecl rand_s(unsigned int *value);
+#endif
+#elif defined(__unix__) || defined(__APPLE__)
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
+#define LOR_RANDOM__PCG_MULTIPLIER UINT64_C(6364136223846793005)
+
+uint32_t lor_random_u32(LorRandom *random) {
+    if (random == NULL) return 0;
+
+    uint64_t old_state = random->state;
+    random->state = old_state * LOR_RANDOM__PCG_MULTIPLIER + random->increment;
+
+    uint32_t xorshifted = (uint32_t)(((old_state >> 18u) ^ old_state) >> 27u);
+    uint32_t rotation = (uint32_t)(old_state >> 59u);
+    return (xorshifted >> rotation) | (xorshifted << ((0u - rotation) & 31u));
+}
+
+void lor_random_seed(LorRandom *random, uint64_t seed, uint64_t stream) {
+    if (random == NULL) return;
+
+    random->state = 0;
+    random->increment = (stream << 1u) | UINT64_C(1);
+    (void)lor_random_u32(random);
+    random->state += seed;
+    (void)lor_random_u32(random);
+}
+
+uint64_t lor_random_u64(LorRandom *random) {
+    uint64_t high = lor_random_u32(random);
+    uint64_t low = lor_random_u32(random);
+    return (high << 32u) | low;
+}
+
+uint32_t lor_random_bounded_u32(LorRandom *random, uint32_t bound) {
+    if (random == NULL || bound == 0) return 0;
+
+    uint32_t threshold = (0u - bound) % bound;
+    for (;;) {
+        uint32_t value = lor_random_u32(random);
+        if (value >= threshold) return value % bound;
+    }
+}
+
+float lor_random_f32(LorRandom *random) {
+    return (float)(lor_random_u32(random) >> 8u) / 16777216.0f;
+}
+
+double lor_random_f64(LorRandom *random) {
+    return (double)(lor_random_u64(random) >> 11u) / 9007199254740992.0;
+}
+
+LorStatus lor_random_system_bytes(void *data, size_t size) {
+    if (data == NULL && size != 0) return LOR_STATUS_INVALID_ARGUMENT;
+    if (size == 0) return LOR_STATUS_OK;
+
+#if defined(_WIN32)
+    unsigned char *cursor = (unsigned char *)data;
+    while (size != 0) {
+        unsigned int value = 0;
+        if (rand_s(&value) != 0) return LOR_STATUS_SYSTEM_ERROR;
+
+        size_t chunk = size < sizeof(value) ? size : sizeof(value);
+        memcpy(cursor, &value, chunk);
+        cursor += chunk;
+        size -= chunk;
+    }
+    return LOR_STATUS_OK;
+#elif defined(__unix__) || defined(__APPLE__)
+    int descriptor = open("/dev/urandom", O_RDONLY);
+    if (descriptor < 0) return LOR_STATUS_SYSTEM_ERROR;
+
+    unsigned char *cursor = (unsigned char *)data;
+    size_t remaining = size;
+    while (remaining != 0) {
+        size_t chunk = remaining < 1024u * 1024u ? remaining : 1024u * 1024u;
+        ssize_t count = read(descriptor, cursor, chunk);
+        if (count > 0) {
+            cursor += (size_t)count;
+            remaining -= (size_t)count;
+            continue;
+        }
+        if (count < 0 && errno == EINTR) continue;
+        (void)close(descriptor);
+        return LOR_STATUS_SYSTEM_ERROR;
+    }
+
+    if (close(descriptor) != 0) return LOR_STATUS_SYSTEM_ERROR;
+    return LOR_STATUS_OK;
+#else
+    (void)data;
+    return LOR_STATUS_SYSTEM_ERROR;
+#endif
+}
+
+LorStatus lor_random_seed_system(LorRandom *random) {
+    if (random == NULL) return LOR_STATUS_INVALID_ARGUMENT;
+
+    uint64_t seeds[2];
+    LorStatus status = lor_random_system_bytes(seeds, sizeof(seeds));
+    if (status != LOR_STATUS_OK) return status;
+
+    lor_random_seed(random, seeds[0], seeds[1]);
+    return LOR_STATUS_OK;
+}
+#endif
+
 // === string: implementation ===
 #ifdef LOR_ENABLE_STRING
 #if defined(LOR_LEAKCHECK)
@@ -2727,6 +3404,68 @@ LorStatus lor_string_append_cstr(LorString *string, const char *text) {
 
 LorStatus lor_string_append_char(LorString *string, char value) {
     return lor_string_append(string, lor_sv_from_parts(&value, 1));
+}
+#endif
+
+// === type: implementation ===
+#ifdef LOR_ENABLE_TYPE
+const char *lor_type_kind_name(LorTypeKind kind) {
+    switch (kind) {
+    case LOR_TYPE_BOOL:
+        return "bool";
+    case LOR_TYPE_CHAR:
+        return "char";
+    case LOR_TYPE_SIGNED_CHAR:
+        return "signed char";
+    case LOR_TYPE_UNSIGNED_CHAR:
+        return "unsigned char";
+    case LOR_TYPE_SHORT:
+        return "short";
+    case LOR_TYPE_UNSIGNED_SHORT:
+        return "unsigned short";
+    case LOR_TYPE_INT:
+        return "int";
+    case LOR_TYPE_UNSIGNED_INT:
+        return "unsigned int";
+    case LOR_TYPE_LONG:
+        return "long";
+    case LOR_TYPE_UNSIGNED_LONG:
+        return "unsigned long";
+    case LOR_TYPE_LONG_LONG:
+        return "long long";
+    case LOR_TYPE_UNSIGNED_LONG_LONG:
+        return "unsigned long long";
+    case LOR_TYPE_FLOAT:
+        return "float";
+    case LOR_TYPE_DOUBLE:
+        return "double";
+    case LOR_TYPE_LONG_DOUBLE:
+        return "long double";
+    case LOR_TYPE_CSTRING:
+        return "C string";
+    case LOR_TYPE_POINTER:
+        return "pointer";
+    case LOR_TYPE_STRING_VIEW:
+        return "LorStringView";
+    case LOR_TYPE_ARENA_CONFIG:
+        return "LorArenaConfig";
+    case LOR_TYPE_ARENA:
+        return "LorArena";
+    case LOR_TYPE_ARENA_MARK:
+        return "LorArenaMark";
+    case LOR_TYPE_SCRATCH:
+        return "LorScratch";
+    case LOR_TYPE_MMAP:
+        return "LorMmap";
+    case LOR_TYPE_LEAK_STATS:
+        return "LorLeakStats";
+    case LOR_TYPE_RANDOM:
+        return "LorRandom";
+    case LOR_TYPE_OTHER:
+        break;
+    }
+
+    return "other";
 }
 #endif
 
@@ -4079,6 +4818,485 @@ int lor_set_is_disjoint_raw(const void *a, const void *b,
 }
 #endif
 
+// === print: implementation ===
+#ifdef LOR_ENABLE_PRINT
+#include <ctype.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <string.h>
+
+#ifdef __cplusplus
+typedef bool LorPrintBoolValue;
+#else
+typedef _Bool LorPrintBoolValue;
+#endif
+
+static LorStatus lor_print__write_view(FILE *out, LorStringView view) {
+    if (!lor_sv_is_valid(view)) return LOR_STATUS_INVALID_ARGUMENT;
+    if (view.size == 0) return LOR_STATUS_OK;
+    if (fwrite(view.data, 1, view.size, out) != view.size)
+        return LOR_STATUS_SYSTEM_ERROR;
+    return LOR_STATUS_OK;
+}
+
+static LorStatus lor_print__write_quoted_view(FILE *out, LorStringView view) {
+    if (!lor_sv_is_valid(view)) return LOR_STATUS_INVALID_ARGUMENT;
+    if (fputc('"', out) == EOF) return LOR_STATUS_SYSTEM_ERROR;
+
+    for (size_t i = 0; i < view.size; ++i) {
+        unsigned char byte = (unsigned char)view.data[i];
+        int written;
+
+        switch (byte) {
+        case '\\':
+            written = fputs("\\\\", out);
+            break;
+        case '"':
+            written = fputs("\\\"", out);
+            break;
+        case '\n':
+            written = fputs("\\n", out);
+            break;
+        case '\r':
+            written = fputs("\\r", out);
+            break;
+        case '\t':
+            written = fputs("\\t", out);
+            break;
+        default:
+            written = isprint(byte) ? fputc(byte, out)
+                                    : fprintf(out, "\\x%02x", (unsigned)byte);
+            break;
+        }
+
+        if (written < 0) return LOR_STATUS_SYSTEM_ERROR;
+    }
+
+    return fputc('"', out) == EOF ? LOR_STATUS_SYSTEM_ERROR : LOR_STATUS_OK;
+}
+
+static const char *lor_print__arena_backend_name(LorArenaBackend backend) {
+    switch (backend) {
+    case LOR_ARENA_BACKEND_HEAP:
+        return "heap";
+    case LOR_ARENA_BACKEND_VIRTUAL:
+        return "virtual";
+    }
+    return "unknown";
+}
+
+static int lor_print__type_size_valid(LorTypeKind kind, size_t size) {
+    switch (kind) {
+    case LOR_TYPE_BOOL:
+        return size == sizeof(LorPrintBoolValue);
+    case LOR_TYPE_CHAR:
+        return size == sizeof(char);
+    case LOR_TYPE_SIGNED_CHAR:
+        return size == sizeof(signed char);
+    case LOR_TYPE_UNSIGNED_CHAR:
+        return size == sizeof(unsigned char);
+    case LOR_TYPE_SHORT:
+        return size == sizeof(short);
+    case LOR_TYPE_UNSIGNED_SHORT:
+        return size == sizeof(unsigned short);
+    case LOR_TYPE_INT:
+        return size == sizeof(int);
+    case LOR_TYPE_UNSIGNED_INT:
+        return size == sizeof(unsigned int);
+    case LOR_TYPE_LONG:
+        return size == sizeof(long);
+    case LOR_TYPE_UNSIGNED_LONG:
+        return size == sizeof(unsigned long);
+    case LOR_TYPE_LONG_LONG:
+        return size == sizeof(long long);
+    case LOR_TYPE_UNSIGNED_LONG_LONG:
+        return size == sizeof(unsigned long long);
+    case LOR_TYPE_FLOAT:
+        return size == sizeof(float);
+    case LOR_TYPE_DOUBLE:
+        return size == sizeof(double);
+    case LOR_TYPE_LONG_DOUBLE:
+        return size == sizeof(long double);
+    case LOR_TYPE_CSTRING:
+        return size == sizeof(char *);
+    case LOR_TYPE_POINTER:
+        return size == sizeof(void *);
+    case LOR_TYPE_STRING_VIEW:
+        return size == sizeof(LorStringView);
+    case LOR_TYPE_ARENA_CONFIG:
+        return size == sizeof(LorArenaConfig);
+    case LOR_TYPE_ARENA:
+        return size == sizeof(LorArena);
+    case LOR_TYPE_ARENA_MARK:
+        return size == sizeof(LorArenaMark);
+    case LOR_TYPE_SCRATCH:
+        return size == sizeof(LorScratch);
+    case LOR_TYPE_MMAP:
+        return size == sizeof(LorMmap);
+    case LOR_TYPE_LEAK_STATS:
+        return size == sizeof(LorLeakStats);
+    case LOR_TYPE_RANDOM:
+        return size == sizeof(LorRandom);
+    case LOR_TYPE_OTHER:
+        return 0;
+    }
+    return 0;
+}
+
+static int lor_print__typed_value_valid(const void *value, size_t size,
+                                        LorTypeKind kind,
+                                        LorPrintCustomFn function) {
+    if (value == NULL) return 0;
+    if (function != NULL) return 1;
+    if (!lor_print__type_size_valid(kind, size)) return 0;
+    if (kind == LOR_TYPE_STRING_VIEW)
+        return lor_sv_is_valid(*(const LorStringView *)value);
+    return 1;
+}
+
+static int lor_print__sequence_valid(LorPrintSequence sequence) {
+    if ((sequence.data == NULL && sequence.count != 0) ||
+        sequence.element_size == 0 ||
+        sequence.count > SIZE_MAX / sequence.element_size)
+        return 0;
+
+    const unsigned char *data = (const unsigned char *)sequence.data;
+    for (size_t i = 0; i < sequence.count; ++i) {
+        if (!lor_print__typed_value_valid(
+                data + i * sequence.element_size, sequence.element_size,
+                sequence.element_kind, sequence.element_function))
+            return 0;
+    }
+    return 1;
+}
+
+static int lor_print__map_valid(LorPrintMap map) {
+    if ((map.data == NULL && map.count != 0) || map.entry_size == 0 ||
+        map.count > SIZE_MAX / map.entry_size || map.key_offset > map.entry_size ||
+        map.key_size > map.entry_size - map.key_offset ||
+        map.value_offset > map.entry_size ||
+        map.value_size > map.entry_size - map.value_offset)
+        return 0;
+
+    const unsigned char *data = (const unsigned char *)map.data;
+    for (size_t i = 0; i < map.count; ++i) {
+        const unsigned char *entry = data + i * map.entry_size;
+        if (!lor_print__typed_value_valid(entry + map.key_offset, map.key_size,
+                                          map.key_kind, map.key_function) ||
+            !lor_print__typed_value_valid(entry + map.value_offset, map.value_size,
+                                          map.value_kind, map.value_function))
+            return 0;
+    }
+    return 1;
+}
+
+static int lor_print__value_valid(LorPrintValue value) {
+    switch (value.kind) {
+    case LOR_PRINT_STRING_VIEW:
+    case LOR_PRINT_END:
+        return lor_sv_is_valid(value.as.view);
+    case LOR_PRINT_CUSTOM:
+        return value.as.custom.function != NULL;
+    case LOR_PRINT_ARRAY:
+    case LOR_PRINT_SET:
+        return lor_print__sequence_valid(value.as.sequence);
+    case LOR_PRINT_MAP:
+        return lor_print__map_valid(value.as.map);
+    case LOR_PRINT_BOOL:
+    case LOR_PRINT_CHAR:
+    case LOR_PRINT_SIGNED:
+    case LOR_PRINT_UNSIGNED:
+    case LOR_PRINT_FLOATING:
+    case LOR_PRINT_CSTRING:
+    case LOR_PRINT_POINTER:
+    case LOR_PRINT_ARENA_CONFIG:
+    case LOR_PRINT_ARENA:
+    case LOR_PRINT_ARENA_MARK:
+    case LOR_PRINT_SCRATCH:
+    case LOR_PRINT_MMAP:
+    case LOR_PRINT_LEAK_STATS:
+    case LOR_PRINT_RANDOM:
+        return 1;
+    }
+
+    return 0;
+}
+
+static LorStatus lor_print__write_typed_value(FILE *out, const void *value,
+                                              size_t size, LorTypeKind kind,
+                                              LorPrintCustomFn function,
+                                              int nested) {
+    int written;
+
+    if (function != NULL) return function(out, value);
+    if (!lor_print__type_size_valid(kind, size)) return LOR_STATUS_INVALID_ARGUMENT;
+
+    switch (kind) {
+    case LOR_TYPE_BOOL:
+        written = fputs(*(const LorPrintBoolValue *)value ? "true" : "false", out);
+        break;
+    case LOR_TYPE_CHAR:
+        written = fputc((unsigned char)*(const char *)value, out);
+        break;
+    case LOR_TYPE_SIGNED_CHAR:
+        written = fprintf(out, "%hhd", *(const signed char *)value);
+        break;
+    case LOR_TYPE_UNSIGNED_CHAR:
+        written = fprintf(out, "%hhu", *(const unsigned char *)value);
+        break;
+    case LOR_TYPE_SHORT:
+        written = fprintf(out, "%hd", *(const short *)value);
+        break;
+    case LOR_TYPE_UNSIGNED_SHORT:
+        written = fprintf(out, "%hu", *(const unsigned short *)value);
+        break;
+    case LOR_TYPE_INT:
+        written = fprintf(out, "%d", *(const int *)value);
+        break;
+    case LOR_TYPE_UNSIGNED_INT:
+        written = fprintf(out, "%u", *(const unsigned int *)value);
+        break;
+    case LOR_TYPE_LONG:
+        written = fprintf(out, "%ld", *(const long *)value);
+        break;
+    case LOR_TYPE_UNSIGNED_LONG:
+        written = fprintf(out, "%lu", *(const unsigned long *)value);
+        break;
+    case LOR_TYPE_LONG_LONG:
+        written = fprintf(out, "%lld", *(const long long *)value);
+        break;
+    case LOR_TYPE_UNSIGNED_LONG_LONG:
+        written = fprintf(out, "%llu", *(const unsigned long long *)value);
+        break;
+    case LOR_TYPE_FLOAT:
+        written = fprintf(out, "%g", (double)*(const float *)value);
+        break;
+    case LOR_TYPE_DOUBLE:
+        written = fprintf(out, "%g", *(const double *)value);
+        break;
+    case LOR_TYPE_LONG_DOUBLE:
+        written = fprintf(out, "%g", (double)*(const long double *)value);
+        break;
+    case LOR_TYPE_CSTRING: {
+        const char *text;
+        memcpy(&text, value, sizeof(text));
+        if (text == NULL) {
+            written = fputs("(null)", out);
+            break;
+        }
+        if (nested) return lor_print__write_quoted_view(out, lor_sv_from_cstr(text));
+        written = fputs(text, out);
+        break;
+    }
+    case LOR_TYPE_POINTER: {
+        void *pointer;
+        memcpy(&pointer, value, sizeof(pointer));
+        written = fprintf(out, "%p", pointer);
+        break;
+    }
+    case LOR_TYPE_STRING_VIEW: {
+        LorStringView view = *(const LorStringView *)value;
+        return nested ? lor_print__write_quoted_view(out, view)
+                      : lor_print__write_view(out, view);
+    }
+    case LOR_TYPE_ARENA_CONFIG: {
+        const LorArenaConfig *config = (const LorArenaConfig *)value;
+        written =
+            fprintf(out,
+                    "LorArenaConfig(backend=%s, block_size=%zu, reserve_size=%zu, "
+                    "commit_size=%zu)",
+                    lor_print__arena_backend_name(config->backend),
+                    config->block_size, config->reserve_size, config->commit_size);
+        break;
+    }
+    case LOR_TYPE_ARENA: {
+        const LorArena *arena = (const LorArena *)value;
+        written = fprintf(
+            out, "LorArena(backend=%s, used=%zu, capacity=%zu, committed=%zu)",
+            lor_print__arena_backend_name(arena->backend), lor_arena_used(arena),
+            lor_arena_capacity(arena), lor_arena_committed(arena));
+        break;
+    }
+    case LOR_TYPE_ARENA_MARK: {
+        const LorArenaMark *mark = (const LorArenaMark *)value;
+        written = fprintf(out, "LorArenaMark(block=%p, used=%zu)",
+                          (void *)mark->block, mark->used);
+        break;
+    }
+    case LOR_TYPE_SCRATCH: {
+        const LorScratch *scratch = (const LorScratch *)value;
+        written = fprintf(out, "LorScratch(arena=%p, mark_used=%zu)",
+                          (void *)scratch->arena, scratch->mark.used);
+        break;
+    }
+    case LOR_TYPE_MMAP: {
+        const LorMmap *map = (const LorMmap *)value;
+        written = fprintf(out, "LorMmap(data=%p, size=%zu)", map->data, map->size);
+        break;
+    }
+    case LOR_TYPE_LEAK_STATS: {
+        const LorLeakStats *stats = (const LorLeakStats *)value;
+        written =
+            fprintf(out,
+                    "LorLeakStats(heap_count=%zu, heap_bytes=%zu, arena_count=%zu, "
+                    "mmap_count=%zu, mmap_bytes=%zu)",
+                    stats->heap_count, stats->heap_bytes, stats->arena_count,
+                    stats->mmap_count, stats->mmap_bytes);
+        break;
+    }
+    case LOR_TYPE_RANDOM: {
+        const LorRandom *random = (const LorRandom *)value;
+        written = fprintf(out, "LorRandom(state=%" PRIu64 ", increment=%" PRIu64 ")",
+                          random->state, random->increment);
+        break;
+    }
+    case LOR_TYPE_OTHER:
+    default:
+        return LOR_STATUS_INVALID_ARGUMENT;
+    }
+
+    return written < 0 ? LOR_STATUS_SYSTEM_ERROR : LOR_STATUS_OK;
+}
+
+static LorStatus lor_print__write_sequence(FILE *out, LorPrintSequence sequence,
+                                           int is_set) {
+    if (sequence.count == 0)
+        return fputs(is_set ? "set()" : "[]", out) < 0 ? LOR_STATUS_SYSTEM_ERROR
+                                                       : LOR_STATUS_OK;
+
+    if (fputc(is_set ? '{' : '[', out) == EOF) return LOR_STATUS_SYSTEM_ERROR;
+    const unsigned char *data = (const unsigned char *)sequence.data;
+    for (size_t i = 0; i < sequence.count; ++i) {
+        if (i != 0 && fputs(", ", out) < 0) return LOR_STATUS_SYSTEM_ERROR;
+        LorStatus status = lor_print__write_typed_value(
+            out, data + i * sequence.element_size, sequence.element_size,
+            sequence.element_kind, sequence.element_function, 1);
+        if (status != LOR_STATUS_OK) return status;
+    }
+    return fputc(is_set ? '}' : ']', out) == EOF ? LOR_STATUS_SYSTEM_ERROR
+                                                 : LOR_STATUS_OK;
+}
+
+static LorStatus lor_print__write_map(FILE *out, LorPrintMap map) {
+    if (fputc('{', out) == EOF) return LOR_STATUS_SYSTEM_ERROR;
+    const unsigned char *data = (const unsigned char *)map.data;
+    for (size_t i = 0; i < map.count; ++i) {
+        if (i != 0 && fputs(", ", out) < 0) return LOR_STATUS_SYSTEM_ERROR;
+        const unsigned char *entry = data + i * map.entry_size;
+
+        LorStatus status =
+            lor_print__write_typed_value(out, entry + map.key_offset, map.key_size,
+                                         map.key_kind, map.key_function, 1);
+        if (status != LOR_STATUS_OK) return status;
+        if (fputs(": ", out) < 0) return LOR_STATUS_SYSTEM_ERROR;
+        status = lor_print__write_typed_value(out, entry + map.value_offset,
+                                              map.value_size, map.value_kind,
+                                              map.value_function, 1);
+        if (status != LOR_STATUS_OK) return status;
+    }
+    return fputc('}', out) == EOF ? LOR_STATUS_SYSTEM_ERROR : LOR_STATUS_OK;
+}
+
+static LorStatus lor_print__write_value(FILE *out, LorPrintValue value) {
+    int written;
+
+    switch (value.kind) {
+    case LOR_PRINT_BOOL:
+        written = fputs(value.as.boolean ? "true" : "false", out);
+        break;
+    case LOR_PRINT_CHAR:
+        written = fputc((unsigned char)value.as.character, out);
+        break;
+    case LOR_PRINT_SIGNED:
+        written = fprintf(out, "%" PRIdMAX, value.as.signed_integer);
+        break;
+    case LOR_PRINT_UNSIGNED:
+        written = fprintf(out, "%" PRIuMAX, value.as.unsigned_integer);
+        break;
+    case LOR_PRINT_FLOATING:
+        written = fprintf(out, "%g", value.as.floating);
+        break;
+    case LOR_PRINT_CSTRING:
+        written = fputs(value.as.cstring != NULL ? value.as.cstring : "(null)", out);
+        break;
+    case LOR_PRINT_STRING_VIEW:
+        return lor_print__write_view(out, value.as.view);
+    case LOR_PRINT_POINTER:
+        written = fprintf(out, "%p", (void *)value.as.pointer);
+        break;
+    case LOR_PRINT_ARENA_CONFIG:
+        return lor_print__write_typed_value(out, &value.as.arena_config,
+                                            sizeof(value.as.arena_config),
+                                            LOR_TYPE_ARENA_CONFIG, NULL, 0);
+    case LOR_PRINT_ARENA:
+        return lor_print__write_typed_value(
+            out, &value.as.arena, sizeof(value.as.arena), LOR_TYPE_ARENA, NULL, 0);
+    case LOR_PRINT_ARENA_MARK:
+        return lor_print__write_typed_value(out, &value.as.arena_mark,
+                                            sizeof(value.as.arena_mark),
+                                            LOR_TYPE_ARENA_MARK, NULL, 0);
+    case LOR_PRINT_SCRATCH:
+        return lor_print__write_typed_value(out, &value.as.scratch,
+                                            sizeof(value.as.scratch),
+                                            LOR_TYPE_SCRATCH, NULL, 0);
+    case LOR_PRINT_MMAP:
+        return lor_print__write_typed_value(
+            out, &value.as.mmap, sizeof(value.as.mmap), LOR_TYPE_MMAP, NULL, 0);
+    case LOR_PRINT_LEAK_STATS:
+        return lor_print__write_typed_value(out, &value.as.leak_stats,
+                                            sizeof(value.as.leak_stats),
+                                            LOR_TYPE_LEAK_STATS, NULL, 0);
+    case LOR_PRINT_RANDOM:
+        return lor_print__write_typed_value(out, &value.as.random,
+                                            sizeof(value.as.random), LOR_TYPE_RANDOM,
+                                            NULL, 0);
+    case LOR_PRINT_ARRAY:
+        return lor_print__write_sequence(out, value.as.sequence, 0);
+    case LOR_PRINT_SET:
+        return lor_print__write_sequence(out, value.as.sequence, 1);
+    case LOR_PRINT_MAP:
+        return lor_print__write_map(out, value.as.map);
+    case LOR_PRINT_CUSTOM:
+        return value.as.custom.function(out, value.as.custom.value);
+    case LOR_PRINT_END:
+        return LOR_STATUS_OK;
+    default:
+        return LOR_STATUS_INVALID_ARGUMENT;
+    }
+
+    return written < 0 ? LOR_STATUS_SYSTEM_ERROR : LOR_STATUS_OK;
+}
+
+LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
+                            const LorPrintValue *values, size_t count) {
+    if (out == NULL || !lor_sv_is_valid(config.separator) ||
+        !lor_sv_is_valid(config.ending) || (values == NULL && count != 0))
+        return LOR_STATUS_INVALID_ARGUMENT;
+
+    LorStringView ending = config.ending;
+    for (size_t i = 0; i < count; ++i) {
+        if (!lor_print__value_valid(values[i])) return LOR_STATUS_INVALID_ARGUMENT;
+        if (values[i].kind == LOR_PRINT_END) ending = values[i].as.view;
+    }
+
+    size_t printed_count = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (values[i].kind == LOR_PRINT_END) continue;
+
+        if (printed_count != 0) {
+            LorStatus status = lor_print__write_view(out, config.separator);
+            if (status != LOR_STATUS_OK) return status;
+        }
+
+        LorStatus status = lor_print__write_value(out, values[i]);
+        if (status != LOR_STATUS_OK) return status;
+        ++printed_count;
+    }
+
+    return lor_print__write_view(out, ending);
+}
+#endif
+
 // === cli: implementation ===
 #ifdef LOR_ENABLE_CLI
 #include <ctype.h>
@@ -4877,129 +6095,6 @@ int lor_cli_print_help(const LorCli *cli) {
 }
 #endif
 
-// === random: implementation ===
-#ifdef LOR_ENABLE_RANDOM
-#include <string.h>
-
-#if defined(_WIN32)
-#include <stdlib.h>
-
-/* UCRT exposes rand_s only when _CRT_RAND_S is defined before stdlib.h.
-   Generated all-module headers may include stdlib.h before this module, so
-   declare its stable ABI directly instead of imposing a global feature macro. */
-#if defined(__cplusplus)
-extern "C" int __cdecl rand_s(unsigned int *value);
-#else
-extern int __cdecl rand_s(unsigned int *value);
-#endif
-#elif defined(__unix__) || defined(__APPLE__)
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
-#define LOR_RANDOM__PCG_MULTIPLIER UINT64_C(6364136223846793005)
-
-uint32_t lor_random_u32(LorRandom *random) {
-    if (random == NULL) return 0;
-
-    uint64_t old_state = random->state;
-    random->state = old_state * LOR_RANDOM__PCG_MULTIPLIER + random->increment;
-
-    uint32_t xorshifted = (uint32_t)(((old_state >> 18u) ^ old_state) >> 27u);
-    uint32_t rotation = (uint32_t)(old_state >> 59u);
-    return (xorshifted >> rotation) | (xorshifted << ((0u - rotation) & 31u));
-}
-
-void lor_random_seed(LorRandom *random, uint64_t seed, uint64_t stream) {
-    if (random == NULL) return;
-
-    random->state = 0;
-    random->increment = (stream << 1u) | UINT64_C(1);
-    (void)lor_random_u32(random);
-    random->state += seed;
-    (void)lor_random_u32(random);
-}
-
-uint64_t lor_random_u64(LorRandom *random) {
-    uint64_t high = lor_random_u32(random);
-    uint64_t low = lor_random_u32(random);
-    return (high << 32u) | low;
-}
-
-uint32_t lor_random_bounded_u32(LorRandom *random, uint32_t bound) {
-    if (random == NULL || bound == 0) return 0;
-
-    uint32_t threshold = (0u - bound) % bound;
-    for (;;) {
-        uint32_t value = lor_random_u32(random);
-        if (value >= threshold) return value % bound;
-    }
-}
-
-float lor_random_f32(LorRandom *random) {
-    return (float)(lor_random_u32(random) >> 8u) / 16777216.0f;
-}
-
-double lor_random_f64(LorRandom *random) {
-    return (double)(lor_random_u64(random) >> 11u) / 9007199254740992.0;
-}
-
-LorStatus lor_random_system_bytes(void *data, size_t size) {
-    if (data == NULL && size != 0) return LOR_STATUS_INVALID_ARGUMENT;
-    if (size == 0) return LOR_STATUS_OK;
-
-#if defined(_WIN32)
-    unsigned char *cursor = (unsigned char *)data;
-    while (size != 0) {
-        unsigned int value = 0;
-        if (rand_s(&value) != 0) return LOR_STATUS_SYSTEM_ERROR;
-
-        size_t chunk = size < sizeof(value) ? size : sizeof(value);
-        memcpy(cursor, &value, chunk);
-        cursor += chunk;
-        size -= chunk;
-    }
-    return LOR_STATUS_OK;
-#elif defined(__unix__) || defined(__APPLE__)
-    int descriptor = open("/dev/urandom", O_RDONLY);
-    if (descriptor < 0) return LOR_STATUS_SYSTEM_ERROR;
-
-    unsigned char *cursor = (unsigned char *)data;
-    size_t remaining = size;
-    while (remaining != 0) {
-        size_t chunk = remaining < 1024u * 1024u ? remaining : 1024u * 1024u;
-        ssize_t count = read(descriptor, cursor, chunk);
-        if (count > 0) {
-            cursor += (size_t)count;
-            remaining -= (size_t)count;
-            continue;
-        }
-        if (count < 0 && errno == EINTR) continue;
-        (void)close(descriptor);
-        return LOR_STATUS_SYSTEM_ERROR;
-    }
-
-    if (close(descriptor) != 0) return LOR_STATUS_SYSTEM_ERROR;
-    return LOR_STATUS_OK;
-#else
-    (void)data;
-    return LOR_STATUS_SYSTEM_ERROR;
-#endif
-}
-
-LorStatus lor_random_seed_system(LorRandom *random) {
-    if (random == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-
-    uint64_t seeds[2];
-    LorStatus status = lor_random_system_bytes(seeds, sizeof(seeds));
-    if (status != LOR_STATUS_OK) return status;
-
-    lor_random_seed(random, seeds[0], seeds[1]);
-    return LOR_STATUS_OK;
-}
-#endif
-
 #endif
 /* Optional short-name aliases
    These are preprocessor aliases only. They do not change compiled
@@ -5013,6 +6108,12 @@ LorStatus lor_random_seed_system(LorRandom *random) {
 #define STATUS_OVERFLOW LOR_STATUS_OVERFLOW
 #define STATUS_SYSTEM_ERROR LOR_STATUS_SYSTEM_ERROR
 #define status_name lor_status_name
+#endif
+#ifdef LOR_ENABLE_FEATURES
+#define HAS_GENERIC_SELECTION LOR_HAS_GENERIC_SELECTION
+#define HAS_TYPEOF LOR_HAS_TYPEOF
+#define HAS_STATEMENT_EXPRESSIONS LOR_HAS_STATEMENT_EXPRESSIONS
+#define type_of lor_typeof
 #endif
 #ifdef LOR_ENABLE_MEMORY
 #define ArenaBackend LorArenaBackend
@@ -5069,6 +6170,18 @@ LorStatus lor_random_seed_system(LorRandom *random) {
 #define leakcheck_count lor_leakcheck_count
 #define leakcheck_report lor_leakcheck_report
 #endif
+#ifdef LOR_ENABLE_RANDOM
+#define Random LorRandom
+#define RANDOM_INIT LOR_RANDOM_INIT
+#define random_seed lor_random_seed
+#define random_seed_system lor_random_seed_system
+#define random_system_bytes lor_random_system_bytes
+#define random_u32 lor_random_u32
+#define random_u64 lor_random_u64
+#define random_bounded_u32 lor_random_bounded_u32
+#define random_f32 lor_random_f32
+#define random_f64 lor_random_f64
+#endif
 #ifdef LOR_ENABLE_STRING
 #define StringView LorStringView
 #define String LorString
@@ -5114,6 +6227,38 @@ LorStatus lor_random_seed_system(LorRandom *random) {
 #define string_append lor_string_append
 #define string_append_cstr lor_string_append_cstr
 #define string_append_char lor_string_append_char
+#endif
+#ifdef LOR_ENABLE_TYPE
+#define TypeKind LorTypeKind
+#define TYPE_OTHER LOR_TYPE_OTHER
+#define TYPE_BOOL LOR_TYPE_BOOL
+#define TYPE_CHAR LOR_TYPE_CHAR
+#define TYPE_SIGNED_CHAR LOR_TYPE_SIGNED_CHAR
+#define TYPE_UNSIGNED_CHAR LOR_TYPE_UNSIGNED_CHAR
+#define TYPE_SHORT LOR_TYPE_SHORT
+#define TYPE_UNSIGNED_SHORT LOR_TYPE_UNSIGNED_SHORT
+#define TYPE_INT LOR_TYPE_INT
+#define TYPE_UNSIGNED_INT LOR_TYPE_UNSIGNED_INT
+#define TYPE_LONG LOR_TYPE_LONG
+#define TYPE_UNSIGNED_LONG LOR_TYPE_UNSIGNED_LONG
+#define TYPE_LONG_LONG LOR_TYPE_LONG_LONG
+#define TYPE_UNSIGNED_LONG_LONG LOR_TYPE_UNSIGNED_LONG_LONG
+#define TYPE_FLOAT LOR_TYPE_FLOAT
+#define TYPE_DOUBLE LOR_TYPE_DOUBLE
+#define TYPE_LONG_DOUBLE LOR_TYPE_LONG_DOUBLE
+#define TYPE_CSTRING LOR_TYPE_CSTRING
+#define TYPE_POINTER LOR_TYPE_POINTER
+#define TYPE_STRING_VIEW LOR_TYPE_STRING_VIEW
+#define TYPE_ARENA_CONFIG LOR_TYPE_ARENA_CONFIG
+#define TYPE_ARENA LOR_TYPE_ARENA
+#define TYPE_ARENA_MARK LOR_TYPE_ARENA_MARK
+#define TYPE_SCRATCH LOR_TYPE_SCRATCH
+#define TYPE_MMAP LOR_TYPE_MMAP
+#define TYPE_LEAK_STATS LOR_TYPE_LEAK_STATS
+#define TYPE_RANDOM LOR_TYPE_RANDOM
+#define type_kind lor_type_kind
+#define type_name lor_type_name
+#define type_kind_name lor_type_kind_name
 #endif
 #ifdef LOR_ENABLE_ARRAY
 #define ARRAY_INIT LOR_ARRAY_INIT
@@ -5246,6 +6391,57 @@ LorStatus lor_random_seed_system(LorRandom *random) {
 #define set_is_proper_superset_raw lor_set_is_proper_superset_raw
 #define set_is_disjoint_raw lor_set_is_disjoint_raw
 #endif
+#ifdef LOR_ENABLE_PRINT
+#define PrintKind LorPrintKind
+#define PrintCustomFn LorPrintCustomFn
+#define PrintCustom LorPrintCustom
+#define PrintValue LorPrintValue
+#define PrintSequence LorPrintSequence
+#define PrintMap LorPrintMap
+#define PrintConfig LorPrintConfig
+#define PrintEnd LorPrintEnd
+#define PRINT_BOOL LOR_PRINT_BOOL
+#define PRINT_CHAR LOR_PRINT_CHAR
+#define PRINT_SIGNED LOR_PRINT_SIGNED
+#define PRINT_UNSIGNED LOR_PRINT_UNSIGNED
+#define PRINT_FLOATING LOR_PRINT_FLOATING
+#define PRINT_CSTRING LOR_PRINT_CSTRING
+#define PRINT_STRING_VIEW LOR_PRINT_STRING_VIEW
+#define PRINT_POINTER LOR_PRINT_POINTER
+#define PRINT_ARENA_CONFIG LOR_PRINT_ARENA_CONFIG
+#define PRINT_ARENA LOR_PRINT_ARENA
+#define PRINT_ARENA_MARK LOR_PRINT_ARENA_MARK
+#define PRINT_SCRATCH LOR_PRINT_SCRATCH
+#define PRINT_MMAP LOR_PRINT_MMAP
+#define PRINT_LEAK_STATS LOR_PRINT_LEAK_STATS
+#define PRINT_RANDOM LOR_PRINT_RANDOM
+#define PRINT_ARRAY LOR_PRINT_ARRAY
+#define PRINT_SET LOR_PRINT_SET
+#define PRINT_MAP LOR_PRINT_MAP
+#define PRINT_CUSTOM LOR_PRINT_CUSTOM
+#define PRINT_END LOR_PRINT_END
+#define PRINT_CONFIG_INIT LOR_PRINT_CONFIG_INIT
+#define HAS_GENERIC_PRINT LOR_HAS_GENERIC_PRINT
+#define print_value lor_print_value
+#define print_pointer lor_print_pointer
+#define print_custom lor_print_custom
+#define print_array lor_print_array
+#define print_array_with lor_print_array_with
+#define print_set lor_print_set
+#define print_set_with lor_print_set_with
+#define print_map_as lor_print_map_as
+#define print_map_as_with lor_print_map_as_with
+#define HAS_PRINT_MAP_AUTO LOR_HAS_PRINT_MAP_AUTO
+#define print_map lor_print_map
+#define print_map_with lor_print_map_with
+#define end lor_end
+#define end_view lor_end_view
+#define fprint_with lor_fprint_with
+#define print_with lor_print_with
+#define fprint lor_fprint
+#define print lor_print
+#define fprint_values lor_fprint_values
+#endif
 #ifdef LOR_ENABLE_CLI
 #define Cli LorCli
 #define CliOption LorCliOption
@@ -5293,18 +6489,6 @@ LorStatus lor_random_seed_system(LorRandom *random) {
 #define cli_fprint_error lor_cli_fprint_error
 #define cli_fprint_help lor_cli_fprint_help
 #define cli_print_help lor_cli_print_help
-#endif
-#ifdef LOR_ENABLE_RANDOM
-#define Random LorRandom
-#define RANDOM_INIT LOR_RANDOM_INIT
-#define random_seed lor_random_seed
-#define random_seed_system lor_random_seed_system
-#define random_system_bytes lor_random_system_bytes
-#define random_u32 lor_random_u32
-#define random_u64 lor_random_u64
-#define random_bounded_u32 lor_random_bounded_u32
-#define random_f32 lor_random_f32
-#define random_f64 lor_random_f64
 #endif
 #endif
 

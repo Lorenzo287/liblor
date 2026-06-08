@@ -175,6 +175,33 @@ def module_dependency_macros(module: dict, modules: list[dict]) -> list[str]:
     return result
 
 
+def order_modules(modules: list[dict]) -> list[dict]:
+    modules_by_name = {module["name"]: module for module in modules}
+    result = []
+    visiting = set()
+    visited = set()
+
+    def visit(module: dict) -> None:
+        name = module["name"]
+        if name in visited:
+            return
+        if name in visiting:
+            raise ValueError(f"cyclic module dependency involving {name}")
+
+        visiting.add(name)
+        for dependency_name in module.get("dependencies", []):
+            if dependency_name not in modules_by_name:
+                raise ValueError(f"unknown module dependency: {dependency_name}")
+            visit(modules_by_name[dependency_name])
+        visiting.remove(name)
+        visited.add(name)
+        result.append(module)
+
+    for module in modules:
+        visit(module)
+    return result
+
+
 def emit_module_selection(modules: list[dict]) -> str:
     enable_macros = [module["enable_macro"] for module in modules]
     no_modules = " && ".join(f"!defined({macro})" for macro in enable_macros)
@@ -233,7 +260,10 @@ def emit_implementations(modules: list[dict]) -> str:
     out.append("#ifdef LOR_IMPLEMENTATION")
     out.append("")
     for module in modules:
-        path = ROOT / module["source"]
+        source = module.get("source")
+        if source is None:
+            continue
+        path = ROOT / source
         out.append(f"// === {module['name']}: implementation ===")
         out.append(f"#ifdef {module_enabled_condition(module)}")
         out.append(clean_source(path).rstrip())
@@ -282,7 +312,7 @@ def emit_late_macros(modules: list[dict]) -> str:
 
 def generate(manifest_path: Path) -> str:
     manifest = json.loads(read_text(manifest_path))
-    modules = manifest["modules"]
+    modules = order_modules(manifest["modules"])
 
     out = []
     out.append("// SPDX-License-Identifier: MIT")

@@ -310,7 +310,8 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_scratch_(void *scratch) {
     LorScratch *value = (LorScratch *)scratch;
     if (value == NULL || value->arena == NULL) return;
     lor_scratch_end(*value);
-    *value = (LorScratch)LOR_SCRATCH_INIT;
+    LorScratch reset = LOR_SCRATCH_INIT;
+    *value = reset;
 }
 
 static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_mmap_(void *map) {

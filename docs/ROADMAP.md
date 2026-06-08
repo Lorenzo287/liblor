@@ -4,21 +4,18 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Complete the remaining small library modules before starting build tooling.
+Scope concurrency before deciding whether to implement it before or after the
+`lor` build/run tool.
 
-1. Define a small portable type-helper layer, with compiler extensions kept
-   behind feature macros and portable alternatives.
-2. Build generic print helpers on the settled type-helper conventions.
-3. Scope concurrency separately before implementation.
-4. Leave the `lor` build/run tool and compile-backed REPL until the library
-   modules are otherwise complete.
+1. Define the smallest useful concurrency layer and its portability boundary.
+2. Decide whether concurrency or build tooling should be implemented first.
+3. Keep the compile-backed REPL after the initial build/run tool.
 
 ## Open Decisions
 
 - Reusable test harness shape.
 - Single-header generator hardening as more modules are added.
 - Shared allocator customization versus heap-only owned containers.
-- Generic print support for user-defined types without excessive macros.
 - Concurrency scope: basic threading primitives versus structured
   concurrency, channels, and asynchronous I/O.
 
@@ -52,6 +49,9 @@ Complete the remaining small library modules before starting build tooling.
       entropy.
 - [x] Add isolated development profiles and optimized static/shared library
       release builds.
+- [x] Add C11 names for built-in and concrete liblor value types.
+- [x] Add generic tagged-value printing, custom endings, container formatting,
+      and custom callbacks.
 
 ## Backlog
 
@@ -80,8 +80,8 @@ Complete the remaining small library modules before starting build tooling.
 
 - [x] automatic cleanup helper;
 - [x] CLI argument parser;
-- [ ] generic print helpers;
-- [ ] type helper macros.
+- [x] generic print helpers;
+- [x] type helper macros.
 
 ### Tooling
 

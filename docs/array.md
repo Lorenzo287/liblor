@@ -63,9 +63,9 @@ lor_array_push_as(points, Point, .x = 3, .y = 4);
 ```
 
 `lor_array_push_auto` is available when `LOR_HAS_ARRAY_PUSH_AUTO` is nonzero.
-It uses the GCC/Clang `__typeof__` and statement-expression extensions to infer
-the destination type, create a temporary, and evaluate the supplied expression
-once:
+It uses liblor's feature-gated `lor_typeof` and statement-expression helpers to
+infer the destination type, create a temporary, and evaluate the supplied
+expression once:
 
 ```c
 #if LOR_HAS_ARRAY_PUSH_AUTO

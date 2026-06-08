@@ -28,6 +28,14 @@ that C cannot pass generically, such as `sizeof *(array)`. Compiler-extension
 convenience macros must have a feature macro and a documented portable
 alternative. Keep allocation, overflow checking, and ownership changes in
 ordinary implementation functions rather than duplicating them in macros.
+Shared extension checks and declaration inference live in `lor/features.h`.
+
+Generic value dispatch may use standard C11 `_Generic`. Unsupported values
+must fail at compile time or require an explicit wrapper; they must not silently
+fall through to an incompatible variadic format. Generic printing follows this
+rule and keeps I/O behavior in an ordinary tagged-value function. Pointer-handle
+containers require family-specific wrappers because C's type system cannot
+distinguish an `int *` array from an `int *` set or an ordinary `int *`.
 
 ## Failure
 

@@ -53,12 +53,9 @@ portability audits.
 
 ## Prerequisites
 
-Build tooling is intentionally the final major project phase. Complete and
-exercise the remaining small library modules first:
-
-- type helpers;
-- generic printing;
-- a decision on the intended concurrency scope.
+The remaining prerequisite is a decision on the intended concurrency scope and
+whether that platform work should precede the first build-tool prototype. Type
+helpers and generic printing are complete.
 
 An allocator interface is not a prerequisite. Existing modules have not shown
 a concrete need for public allocator customization.
