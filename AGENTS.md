@@ -1,7 +1,6 @@
 # liblor: Agent Manual
 
-liblor is an early higher-level C library. Most code under `references/` is
-study material, not liblor-owned source.
+liblor is a higher-level C library. Version 1 is feature complete.
 
 ## Project Map
 
@@ -10,13 +9,11 @@ study material, not liblor-owned source.
 - `docs/THIRD_PARTY.md`: attribution and license audit tracking.
 - `Makefile`: local development build/test entry point.
 - `compile_flags.txt`: clangd include/diagnostic flags.
-- `docs/build-system.md`: future `lor run` / `lor build` / REPL direction.
 - `docs/memory.md`: memory subsystem implementation path.
 - `tools/gen_single_header.py`: generates `lor.h`.
 - `tools/lor_modules.json`: single-header module and alias manifest.
 - `lor.h`: generated single-header liblor; do not edit by hand.
 - `include/lor/`, `src/`, `tests/`, `examples/`: liblor-owned source.
-- `references/`: third-party libraries, snippets, and experiments.
 
 ## Workflow
 
@@ -35,8 +32,8 @@ study material, not liblor-owned source.
   `include/lor/*.h`; update it only for build behavior changes.
 - Update `tools/lor_modules.json` when generated `lor.h` needs a new public
   module, enable macro, or prefix alias.
-- Before using anything from `references/`, inspect its README/license and
-  record the decision in `docs/THIRD_PARTY.md`.
+- Record any future external design influence or adapted code in
+  `docs/THIRD_PARTY.md`.
 
 ## C Style
 

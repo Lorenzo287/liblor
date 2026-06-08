@@ -3,40 +3,6 @@
 liblor is a personal C library for bringing higher-level programming tools to C.
 The goal is a cohesive set of small, readable, portable utilities for everyday C code.
 
-## Build And Test
-
-Use the Makefile for local development:
-
-- `make test`: build and run tests.
-- `make example`: build examples.
-- `make clang`: build and test with Clang in `.build/clang/`.
-- `make gcc`: build and test with GCC in `.build/gcc/`.
-- `make strict`: run a warning-as-error Clang build.
-- `make leakcheck`: run a strict build with `LOR_LEAKCHECK`.
-- `make check`: run strict Clang, strict GCC, and leak-check builds.
-- `make release`: build optimized static and shared libraries.
-- `make release-check`: test the optimized build and produce release libraries.
-- `make release-lto`: build a compiler-specific link-time-optimized release.
-- `make release-lto-check`: test static and shared LTO library consumers.
-- `make single-header`: generate `lor.h`.
-- `make clean`: remove all generated files under `.build/`.
-
-Release builds use `-O3 -DNDEBUG` without CPU-specific flags, so the binaries
-remain usable on machines other than the one that built them. The optional LTO
-target performs additional whole-program optimization but is more tightly
-coupled to its compiler toolchain. Artifacts are written under
-`.build/release/<compiler>/`, with `-lto` appended for LTO builds:
-
-- Windows with Clang: `lor_static.lib`, `lor.dll`, and import library `lor.lib`.
-- Windows with GCC: `liblor.a`, `lor.dll`, and import library `liblor.dll.a`.
-- Linux: `liblor.a` and `liblor.so`.
-- macOS: `liblor.a` and `liblor.dylib`.
-
-The compiled libraries contain every multi-file module implementation. Programs
-still include the normal headers from `include/lor/`; the generated `lor.h` is
-not involved. On Windows, DLL exports are generated from
-`tools/lor_modules.json`, which remains the public-symbol source of truth.
-
 ## Layout
 
 liblor is a normal multi-file library first. A generated single-header release
@@ -102,6 +68,11 @@ Basic use:
 
 Optional module and alias controls:
 
+- `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
+- `LOR_LEAKCHECK`: development build mode for location-aware leak checking
+  across liblor memory calls and stdlib heap calls. It automatically includes
+  the memory module when selective module macros are used.
+
 - `LOR_ENABLE_STATUS`: include only the status module.
 - `LOR_ENABLE_CONCURRENCY`: include concurrency and its status dependency.
 - `LOR_ENABLE_FEATURES`: include compiler feature detection only.
@@ -115,10 +86,40 @@ Optional module and alias controls:
 - `LOR_ENABLE_MAP`: include the map module and its string/features dependencies.
 - `LOR_ENABLE_RANDOM`: include the random module and its status dependency.
 - `LOR_ENABLE_SET`: include the set module and its map/features dependencies.
-- `LOR_STRIP_PREFIX`: add aliases such as `arena_alloc`.
-- `LOR_LEAKCHECK`: development build mode for location-aware leak checking
-  across liblor memory calls and stdlib heap calls. It automatically includes
-  the memory module when selective module macros are used.
+
+## Build And Test
+
+Use the Makefile for local development:
+
+- `make test`: build and run tests.
+- `make example`: build examples.
+- `make clang`: build and test with Clang in `.build/clang/`.
+- `make gcc`: build and test with GCC in `.build/gcc/`.
+- `make strict`: run a warning-as-error Clang build.
+- `make leakcheck`: run a strict build with `LOR_LEAKCHECK`.
+- `make check`: run strict Clang, strict GCC, and leak-check builds.
+- `make release`: build optimized static and shared libraries.
+- `make release-check`: test the optimized build and produce release libraries.
+- `make release-lto`: build a compiler-specific link-time-optimized release.
+- `make release-lto-check`: test static and shared LTO library consumers.
+- `make single-header`: generate `lor.h`.
+- `make clean`: remove all generated files under `.build/`.
+
+Release builds use `-O3 -DNDEBUG` without CPU-specific flags, so the binaries
+remain usable on machines other than the one that built them. The optional LTO
+target performs additional whole-program optimization but is more tightly
+coupled to its compiler toolchain. Artifacts are written under
+`.build/release/<compiler>/`, with `-lto` appended for LTO builds:
+
+- Windows with Clang: `lor_static.lib`, `lor.dll`, and import library `lor.lib`.
+- Windows with GCC: `liblor.a`, `lor.dll`, and import library `liblor.dll.a`.
+- Linux: `liblor.a` and `liblor.so`.
+- macOS: `liblor.a` and `liblor.dylib`.
+
+The compiled libraries contain every multi-file module implementation. Programs
+still include the normal headers from `include/lor/`; the generated `lor.h` is
+not involved. On Windows, DLL exports are generated from
+`tools/lor_modules.json`, which remains the public-symbol source of truth.
 
 ## License
 

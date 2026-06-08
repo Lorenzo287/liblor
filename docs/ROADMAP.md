@@ -1,22 +1,11 @@
 # liblor Roadmap
 
-This file tracks current direction and the next concrete development steps.
+This file records the completed version 1 scope and possible future work.
 
-## Current Focus
+## Version 1
 
-Validate the initial concurrency module, then move to the `lor` build/run tool.
-
-1. Exercise native threads, task groups, and channels in real programs.
-2. Add `select` or a worker pool only when concrete use cases justify them.
-3. Keep the compile-backed REPL after the initial build/run tool.
-
-## Open Decisions
-
-- Reusable test harness shape.
-- Single-header generator hardening as more modules are added.
-- Shared allocator customization versus heap-only owned containers.
-- Whether a future concurrency extension needs channel `select`, a worker pool,
-  or asynchronous I/O.
+Version 1 is feature complete. Current work is limited to validation, bug fixes,
+portability, and documentation for the existing module set.
 
 ## Done
 
@@ -28,7 +17,6 @@ Validate the initial concurrency module, then move to the `lor` build/run tool.
 - [x] Add `compile_flags.txt` for clangd include resolution.
 - [x] Implement first module: `LorArena`.
 - [x] Add focused arena tests and a small arena example.
-- [x] Add `docs/build-system.md` for the future `lor` tool direction.
 - [x] Add generated `lor.h` workflow.
 - [x] Consolidate public API naming: `lor_module_action`, `LorName`, `LOR_NAME`.
 - [x] Add memory subsystem implementation path.
@@ -56,8 +44,9 @@ Validate the initial concurrency module, then move to the `lor` build/run tool.
 - [x] Consolidate repeated test assertions into a reusable internal header.
 - [x] Define and implement the initial native-thread concurrency module.
 - [x] Add structured task groups and buffered/unbuffered channels.
+- [x] Keep build tooling and C REPL experiments outside liblor's scope.
 
-## Backlog
+## Version 1 Scope
 
 ### Foundation
 
@@ -91,15 +80,21 @@ Validate the initial concurrency module, then move to the `lor` build/run tool.
 ### Tooling
 
 - [x] optional single-header generation.
-- [ ] `lor run` / `lor build` design and prototype, after library modules;
-- [ ] compile-backed C REPL design and prototype, after build tooling.
 
 ### Platform
 
 - [x] mmap abstraction;
-- [ ] public virtual-memory API, if common use cases justify it;
 - [x] concurrency design and scope;
 - [x] native concurrency primitives;
 - [x] structured task groups and channels;
-- [ ] channel `select`, worker pools, or async I/O, if use cases justify them;
-- [ ] custom entry-point helpers.
+
+## Post-v1 Candidates
+
+These are not commitments. Add them only when concrete programs demonstrate a
+need:
+
+- public virtual-memory API;
+- shared allocator customization;
+- channel `select`, worker pools, or asynchronous I/O;
+- custom entry-point helpers;
+- further single-header generator hardening.
