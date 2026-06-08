@@ -38,8 +38,8 @@ source tree yet.
 | mman-win32                        | Viktor Kutuzov, Klaus Post, Hermann Seib            | MIT                  | inspiration | Windows mmap study copy removed; liblor uses a narrower native abstraction.                  |
 | PCG, random                       | Melissa O'Neill; Lorenzo Tumini; MagicalBait        | Apache-2.0 / MIT     | inspiration | Removed. Informed by PCG32 XSH-RR; liblor implements the published algorithm independently.  |
 | print and type utils              | Lorenzo Tumini                                      | project-owned / MIT  | inspiration | Removed. Production code was rewritten around tagged values and explicit failure behavior.   |
-| `references/concurrency/libdill/` | Martin Sustrik and contributors                     | MIT-like permissive  | reference   | Coroutine/concurrency reference. Preserve notices if adapted.                                |
-| `references/concurrency/libmill/` | Martin Sustrik                                      | MIT-like permissive  | reference   | Coroutine/concurrency reference. Audit before use.                                           |
+| libdill                           | Martin Sustrik and contributors                     | MIT-like permissive  | inspiration | Removed. Informed structured task ownership and cooperative cancellation; liblor code is original. |
+| libmill                           | Martin Sustrik                                      | MIT-like permissive  | inspiration | Removed. Informed typed value-copy channels and deadline-based waits; liblor code is original. |
 | Sean's Tool Box (`stb.h`)         | Sean Barrett / stb                                  | MIT or public domain | inspiration | Removed. Its numeric conveniences motivated original single-evaluation helpers.              |
 | EasyArgs cli parser               | Xander Gouws                                        | MIT                  | inspiration | Removed. EasyArgs informed basic CLI scope; liblor uses an original function API.            |
 

@@ -4,11 +4,10 @@ This file tracks current direction and the next concrete development steps.
 
 ## Current Focus
 
-Scope concurrency before deciding whether to implement it before or after the
-`lor` build/run tool.
+Validate the initial concurrency module, then move to the `lor` build/run tool.
 
-1. Define the smallest useful concurrency layer and its portability boundary.
-2. Decide whether concurrency or build tooling should be implemented first.
+1. Exercise native threads, task groups, and channels in real programs.
+2. Add `select` or a worker pool only when concrete use cases justify them.
 3. Keep the compile-backed REPL after the initial build/run tool.
 
 ## Open Decisions
@@ -16,8 +15,8 @@ Scope concurrency before deciding whether to implement it before or after the
 - Reusable test harness shape.
 - Single-header generator hardening as more modules are added.
 - Shared allocator customization versus heap-only owned containers.
-- Concurrency scope: basic threading primitives versus structured
-  concurrency, channels, and asynchronous I/O.
+- Whether a future concurrency extension needs channel `select`, a worker pool,
+  or asynchronous I/O.
 
 ## Done
 
@@ -55,6 +54,8 @@ Scope concurrency before deciding whether to implement it before or after the
 - [x] Audit and remove the STB utility header and Cello runtime experiments.
 - [x] Add single-evaluation numeric minimum, maximum, and clamp helpers.
 - [x] Consolidate repeated test assertions into a reusable internal header.
+- [x] Define and implement the initial native-thread concurrency module.
+- [x] Add structured task groups and buffered/unbuffered channels.
 
 ## Backlog
 
@@ -97,6 +98,8 @@ Scope concurrency before deciding whether to implement it before or after the
 
 - [x] mmap abstraction;
 - [ ] public virtual-memory API, if common use cases justify it;
-- [ ] concurrency design and scope;
-- [ ] concurrency primitives, only after the design is settled;
+- [x] concurrency design and scope;
+- [x] native concurrency primitives;
+- [x] structured task groups and channels;
+- [ ] channel `select`, worker pools, or async I/O, if use cases justify them;
 - [ ] custom entry-point helpers.

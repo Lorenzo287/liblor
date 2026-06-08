@@ -46,6 +46,8 @@ Current modules include:
 
 - `lor/array.h`: typed-pointer dynamic arrays with checked growth.
 - `lor/cli.h`: function-based command-line parsing with generated help.
+- `lor/concurrency.h`: native threads, task groups, synchronization, and
+  channels.
 - `lor/features.h`: compiler capability checks used by optional conveniences.
 - `lor/map.h`: typed hash maps with configurable key ownership.
 - `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in
@@ -58,11 +60,13 @@ Current modules include:
 - `lor/string.h`: borrowed string views and owned dynamic strings.
 - `lor/type.h`: C11 names for built-in and concrete liblor value types.
 
-See [API Conventions](docs/api-conventions.md), [Command-Line Parsing](docs/cli.md),
+See [API Conventions](docs/api-conventions.md),
+[Command-Line Parsing](docs/cli.md), [Concurrency](docs/concurrency.md),
 [Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
 [Memory](docs/memory.md), [Generic Printing](docs/print.md),
-[Numeric Helpers](docs/numeric.md), [Random Numbers](docs/random.md), [Sets](docs/set.md),
-[Strings](docs/string.md), and [Type Helpers](docs/type.md).
+[Numeric Helpers](docs/numeric.md), [Random Numbers](docs/random.md),
+[Sets](docs/set.md), [Strings](docs/string.md), and
+[Type Helpers](docs/type.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/memory.h"`.
@@ -99,6 +103,7 @@ Basic use:
 Optional module and alias controls:
 
 - `LOR_ENABLE_STATUS`: include only the status module.
+- `LOR_ENABLE_CONCURRENCY`: include concurrency and its status dependency.
 - `LOR_ENABLE_FEATURES`: include compiler feature detection only.
 - `LOR_ENABLE_TYPE`: include rich type inspection and its value-type dependencies.
 - `LOR_ENABLE_MEMORY`: include only the memory module.

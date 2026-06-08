@@ -53,9 +53,9 @@ portability audits.
 
 ## Prerequisites
 
-The remaining prerequisite is a decision on the intended concurrency scope and
-whether that platform work should precede the first build-tool prototype. Type
-helpers and generic printing are complete.
+The initial concurrency scope, type helpers, and generic printing are complete.
+The first build-tool prototype can now proceed without depending on coroutine
+scheduling or asynchronous I/O.
 
 An allocator interface is not a prerequisite. Existing modules have not shown
 a concrete need for public allocator customization.

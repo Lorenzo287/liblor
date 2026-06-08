@@ -48,6 +48,7 @@ endif
 
 ifeq ($(OS),Windows_NT)
 EXE := .exe
+THREAD_FLAGS :=
 PIC_CFLAGS :=
 SHARED_LIB := $(BUILD_DIR)/lor.dll
 EXPORT_DEF := $(BUILD_DIR)/lor.def
@@ -68,6 +69,7 @@ endif
 SHARED_TEST_LINK = $(IMPORT_LIB)
 else
 EXE :=
+THREAD_FLAGS := -pthread
 PIC_CFLAGS := -fPIC
 STATIC_LIB := $(BUILD_DIR)/liblor.a
 IMPORT_LIB :=
@@ -174,7 +176,7 @@ $(BUILD_DIR):
 	$(MKDIR_BUILD)
 
 $(BUILD_DIR)/%.o: src/%.c $(PUBLIC_HEADERS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) -c $< -o $@
 
 $(STATIC_LIB): $(LIB_OBJS) | $(BUILD_DIR)
 	$(RELEASE_ARCHIVE)
@@ -184,30 +186,30 @@ $(EXPORT_DEF): $(EXPORT_INPUTS) | $(BUILD_DIR)
 	$(PYTHON) tools/gen_exports.py --output $@
 
 $(SHARED_LIB): $(LIB_OBJS) $(EXPORT_DEF) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SHARED_LINK_FLAGS) $(LIB_OBJS) \
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) $(SHARED_LINK_FLAGS) $(LIB_OBJS) \
 		$(SHARED_EXPORT_INPUT) -o $@
 else
 $(SHARED_LIB): $(LIB_OBJS) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SHARED_LINK_FLAGS) $(LIB_OBJS) -o $@
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) $(SHARED_LINK_FLAGS) $(LIB_OBJS) -o $@
 endif
 
 $(RELEASE_STATIC_TEST): $(RELEASE_TEST_SRC) $(STATIC_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(STATIC_LIB) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $< $(STATIC_LIB) -o $@
 
 $(RELEASE_SHARED_TEST): $(RELEASE_TEST_SRC) $(SHARED_LIB) $(PUBLIC_HEADERS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(SHARED_TEST_LINK) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $< $(SHARED_TEST_LINK) -o $@
 
 $(SINGLE_HEADER_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(SINGLE_HEADER) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) $< -o $@
 
 $(LIB_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LIB_OBJS) $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@
 
 $(EXAMPLE_BINS): $(BUILD_DIR)/example_%$(EXE): examples/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LIB_OBJS) $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@
 
 $(EXAMPLE_SH_BINS): $(BUILD_DIR)/example_sh_%$(EXE): examples_sh/%.c $(SINGLE_HEADER) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) $< -o $@
 
 $(SINGLE_HEADER): $(SINGLE_HEADER_INPUTS)
 	$(PYTHON) tools/gen_single_header.py --output $(SINGLE_HEADER)

@@ -16,12 +16,13 @@
 
 static int test_status_names(void) {
     CHECK(strcmp(lor_status_name(LOR_STATUS_OK), "ok") == 0);
-    CHECK(strcmp(lor_status_name(LOR_STATUS_INVALID_ARGUMENT),
-                 "invalid argument") == 0);
-    CHECK(strcmp(lor_status_name(LOR_STATUS_OUT_OF_MEMORY), "out of memory") ==
+    CHECK(strcmp(lor_status_name(LOR_STATUS_INVALID_ARGUMENT), "invalid argument") ==
           0);
+    CHECK(strcmp(lor_status_name(LOR_STATUS_OUT_OF_MEMORY), "out of memory") == 0);
     CHECK(strcmp(lor_status_name(LOR_STATUS_OVERFLOW), "overflow") == 0);
     CHECK(strcmp(lor_status_name(LOR_STATUS_SYSTEM_ERROR), "system error") == 0);
+    CHECK(strcmp(lor_status_name(LOR_STATUS_TIMED_OUT), "timed out") == 0);
+    CHECK(strcmp(lor_status_name(LOR_STATUS_CLOSED), "closed") == 0);
     CHECK(strcmp(lor_status_name((LorStatus)99), "unknown") == 0);
     return 0;
 }
@@ -194,11 +195,9 @@ static int test_owned_string_failures(void) {
     LorString string = LOR_STRING_INIT;
     CHECK(lor_string_append(NULL, SV("x")) == LOR_STATUS_INVALID_ARGUMENT);
     CHECK(lor_string_init_cstr(NULL, "x") == LOR_STATUS_INVALID_ARGUMENT);
-    CHECK(lor_string_init_cstr(&string, NULL) ==
-          LOR_STATUS_INVALID_ARGUMENT);
+    CHECK(lor_string_init_cstr(&string, NULL) == LOR_STATUS_INVALID_ARGUMENT);
     CHECK(string == NULL);
-    CHECK(lor_string_append_cstr(&string, NULL) ==
-          LOR_STATUS_INVALID_ARGUMENT);
+    CHECK(lor_string_append_cstr(&string, NULL) == LOR_STATUS_INVALID_ARGUMENT);
 
     CHECK(lor_string_append_cstr(&string, "stable") == LOR_STATUS_OK);
     LorString data = string;
@@ -228,8 +227,7 @@ static int test_owned_string_leakcheck(void) {
 }
 
 static int test_owned_string_auto_cleanup(void) {
-#if defined(LOR_LEAKCHECK) && \
-    (defined(__GNUC__) || defined(__clang__))
+#if defined(LOR_LEAKCHECK) && (defined(__GNUC__) || defined(__clang__))
     size_t before = lor_leakcheck_count();
     {
         LOR_AUTO_STRING LorString string = LOR_STRING_INIT;

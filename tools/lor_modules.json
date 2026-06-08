@@ -17,7 +17,80 @@
                     ["LOR_STATUS_INVALID_ARGUMENT", "STATUS_INVALID_ARGUMENT"],
                     ["LOR_STATUS_OUT_OF_MEMORY", "STATUS_OUT_OF_MEMORY"],
                     ["LOR_STATUS_OVERFLOW", "STATUS_OVERFLOW"],
-                    ["LOR_STATUS_SYSTEM_ERROR", "STATUS_SYSTEM_ERROR"]
+                    ["LOR_STATUS_SYSTEM_ERROR", "STATUS_SYSTEM_ERROR"],
+                    ["LOR_STATUS_TIMED_OUT", "STATUS_TIMED_OUT"],
+                    ["LOR_STATUS_CLOSED", "STATUS_CLOSED"]
+                ]
+            }
+        },
+        {
+            "name": "concurrency",
+            "enable_macro": "LOR_ENABLE_CONCURRENCY",
+            "dependencies": [
+                "status"
+            ],
+            "header": "include/lor/concurrency.h",
+            "source": "src/concurrency.c",
+            "symbols": {
+                "functions": [
+                    ["lor_time_now_ms", "time_now_ms"],
+                    ["lor_deadline_after_ms", "deadline_after_ms"],
+                    ["lor_sleep_until", "sleep_until"],
+                    ["lor_sleep_ms", "sleep_ms"],
+                    ["lor_thread_start", "thread_start"],
+                    ["lor_thread_join", "thread_join"],
+                    ["lor_thread_deinit", "thread_deinit"],
+                    ["lor_mutex_init", "mutex_init"],
+                    ["lor_mutex_deinit", "mutex_deinit"],
+                    ["lor_mutex_lock", "mutex_lock"],
+                    ["lor_mutex_unlock", "mutex_unlock"],
+                    ["lor_cond_init", "cond_init"],
+                    ["lor_cond_deinit", "cond_deinit"],
+                    ["lor_cond_wait", "cond_wait"],
+                    ["lor_cond_wait_until", "cond_wait_until"],
+                    ["lor_cond_signal", "cond_signal"],
+                    ["lor_cond_broadcast", "cond_broadcast"],
+                    ["lor_task_group_init", "task_group_init"],
+                    ["lor_task_group_spawn", "task_group_spawn"],
+                    ["lor_task_group_cancel", "task_group_cancel"],
+                    ["lor_task_group_cancelled", "task_group_cancelled"],
+                    ["lor_task_cancelled", "task_cancelled"],
+                    ["lor_task_group_wait", "task_group_wait"],
+                    ["lor_task_group_deinit", "task_group_deinit"],
+                    ["lor_channel_init_raw", "channel_init_raw"],
+                    ["lor_channel_close", "channel_close"],
+                    ["lor_channel_deinit", "channel_deinit"],
+                    ["lor_channel_is_closed", "channel_is_closed"],
+                    ["lor_channel_element_size", "channel_element_size"],
+                    ["lor_channel_capacity", "channel_capacity"],
+                    ["lor_channel_send_raw", "channel_send_raw"],
+                    ["lor_channel_send_until_raw", "channel_send_until_raw"],
+                    ["lor_channel_receive_raw", "channel_receive_raw"],
+                    ["lor_channel_receive_until_raw", "channel_receive_until_raw"]
+                ],
+                "types": [
+                    ["LorDeadline", "Deadline"],
+                    ["LorThreadFn", "ThreadFn"],
+                    ["LorThread", "Thread"],
+                    ["LorMutex", "Mutex"],
+                    ["LorCond", "Cond"],
+                    ["LorTaskContext", "TaskContext"],
+                    ["LorTaskFn", "TaskFn"],
+                    ["LorTaskGroup", "TaskGroup"],
+                    ["LorChannel", "Channel"]
+                ],
+                "macros": [
+                    ["LOR_DEADLINE_INFINITE", "DEADLINE_INFINITE"],
+                    ["LOR_THREAD_INIT", "THREAD_INIT"],
+                    ["LOR_MUTEX_INIT", "MUTEX_INIT"],
+                    ["LOR_COND_INIT", "COND_INIT"],
+                    ["LOR_TASK_GROUP_INIT", "TASK_GROUP_INIT"],
+                    ["LOR_CHANNEL_INIT", "CHANNEL_INIT"],
+                    ["lor_channel_init", "channel_init"],
+                    ["lor_channel_send", "channel_send"],
+                    ["lor_channel_send_until", "channel_send_until"],
+                    ["lor_channel_receive", "channel_receive"],
+                    ["lor_channel_receive_until", "channel_receive_until"]
                 ]
             }
         },

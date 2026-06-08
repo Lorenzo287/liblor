@@ -14,6 +14,10 @@ const char *lor_status_name(LorStatus status) {
         return "overflow";
     case LOR_STATUS_SYSTEM_ERROR:
         return "system error";
+    case LOR_STATUS_TIMED_OUT:
+        return "timed out";
+    case LOR_STATUS_CLOSED:
+        return "closed";
     }
 
     return "unknown";
