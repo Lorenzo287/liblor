@@ -25,12 +25,12 @@ Current modules include:
 - `lor/status.h`: small shared failure statuses.
 
 See [API Conventions](docs/API-CONVENTIONS.md),
-[Command-Line Parsing](docs/cli.md), [Concurrency](docs/concurrency.md),
+[Memory](docs/memory.md), [Strings](docs/string.md),
 [Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
-[Memory](docs/memory.md), [Generic Printing](docs/print.md),
-[Numeric Helpers](docs/numeric.md), [Random Numbers](docs/random.md),
-[Sets](docs/set.md), [Strings](docs/string.md), and
-[Type Helpers](docs/type.md).
+[Sets](docs/set.md), [Numeric Helpers](docs/numeric.md),
+[Generic Printing](docs/print.md), [Type Helpers](docs/type.md),
+[Random Numbers](docs/random.md), [Command-Line Parsing](docs/cli.md) 
+and [Concurrency](docs/concurrency.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/memory.h"`.
