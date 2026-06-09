@@ -29,7 +29,7 @@ See [API Conventions](docs/API-CONVENTIONS.md),
 [Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
 [Sets](docs/set.md), [Numeric Helpers](docs/numeric.md),
 [Generic Printing](docs/print.md), [Type Helpers](docs/type.md),
-[Random Numbers](docs/random.md), [Command-Line Parsing](docs/cli.md) 
+[Random Numbers](docs/random.md), [Command-Line Parsing](docs/cli.md)
 and [Concurrency](docs/concurrency.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
@@ -70,27 +70,15 @@ Optional module and alias controls:
 - `LOR_LEAKCHECK`: development build mode for location-aware leak checking
   across liblor memory calls and stdlib heap calls. It automatically includes
   the memory module when selective module macros are used.
-
-- `LOR_ENABLE_STATUS`: include only the status module.
-- `LOR_ENABLE_CONCURRENCY`: include concurrency and its status dependency.
-- `LOR_ENABLE_FEATURES`: include compiler feature detection only.
-- `LOR_ENABLE_TYPE`: include rich type inspection and its value-type dependencies.
-- `LOR_ENABLE_MEMORY`: include only the memory module.
-- `LOR_ENABLE_NUMERIC`: include numeric helpers and feature detection.
-- `LOR_ENABLE_STRING`: include the string module and its status dependency.
-- `LOR_ENABLE_PRINT`: include generic printing and supported container modules.
-- `LOR_ENABLE_ARRAY`: include the array module and its status/features dependencies.
-- `LOR_ENABLE_CLI`: include the CLI module and its array/string dependencies.
-- `LOR_ENABLE_MAP`: include the map module and its string/features dependencies.
-- `LOR_ENABLE_RANDOM`: include the random module and its status dependency.
-- `LOR_ENABLE_SET`: include the set module and its map/features dependencies.
+- `LOR_ENABLE_<MODULE>`: include only a module and its dependencies. If only
+  `LOR_IMPLEMENTATION` is defined all modules are included by default.
 
 ## Build And Test
 
 ```powershell
 make all
 make check
-make release-check
+make release
 ```
 
 Build output is written under `.build/`. See [Building](docs/BUILD.md) for
