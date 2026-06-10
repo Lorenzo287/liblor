@@ -1,7 +1,10 @@
 # Sets
 
-liblor sets are a thin key-only facade over the hash-map implementation. A set
-handle is a typed pointer directly to its densely stored keys:
+liblor sets provide unique key storage and mathematical operations. They are a
+thin key-only facade over the hash-map implementation, sharing the same hashing,
+collision handling, and performance characteristics.
+
+A set handle is a typed pointer directly to its densely stored keys:
 
 ```c
 int *numbers = LOR_SET_INIT;
@@ -16,9 +19,9 @@ for (size_t i = 0; i < lor_set_size(numbers); ++i)
 lor_set_deinit(&numbers);
 ```
 
-Sets reuse map hashing, equality, collision handling, allocation, key
-ownership, leak checking, and cleanup. There is no second hash-table
-implementation.
+`lor_set_capacity(set)` returns the total allocated capacity.
+`lor_set_contains(set, key)` returns non-zero when a key is present.
+`lor_set_remove(set, key)` removes a key and returns non-zero.
 
 Iteration order is unspecified and may change after insertion or removal.
 Pointers to keys may be invalidated by insertion, reserve, or removal. Stored
@@ -94,14 +97,14 @@ The operations correspond to Python's set methods:
 - `difference`: keys in the left set but not the right.
 - `symmetric_difference`: keys in exactly one set.
 
-Relationship predicates are also available:
+Relationship predicates return zero or non-zero:
 
-- `lor_set_equal`
-- `lor_set_is_subset`
-- `lor_set_is_proper_subset`
-- `lor_set_is_superset`
-- `lor_set_is_proper_superset`
-- `lor_set_is_disjoint`
+- `lor_set_equal(a, b)`
+- `lor_set_is_subset(a, b)`
+- `lor_set_is_proper_subset(a, b)`
+- `lor_set_is_superset(a, b)`
+- `lor_set_is_proper_superset(a, b)`
+- `lor_set_is_disjoint(a, b)`
 
 Predicates return zero for non-empty sets with incompatible key semantics.
 

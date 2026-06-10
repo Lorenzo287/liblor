@@ -18,6 +18,10 @@ if (entry != NULL)
 lor_map_deinit(&names);
 ```
 
+`lor_map_capacity(map)` returns the allocated entry capacity.
+`lor_map_entry_size(map)` and `lor_map_key_size(map)` expose the configured
+layout.
+
 Maps are directly iterable:
 
 ```c
@@ -112,6 +116,9 @@ lor_map_put_as(counts, WordCount, word, 1);
 a C99 compound literal and supports entries with fields beyond `key` and
 `value`. `lor_map_put_as` is the concise common key/value form.
 
+`lor_map_contains(map, key)` returns non-zero when a key is present.
+`lor_map_remove(map, key)` removes an entry and returns non-zero.
+
 On GCC and Clang, `LOR_HAS_MAP_AUTO` enables inferred convenience operations:
 
 ```c
@@ -144,11 +151,3 @@ LOR_AUTO_MAP WordCount *counts = LOR_MAP_INIT;
 
 All map allocations, including copied string keys, participate in
 `LOR_LEAKCHECK`.
-
-## Design References
-
-The typed generic API and custom hash/equality direction were informed by
-Alexey Kutepov's `ht.h`. Dense entries, open addressing, and string-key policy
-were also informed by Sean Barrett's `stb_ds`. liblor's implementation is
-original and uses its own status, ownership, cleanup, and leak-check
-conventions.

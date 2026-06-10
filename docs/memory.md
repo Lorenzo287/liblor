@@ -1,77 +1,19 @@
 # Memory
 
-Memory is the first liblor subsystem. Keep arenas, scratch scopes, mmap, cleanup
-helpers, and leak checking together in
-`include/lor/memory.h` and `src/memory.c` until the code clearly needs a split.
+The memory module provides arenas, scratch scopes, file mapping, and automatic
+cleanup helpers.
 
-## Current Shape
+## Features
 
 - `LorArena`: heap-backed by default, with optional virtual-memory backend.
 - `LorArenaMark` / `lor_arena_mark` / `lor_arena_rewind`: explicit
   checkpoints for rewinding temporary allocations inside the same arena.
-- `LorScratch` / `lor_scratch_begin`: scope handles for per-thread scratch
-  arenas.
+- `LorScratch` / `lor_scratch_begin`: scope handles for per-thread scratch arenas.
 - `LorMmap`: file mapping by path.
 - cleanup helpers: scope-exit cleanup for heap pointers, arenas, scratch scopes,
   mmap mappings, and `FILE *` handles on compilers that support cleanup
-  attributes.
+  attributes (they are also available for other liblor modules).
 - `LOR_LEAKCHECK`: development build mode for location-aware leak checking.
-
-There is no public `LorAllocator`. Reintroduce an allocator interface only when
-a concrete container or subsystem needs user-supplied allocation behavior.
-
-The arena virtual-memory backend is an implementation detail. A public manual
-virtual-memory API can be added later if common liblor use cases justify it.
-
-`lor_mmap_file` maps a complete non-empty file. `LOR_MMAP_READ` is read-only,
-`LOR_MMAP_COPY` allows private changes that do not modify the file, and
-`LOR_MMAP_SHARED` allows changes that are reflected in the file.
-
-## Principles
-
-- Prefer useful features over wrapper APIs.
-- Keep ownership explicit in names or docs.
-- Prefer deterministic cleanup over hidden global behavior.
-- Do not replace `malloc` globally unless the user opts into macro mode.
-- Treat arena allocations as bulk-owned by the arena, not individually freeable.
-- Do not attempt generic GC for arbitrary C pointers.
-
-## Leak Checking
-
-Leakcheck is a development build mode. Normal builds compile tracking out.
-Define `LOR_LEAKCHECK` for the whole build so liblor memory calls and stdlib
-heap calls route through location-aware tracking macros.
-
-Single-header development build:
-
-```c
-#define LOR_IMPLEMENTATION
-#define LOR_LEAKCHECK
-#include "lor.h"
-```
-
-`LOR_LEAKCHECK` automatically enables the memory module in selective
-single-header builds, so `LOR_ENABLE_STRING` plus `LOR_LEAKCHECK` is sufficient
-to track dynamic-string allocations.
-
-Multi-file development build:
-
-```powershell
-make leakcheck
-```
-
-For multi-file builds, compile `src/memory.c` with `LOR_LEAKCHECK` to enable
-tracking and define it in consuming translation units to capture call-site file
-and line. In practice, pass `-DLOR_LEAKCHECK` to the whole project build.
-
-When active, leakcheck tracks liblor heap helpers, active arenas, virtual
-arena lifetimes, and active mmap mappings. It does not own or clean up
-resources; it only reports resources whose matching release/deinit/free/unmap
-call was not made.
-Arena leak reports use the arena's current committed backing bytes.
-
-Leakcheck tracking uses a process-global unsynchronized list. Treat it as
-single-threaded unless the caller protects all tracked memory calls externally.
 
 ## Arenas, Temps, And Scratch
 
@@ -110,12 +52,12 @@ They are perfect for short-lived helper work when the caller should not have
 to create a dedicated arena.
 
 `LorScratch` is the scope handle and exposes the selected arena for normal
-`lor_arena_*` allocations. 
+`lor_arena_*` allocations.
 
 Pass conflicting arenas when nested scratch work must avoid reusing an arena
 whose allocations are still live. Since the library provides 2 scratch arenas,
 passing an output arena as a conflict guarantees the library will hand you
-the *other* scratch arena, allowing you to safely build messy temporary
+the _other_ scratch arena, allowing you to safely build messy temporary
 structures without overwriting the clean data you intend to return.
 
 ```c
@@ -143,6 +85,10 @@ if (!lor_arena_init_config(&arena,
 }
 ```
 
+`lor_page_size()` returns the host operating system page size or a conservative
+fallback. It can be used to config the backend to use multiples of the OS pages
+for reserve and commit operations.
+
 Arena accounting excludes block metadata and leading alignment slack:
 
 - `lor_arena_used` reports consumed usable capacity, including alignment
@@ -163,6 +109,53 @@ Choose `malloc` when an object has an independent lifetime or must be freed
 separately. Choose an arena/temp/scratch scope when the lifetime is grouped and
 bulk release makes ownership simpler.
 
+## File Mapping
+
+`lor_mmap_file` maps a complete non-empty file.
+`LOR_MMAP_READ` is read-only, `LOR_MMAP_COPY` allows private changes that
+do not modify the file, and `LOR_MMAP_SHARED` allows changes that are reflected in the file.
+
+## Leak Checking
+
+Leakcheck is a development build mode. Normal builds compile tracking out.
+Define `LOR_LEAKCHECK` for the whole build so liblor memory calls and stdlib
+heap calls route through location-aware tracking macros.
+
+Single-header development build:
+
+```c
+#define LOR_IMPLEMENTATION
+#define LOR_LEAKCHECK
+#include "lor.h"
+```
+
+`LOR_LEAKCHECK` automatically enables the memory module in selective
+single-header builds, so `LOR_ENABLE_STRING` plus `LOR_LEAKCHECK` is sufficient
+to track dynamic-string allocations.
+
+Multi-file development build:
+
+```powershell
+make leakcheck
+```
+
+For multi-file builds, compile `src/memory.c` with `LOR_LEAKCHECK` to enable
+tracking and define it in consuming translation units to capture call-site file
+and line. In practice, pass `-DLOR_LEAKCHECK` to the whole project build.
+
+When active, leakcheck tracks liblor heap helpers, active arenas, virtual
+arena lifetimes, and active mmap mappings. It does not own or clean up
+resources; it only reports resources whose matching release/deinit/free/unmap
+call was not made.
+Arena leak reports use the arena's current committed backing bytes.
+
+`lor_leakcheck_stats()` returns a `LorLeakStats` structure with current
+allocation counts and byte totals. `lor_leakcheck_count()` returns the number
+of active tracking records.
+
+Leakcheck tracking uses a process-global unsynchronized list. Treat it as
+single-threaded unless the caller protects all tracked memory calls externally.
+
 ## Cleanup Helpers
 
 Cleanup helpers use compiler-supported scope cleanup attributes. They call the
@@ -182,7 +175,3 @@ matching explicit release function when a local variable leaves scope:
 They are deterministic cleanup conveniences, not leak checking. Use them for
 local variables with obvious ownership; avoid them when ownership is transferred
 out of the scope.
-
-## Next Work
-
-- Add richer leak reports only if the current report format is insufficient.

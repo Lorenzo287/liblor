@@ -1,19 +1,16 @@
 # Concurrency
 
-`lor/concurrency.h` provides a small portable concurrency layer built on native
-Windows threads and POSIX threads. It deliberately uses operating-system
-threads rather than stack-switching coroutines.
+`lor/concurrency.h` provides a portable concurrency layer built on native
+Windows threads and POSIX threads. It uses operating-system threads for
+predictable scheduling and resource management.
 
-The initial module contains:
+## Features
 
-- joinable threads;
-- mutexes and condition variables;
-- monotonic deadlines and sleeping;
-- structured task groups with cooperative cancellation;
-- buffered and unbuffered typed value-copy channels.
-
-It does not contain a coroutine scheduler, work-stealing thread pool,
-multi-channel `select`, asynchronous sockets, DNS, or TLS.
+- Joinable threads
+- Mutexes and condition variables
+- Monotonic deadlines and sleeping
+- Structured task groups with cooperative cancellation
+- Buffered and unbuffered typed channels
 
 ## Threads
 
@@ -36,13 +33,12 @@ lor_thread_join(&thread, &result);
 ```
 
 Joining resets the handle. `lor_thread_deinit` also joins, discards the result,
-and resets the handle. There is no detach operation in the initial API because
-unowned task lifetimes make shutdown and resource ownership harder to reason
-about.
+and resets the handle.
 
-`LorMutex` and `LorCond` use explicit `init` / `deinit` ownership. Condition
-waits may wake spuriously, so the protected predicate must always be checked in
-a loop.
+`lor_mutex_init` and `lor_mutex_deinit` manage `LorMutex` lifetimes. `lor_cond_init`
+and `lor_cond_deinit` manage `LorCond`. Condition waits may wake spuriously, so
+the protected predicate must always be checked in a loop. `lor_cond_signal` and
+`lor_cond_broadcast` wake waiting threads.
 
 ## Deadlines
 
@@ -55,9 +51,11 @@ LorStatus status =
 ```
 
 Absolute deadlines prevent repeated wakeups from restarting a relative timeout.
-`LOR_DEADLINE_INFINITE` selects an untimed wait. `lor_time_now_ms` uses a
-monotonic clock on Windows, Linux, and macOS; less common POSIX platforms fall
-back to C11 time when no monotonic clock is exposed.
+`LOR_DEADLINE_INFINITE` selects an untimed wait. `lor_time_now_ms` returns the
+current monotonic time.
+
+`lor_sleep_ms` and `lor_sleep_until` provide thread sleeping with relative or
+absolute durations.
 
 ## Task Groups
 
@@ -80,7 +78,7 @@ lor_task_group_deinit(&group);
 ```
 
 Each task currently uses one OS thread. This is suitable for a modest number of
-coarse tasks, not hundreds of thousands of Go-style goroutines.
+coarse tasks.
 
 Cancellation is cooperative. It sets a flag observed through
 `lor_task_cancelled`; it cannot forcibly stop a thread or interrupt arbitrary
@@ -117,6 +115,9 @@ copies bytes and does not acquire ownership of pointers contained in a value.
 A positive capacity creates a FIFO buffer. Capacity zero creates a rendezvous
 channel: a send waits until a receiver is present. Timed sends and receives
 return `LOR_STATUS_TIMED_OUT`.
+
+`lor_channel_is_closed`, `lor_channel_element_size`, and `lor_channel_capacity`
+expose the current state of a channel.
 
 Closing a channel wakes blocked operations:
 

@@ -20,6 +20,19 @@ if (lor_sv_split_once_char(input, '=', &key, &value)) {
 }
 ```
 
+`lor_sv_is_valid(view)` returns non-zero when a view satisfies its pointer/size
+invariant. `lor_sv_is_empty(view)` returns non-zero when a view contains no
+bytes.
+
+`lor_sv_equal(a, b)` compares the binary contents of two views.
+`lor_sv_starts_with(view, prefix)` and `lor_sv_ends_with(view, suffix)` check
+for presence at the bounds.
+
+`lor_sv_take_left(view, size)` and `lor_sv_take_right(view, size)` return a
+sub-view of the requested size. `lor_sv_chop_left(&view, size)` and
+`lor_sv_chop_right(&view, size)` return the sub-view and update the original
+view to point to the remaining bytes.
+
 A view remains valid only while its source storage remains valid and unmoved.
 In particular, views into a `LorString` must not be retained across operations
 that may grow that string.
@@ -47,6 +60,7 @@ if (lor_string_append_cstr(&text, "hello") == LOR_STATUS_OK &&
     lor_string_append_cstr(&text, "world") == LOR_STATUS_OK) {
     puts(text);
     printf("size: %zu\n", lor_string_size(text));
+    printf("capacity: %zu\n", lor_string_capacity(text));
 }
 
 lor_string_deinit(&text);
@@ -82,17 +96,3 @@ string APIs. See `examples/string_low_level.c`.
 The dynamic string's prefix header is still private. Direct use must not call
 `free`, change the stored length, write beyond the current size, or retain
 pointers into the string across an operation that may grow it.
-
-The initial implementation uses the C heap. A public allocator interface is
-deferred until multiple owned modules demonstrate compatible requirements.
-
-## Design References
-
-The string-view API was informed by Alexey Kutepov's `sv` library. The owned
-string design was informed by SDS by Salvatore Sanfilippo, Oran Agra, and Redis
-contributors, especially its explicit length, spare capacity, binary safety,
-NUL compatibility, and geometric growth.
-
-liblor uses an original fixed prefix-header implementation. Unlike SDS, public
-mutators receive `LorString *` and update the caller's handle after growth, so
-callers cannot accidentally discard a replacement pointer.

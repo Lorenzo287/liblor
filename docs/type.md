@@ -16,6 +16,8 @@ printf("%s\n", lor_type_name(3.14));     // double
 printf("%s\n", lor_type_name("liblor")); // C string
 ```
 
+`lor_type_kind_name(kind)` returns a stable display name for a `LorTypeKind`.
+
 Both are macros built on standard C11 `_Generic`. Their controlling expression
 is not evaluated:
 

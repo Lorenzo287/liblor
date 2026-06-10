@@ -1,9 +1,7 @@
 # Command-Line Parsing
 
 `lor/cli.h` provides a function-based command-line parser with generated help,
-checked numeric conversion, and no global parser state. It takes inspiration
-from the metadata-driven interfaces of Python's `argparse` and Go's `flag`
-package without copying their APIs or hiding declarations in large macros.
+checked numeric conversion, and no global parser state.
 
 ## Basic Use
 
@@ -48,17 +46,21 @@ The concise option functions cover common cases:
 - `lor_cli_add_int`: parses a decimal `int64_t`.
 - `lor_cli_add_double`: parses a `double`.
 
+`lor_cli_code_name(code)` returns a stable lowercase name for a `LorCliCode`.
+
 The `_option` forms accept `LorCliOption` metadata for required options,
 custom value names, repeatability, and default-value display. Initialize the
 descriptor with `LOR_CLI_OPTION_INIT`, then set the fields that differ.
 
 Repeated string, integer, and double options append to caller-owned liblor
-dynamic arrays. Their destination handles must start as `NULL`, and the caller
-must release them with `lor_array_deinit`.
+dynamic arrays using `lor_cli_add_strings_option`, `lor_cli_add_ints_option`, or
+`lor_cli_add_doubles_option`. Their destination handles must start as `NULL`,
+and the caller must release them with `lor_array_deinit`.
 
-Positionals are consumed in registration order. Required positionals cannot
-follow optional positionals. `lor_cli_add_positionals` registers one final
-dynamic array that consumes all remaining positional values.
+Positionals are consumed in registration order with `lor_cli_add_positional_string`,
+`lor_cli_add_positional_int`, or `lor_cli_add_positional_double`. Required
+positionals cannot follow optional positionals. `lor_cli_add_positionals`
+registers one final dynamic array that consumes all remaining positional values.
 
 ## Accepted Syntax
 

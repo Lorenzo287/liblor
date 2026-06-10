@@ -15,6 +15,10 @@ for (size_t i = 0; i < lor_array_size(numbers); ++i)
 lor_array_deinit(&numbers);
 ```
 
+`lor_array_capacity(array)` returns the total allocated capacity, and
+`lor_array_element_size(array)` returns the stored element size.
+`lor_array_clear(array)` removes all elements while retaining the allocation.
+
 The handle supports normal indexing and pointer iteration. It must begin as
 `NULL`, may move after an allocating operation, and must be released with
 `lor_array_deinit`, not `free`.
@@ -115,12 +119,3 @@ LOR_AUTO_ARRAY int *numbers = LOR_ARRAY_INIT;
 On other compilers the macro is empty, so explicit deinitialization remains
 required. When `LOR_LEAKCHECK` is enabled, the complete prefix-header
 allocation is tracked as one heap allocation.
-
-## Design References
-
-The typed-pointer and prefix-header direction was informed by Sean Barrett's
-stretchy buffer and `stb_ds` dynamic arrays. The explicit pointer-to-handle
-mutation and simple typed macro surface were also informed by Alexey Kutepov's
-`nob` dynamic-array utilities. liblor's implementation is original and adds
-checked arithmetic, `LorStatus` failures, alias-safe append, zero-initialized
-resize, automatic cleanup, and leak-check integration.

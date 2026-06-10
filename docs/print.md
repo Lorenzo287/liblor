@@ -111,9 +111,6 @@ Typed object pointers are intentionally not guessed. Wrap them explicitly:
 lor_print(lor_print_pointer(&object));
 ```
 
-This avoids the unsafe fallback from the original experiment, which could pass
-an unsupported structure to `%p`.
-
 The floating conversion avoids a real Windows ABI mismatch between MinGW's
 extended `long double` and the UCRT formatting implementation. Use `printf` or
 a custom printer when preserving extended precision matters.

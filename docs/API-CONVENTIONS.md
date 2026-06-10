@@ -1,8 +1,6 @@
 # API Conventions
 
-These conventions keep liblor modules consistent without requiring a generic
-allocator, exception system, or result macro before real use cases justify
-them.
+These conventions keep liblor modules consistent.
 
 ## Ownership And Lifetime
 
@@ -15,13 +13,6 @@ them.
 - Ownership transfer must be explicit in the function name or documentation.
 - Pointers into growable owned objects become invalid when an operation may
   reallocate them.
-
-There is no public `LorAllocator`. Add one only when at least two concrete
-modules need configurable allocation and their requirements are understood.
-Strings, arrays, maps, sets, and CLI parser metadata currently share heap,
-leak-check, and cleanup behavior without exposing allocator state. These
-modules have not revealed a concrete allocator requirement, so introducing one
-remains deferred.
 
 Generic typed containers may use function-like macros to infer information
 that C cannot pass generically, such as `sizeof *(array)`. Compiler-extension
@@ -54,7 +45,7 @@ distinguish an `int *` array from an `int *` set or an ordinary `int *`.
 - Assertions are reserved for internal invariants and documented programmer
   errors, not allocation, input, or platform failures.
 
-The initial shared statuses are intentionally small:
+The shared statuses include:
 
 - `LOR_STATUS_OK`
 - `LOR_STATUS_INVALID_ARGUMENT`
@@ -64,8 +55,7 @@ The initial shared statuses are intentionally small:
 - `LOR_STATUS_TIMED_OUT`
 - `LOR_STATUS_CLOSED`
 
-Add statuses only when a public operation needs callers to distinguish a new
-failure category.
+`lor_status_name(status)` returns a stable lowercase name for a status code.
 
 ## State And Threading
 
