@@ -7,9 +7,7 @@
 int main(void) {
     Arena arena = ARENA_INIT;
 
-    printf("==========================================\n");
-    printf("  PART 1: ARENA RESET (HIGH THROUGHPUT)\n");
-    printf("==========================================\n");
+    printf("\x1b[96mPART 1: ARENA RESET (HIGH THROUGHPUT)\x1b[0m\n");
     
     // Allocate some memory
     arena_alloc(&arena, 1024);
@@ -24,9 +22,7 @@ int main(void) {
            arena_used(&arena), arena_capacity(&arena));
 
 
-    printf("\n==========================================\n");
-    printf("  PART 2: MARKS AND REWIND (CHECKPOINTS)\n");
-    printf("==========================================\n");
+    printf("\x1b[96mPART 2: MARKS AND REWIND (CHECKPOINTS)\x1b[0m\n");
     
     // Allocate some permanent data that we want to keep around.
     arena_alloc(&arena, 500);

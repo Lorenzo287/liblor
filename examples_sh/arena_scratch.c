@@ -41,9 +41,7 @@ static void outer_function(void) {
 }
 
 int main(void) {
-    printf("==========================================\n");
-    printf("  NESTED SCRATCH ARENAS & CONFLICTS\n");
-    printf("==========================================\n");
+    printf("\x1b[96mNESTED SCRATCH ARENAS & CONFLICTS\x1b[0m\n");
     
     outer_function();
     

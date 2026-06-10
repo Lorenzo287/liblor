@@ -6,9 +6,7 @@
 #include "../lor.h"
 
 int main(void) {
-    printf("==========================================\n");
-    printf("  SCENARIO 1: HEAP ARENA (SMALL ALLOC)\n");
-    printf("==========================================\n");
+    printf("\x1b[96mSCENARIO 1: HEAP ARENA (SMALL ALLOC)\x1b[0m\n");
     Arena heap_small = ARENA_INIT;
     
     // Allocating just 4 bytes.
@@ -26,9 +24,7 @@ int main(void) {
     arena_deinit(&heap_small);
 
 
-    printf("\n==========================================\n");
-    printf("  SCENARIO 2: HEAP ARENA (LARGE ALLOC)\n");
-    printf("==========================================\n");
+    printf("\n\x1b[96mSCENARIO 2: HEAP ARENA (LARGE ALLOC)\x1b[0m\n");
     Arena heap_large = ARENA_INIT;
 
     // Allocating 400,000 bytes (larger than the 64KB default block).
@@ -43,9 +39,7 @@ int main(void) {
     arena_deinit(&heap_large);
 
 
-    printf("\n==========================================\n");
-    printf("  SCENARIO 3: VIRTUAL ARENA (LARGE ALLOC)\n");
-    printf("==========================================\n");
+    printf("\n\x1b[96mSCENARIO 3: VIRTUAL ARENA (LARGE ALLOC)\x1b[0m\n");
     Arena virtual_arena = ARENA_INIT;
     
     // For virtual arenas, we MUST explicitly initialize them with a config.

@@ -8,9 +8,7 @@
 #include "../lor.h"
 
 int main(void) {
-    printf("==========================================\n");
-    printf("  SCENARIO 1: STDLIB HEAP (MALLOC/CALLOC)\n");
-    printf("==========================================\n");
+    printf("\x1b[96mSCENARIO 1: STDLIB HEAP (MALLOC/CALLOC)\x1b[0m\n");
 
     // By defining LOR_LEAKCHECK, liblor overrides standard malloc, calloc, 
     // realloc, and free with macros that inject file and line number.
@@ -32,9 +30,7 @@ int main(void) {
     printf("\nAfter freeing both pointers, leakcheck count is: %zu\n", leakcheck_count());
 
 
-    printf("\n==========================================\n");
-    printf("  SCENARIO 2: MEMORY MAPPED FILES (MMAP)\n");
-    printf("==========================================\n");
+    printf("\n\x1b[96mSCENARIO 2: MEMORY MAPPED FILES (MMAP)\x1b[0m\n");
 
     // Let's create a temporary dummy file to map.
     const char *dummy_path = "leakcheck_dummy.txt";
