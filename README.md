@@ -76,13 +76,14 @@ Optional module and alias controls:
 ## Build And Test
 
 ```powershell
-make all
+make
 make check
 make release
 ```
 
 Build output is written under `.build/`. See [Building](docs/BUILD.md) for
-compiler profiles, release artifacts, LTO, and single-header generation.
+tests, examples, compiler profiles, release artifacts, LTO, and single-header
+generation.
 
 ## License
 

@@ -158,13 +158,13 @@ size_t lor_arena_committed(const LorArena *arena);
    The memory module automatically provisions 2 pre-initialized thread-local arenas 
    for you to use without any manual setup. 
 
-   `conflicts` may name arenas whose live allocations must not be overwritten by
-   the new scratch scope. This is specifically needed when a nested helper 
-   requires temporary memory but must output its final results to one of the
-   calling scope's active arenas.
+   `conflict` may name an arena whose live allocations must not be overwritten
+   by the new scratch scope. This is specifically needed when a nested helper
+   requires temporary memory but must output its final results to the calling
+   scope's active arena. Passing `NULL` allows either scratch arena.
 
    Returns `LOR_SCRATCH_INIT` when no scratch arena is available or initialization fails. */
-LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count);
+LorScratch lor_scratch_begin(const LorArena *conflict);
 
 /* Ends a scratch scope and rewinds its borrowed arena.
 

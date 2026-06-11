@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -80,7 +81,7 @@ struct LorArenaBlock {
 static LorLeakRecord *lor_memory__leaks = NULL;
 #endif
 static LOR_THREAD_LOCAL LorArena lor_memory__scratch_arenas[2];
-static LOR_THREAD_LOCAL int lor_memory__scratch_inited[2];
+static LOR_THREAD_LOCAL bool lor_memory__scratch_inited[2];
 
 static void *lor_memory__raw_malloc(size_t size) {
     return malloc(size);
@@ -787,18 +788,9 @@ size_t lor_arena_committed(const LorArena *arena) {
     return total;
 }
 
-LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
+LorScratch lor_scratch_begin(const LorArena *conflict) {
     for (size_t i = 0; i < 2u; ++i) {
-        int conflict = 0;
-        for (size_t j = 0; j < conflict_count; ++j) {
-            if (conflicts != NULL &&
-                conflicts[j] == &lor_memory__scratch_arenas[i]) {
-                conflict = 1;
-                break;
-            }
-        }
-
-        if (conflict) continue;
+        if (conflict == &lor_memory__scratch_arenas[i]) continue;
 
         if (!lor_memory__scratch_inited[i]) {
             LorArenaConfig config = {
@@ -808,7 +800,7 @@ LorScratch lor_scratch_begin(LorArena **conflicts, size_t conflict_count) {
             if (!lor_arena__init_internal(&lor_memory__scratch_arenas[i], config, 0,
                                           NULL, 0))
                 return (LorScratch)LOR_SCRATCH_INIT;
-            lor_memory__scratch_inited[i] = 1;
+            lor_memory__scratch_inited[i] = true;
         }
 
         return (LorScratch){
@@ -829,7 +821,7 @@ void lor_scratch_cleanup(void) {
     for (size_t i = 0; i < 2u; ++i) {
         if (lor_memory__scratch_inited[i]) {
             lor_arena_deinit(&lor_memory__scratch_arenas[i]);
-            lor_memory__scratch_inited[i] = 0;
+            lor_memory__scratch_inited[i] = false;
         }
     }
 }

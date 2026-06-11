@@ -27,7 +27,7 @@ static void test_auto_arena(void) {
 static void test_auto_scratch(void) {
     printf("--- LOR_AUTO_SCRATCH ---\n");
     // LOR_AUTO_SCRATCH automatically calls lor_scratch_end() at scope exit.
-    LOR_AUTO_SCRATCH LorScratch scratch = lor_scratch_begin(NULL, 0);
+    LOR_AUTO_SCRATCH LorScratch scratch = lor_scratch_begin(NULL);
     if (scratch.arena != NULL) {
         lor_arena_alloc(scratch.arena, 512);
         printf("Allocated 512 bytes in the scratch arena.\n");

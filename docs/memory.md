@@ -54,14 +54,14 @@ to create a dedicated arena.
 `LorScratch` is the scope handle and exposes the selected arena for normal
 `lor_arena_*` allocations.
 
-Pass conflicting arenas when nested scratch work must avoid reusing an arena
+Pass a conflicting arena when nested scratch work must avoid reusing an arena
 whose allocations are still live. Since the library provides 2 scratch arenas,
-passing an output arena as a conflict guarantees the library will hand you
+passing an output arena as the conflict guarantees the library will hand you
 the _other_ scratch arena, allowing you to safely build messy temporary
 structures without overwriting the clean data you intend to return.
 
 ```c
-LorScratch scratch = lor_scratch_begin(NULL, 0);
+LorScratch scratch = lor_scratch_begin(NULL);
 if (scratch.arena == NULL) {
     /* no scratch arena available */
     return;

@@ -156,14 +156,13 @@ static int test_virtual_backend(void) {
 }
 
 static int test_scratch_arena(void) {
-    LorScratch scratch = lor_scratch_begin(NULL, 0);
+    LorScratch scratch = lor_scratch_begin(NULL);
     CHECK(scratch.arena != NULL);
 
     void *ptr = lor_arena_alloc(scratch.arena, 32);
     CHECK(ptr != NULL);
 
-    LorArena *conflicts[] = {scratch.arena};
-    LorScratch other = lor_scratch_begin(conflicts, 1);
+    LorScratch other = lor_scratch_begin(scratch.arena);
     CHECK(other.arena != NULL);
     CHECK(other.arena != scratch.arena);
 

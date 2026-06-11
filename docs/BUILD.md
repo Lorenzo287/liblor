@@ -5,15 +5,14 @@ tests, and examples. Generated output is stored under `.build/`.
 
 ## Development
 
-- `make all`: build and run tests, build examples, and regenerate `lor.h`.
+- `make` or `make all`: compile the multi-file library objects and regenerate
+  `lor.h` when its inputs changed.
 - `make test`: build and run tests.
-- `make example`: build multi-file examples.
-- `make example-sh`: build single-header examples.
-- `make clang`: run the normal Clang profile in `.build/clang/`.
-- `make gcc`: run the normal GCC profile in `.build/gcc/`.
-- `make strict`: run Clang with warnings treated as errors.
-- `make leakcheck`: run the strict Clang profile with `LOR_LEAKCHECK`.
-- `make check`: run strict Clang, strict GCC, and leak-check profiles.
+- `make examples`: build multi-file and single-header examples.
+- `make gcc`: compile the normal GCC profile in `.build/gcc/`.
+- `make leakcheck`: run tests with strict Clang and `LOR_LEAKCHECK`.
+- `make check`: run tests and build examples with strict Clang and strict GCC,
+  then run the leak-check tests.
 - `make clean`: remove `.build/`.
 
 The Makefile discovers `src/*.c`, `tests/test_*.c`, `examples/*.c`,
@@ -35,9 +34,12 @@ sources, and `tools/lor_modules.json`. Do not edit `lor.h` directly.
 - `make release`: build optimized static and shared libraries.
 - `make release-check`: build the release libraries and test static and shared
   consumers.
-- `make release-lto`: build a compiler-specific release with link-time
-  optimization.
-- `make release-lto-check`: test the LTO static and shared consumers.
+
+Set `RELEASE_LTO` when link-time optimization is wanted. For example:
+
+```powershell
+make RELEASE_LTO=-flto release-check
+```
 
 Release builds use `-O3 -DNDEBUG` without CPU-specific flags. Normal artifacts
 are written under `.build/release/<compiler>/`; LTO profiles add `-lto` to the
