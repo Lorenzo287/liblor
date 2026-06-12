@@ -191,7 +191,6 @@
             "source": "src/memory.c",
             "symbols": {
                 "functions": [
-                    ["lor_arena_init", "arena_init"],
                     ["lor_arena_init_config", "arena_init_config"],
                     ["lor_arena_deinit", "arena_deinit"],
                     ["lor_arena_reset", "arena_reset"],
@@ -211,6 +210,7 @@
                     ["lor_page_size", "page_size"],
                     ["lor_mmap_file", "mmap_file"],
                     ["lor_mmap_unmap", "mmap_unmap"],
+                    ["lor_leakcheck_is_enabled", "leakcheck_is_enabled"],
                     ["lor_leakcheck_stats", "leakcheck_stats"],
                     ["lor_leakcheck_count", "leakcheck_count"],
                     ["lor_leakcheck_report", "leakcheck_report"]
@@ -278,15 +278,12 @@
                     ["lor_sv_chop_right", "sv_chop_right"],
                     ["lor_sv_find", "sv_find"],
                     ["lor_sv_find_char", "sv_find_char"],
-                    ["lor_sv_split_once", "sv_split_once"],
-                    ["lor_sv_split_once_char", "sv_split_once_char"],
+                    ["lor_sv_split", "sv_split"],
+                    ["lor_sv_split_char", "sv_split_char"],
                     ["lor_sv_chop", "sv_chop"],
                     ["lor_sv_chop_char", "sv_chop_char"],
                     ["lor_sv_fprint", "sv_fprint"],
                     ["lor_sv_print", "sv_print"],
-                    ["lor_string_init", "string_init"],
-                    ["lor_string_init_view", "string_init_view"],
-                    ["lor_string_init_cstr", "string_init_cstr"],
                     ["lor_string_deinit", "string_deinit"],
                     ["lor_string_clear", "string_clear"],
                     ["lor_string_size", "string_size"],

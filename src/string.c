@@ -151,7 +151,7 @@ int lor_sv_find_char(LorStringView view, char needle, size_t *index) {
     return 1;
 }
 
-int lor_sv_split_once(LorStringView view, LorStringView delimiter,
+int lor_sv_split(LorStringView view, LorStringView delimiter,
                       LorStringView *before, LorStringView *after) {
     size_t index = 0;
     int found = delimiter.size != 0 && lor_sv_find(view, delimiter, &index);
@@ -167,9 +167,9 @@ int lor_sv_split_once(LorStringView view, LorStringView delimiter,
     return found;
 }
 
-int lor_sv_split_once_char(LorStringView view, char delimiter,
+int lor_sv_split_char(LorStringView view, char delimiter,
                            LorStringView *before, LorStringView *after) {
-    return lor_sv_split_once(view, lor_sv_from_parts(&delimiter, 1), before,
+    return lor_sv_split(view, lor_sv_from_parts(&delimiter, 1), before,
                              after);
 }
 
@@ -183,7 +183,7 @@ int lor_sv_chop(LorStringView *view, LorStringView delimiter,
 
     LorStringView before;
     LorStringView after;
-    int found = lor_sv_split_once(*view, delimiter, &before, &after);
+    int found = lor_sv_split(*view, delimiter, &before, &after);
     if (part != NULL) *part = before;
 
     if (found) {
@@ -277,23 +277,6 @@ static LorStatus lor_string__growth_capacity(size_t current, size_t required,
     if (result == SIZE_MAX) return LOR_STATUS_OVERFLOW;
     *capacity = result;
     return LOR_STATUS_OK;
-}
-
-void lor_string_init(LorString *string) {
-    if (string != NULL) *string = LOR_STRING_INIT;
-}
-
-LorStatus lor_string_init_view(LorString *string, LorStringView view) {
-    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-    *string = LOR_STRING_INIT;
-    return lor_string_assign(string, view);
-}
-
-LorStatus lor_string_init_cstr(LorString *string, const char *text) {
-    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-    *string = LOR_STRING_INIT;
-    if (text == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-    return lor_string_assign(string, lor_sv_from_cstr(text));
 }
 
 void lor_string_deinit(LorString *string) {

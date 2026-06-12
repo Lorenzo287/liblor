@@ -197,6 +197,14 @@ static size_t lor_leak__record_size(const LorLeakRecord *record) {
 #define lor_leak__untrack(kind, ptr) ((void)0)
 #endif
 
+int lor_leakcheck_is_enabled(void) {
+#if defined(LOR_LEAKCHECK)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 LorLeakStats lor_leakcheck_stats(void) {
     LorLeakStats stats = {0};
 #if defined(LOR_LEAKCHECK)
@@ -505,7 +513,10 @@ static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
     (void)file;
     (void)line;
 #endif
-    if (arena == NULL) return 0;
+    if (arena == NULL || arena->blocks != NULL ||
+        arena->backend != LOR_ARENA_BACKEND_HEAP || arena->block_size != 0 ||
+        arena->reserve_size != 0 || arena->commit_size != 0)
+        return 0;
 
     arena->blocks = NULL;
     arena->backend = config.backend;
@@ -537,19 +548,11 @@ static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
 }
 
 #if defined(LOR_LEAKCHECK)
-int lor_arena_init_debug(LorArena *arena, const char *file, int line) {
-    return lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, file, line);
-}
-
 int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
                                 const char *file, int line) {
     return lor_arena__init_internal(arena, config, 1, file, line);
 }
 #endif
-
-int lor_arena_init(LorArena *arena) {
-    return lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, NULL, 0);
-}
 
 int lor_arena_init_config(LorArena *arena, LorArenaConfig config) {
     return lor_arena__init_internal(arena, config, 1, NULL, 0);

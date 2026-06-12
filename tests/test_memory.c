@@ -9,6 +9,12 @@
 #include "lor_test.h"
 
 static int test_leakcheck_tracks_arena_and_mmap_lifetimes(void) {
+#if defined(LOR_LEAKCHECK)
+    CHECK(lor_leakcheck_is_enabled());
+#else
+    CHECK(!lor_leakcheck_is_enabled());
+#endif
+
     LorArena arena = LOR_ARENA_INIT;
     CHECK(lor_arena_init_config(&arena, (LorArenaConfig){.block_size = 128}));
     CHECK(lor_arena_alloc(&arena, 16) != NULL);

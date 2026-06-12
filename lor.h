@@ -407,16 +407,12 @@ typedef struct LorScratch {
 #define LOR_ARENA_MARK_INIT {NULL, 0u}
 #define LOR_SCRATCH_INIT {NULL, LOR_ARENA_MARK_INIT}
 
-/* Initializes `arena` with the default heap-backed configuration.
-
-   Passing `NULL` fails and returns zero. A zero-initialized arena can also be
-   used lazily by calling `lor_arena_alloc` without an explicit init call. */
-int lor_arena_init(LorArena *arena);
-
 /* Initializes `arena` with explicit configuration.
 
-   Fields left as zero use the same defaults as `lor_arena_init`. Use
-   `LOR_ARENA_BACKEND_VIRTUAL` to reserve virtual memory and commit it on demand. */
+   `arena` must be in the `LOR_ARENA_INIT` state. Fields left as zero use the
+   default heap-arena values. Use `LOR_ARENA_BACKEND_VIRTUAL` to reserve virtual
+   memory and commit it on demand. Returns zero for invalid arguments,
+   configuration, or arena state. */
 int lor_arena_init_config(LorArena *arena, LorArenaConfig config);
 
 /* Releases all storage owned by `arena` and resets it to `LOR_ARENA_INIT`.
@@ -498,10 +494,12 @@ size_t lor_arena_committed(const LorArena *arena);
    The memory module automatically provisions 2 pre-initialized thread-local arenas 
    for you to use without any manual setup. 
 
-   `conflict` may name an arena whose live allocations must not be overwritten
-   by the new scratch scope. This is specifically needed when a nested helper
-   requires temporary memory but must output its final results to the calling
-   scope's active arena. Passing `NULL` allows either scratch arena.
+   Nested scopes may safely reuse an arena: the inner mark preserves allocations
+   made before the inner scope began. `conflict` is needed when the inner scope
+   allocates a result into a caller-provided scratch arena and that result must
+   survive `lor_scratch_end`. Without the conflict, selecting the result arena
+   would cause the result to be rewound with the inner temporary allocations.
+   Passing `NULL` allows either scratch arena.
 
    Returns `LOR_SCRATCH_INIT` when no scratch arena is available or initialization fails. */
 LorScratch lor_scratch_begin(const LorArena *conflict);
@@ -551,6 +549,10 @@ typedef struct LorLeakStats {
     size_t mmap_bytes;
 } LorLeakStats;
 
+/* Returns non-zero when the linked memory implementation was compiled with
+   `LOR_LEAKCHECK`, otherwise returns zero. */
+int lor_leakcheck_is_enabled(void);
+
 /* Returns current leakcheck counters.
 
    In normal builds, all counters are zero. Leakcheck tracking is process-global
@@ -583,9 +585,6 @@ void lor_free_debug(void *ptr, const char *file, int line);
 
 // Leakcheck wrapper for `strdup` with explicit source location metadata.
 char *lor_strdup_debug(const char *text, const char *file, int line);
-
-// Leakcheck-tracked form of `lor_arena_init` with explicit source location.
-int lor_arena_init_debug(LorArena *arena, const char *file, int line);
 
 // Leakcheck-tracked form of `lor_arena_init_config`.
 int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
@@ -825,11 +824,11 @@ int lor_sv_find_char(LorStringView view, char needle, size_t *index);
    On success, writes the bytes before and after the delimiter and returns
    non-zero. When not found, writes `view` to `before`, an empty view to
    `after`, and returns zero. */
-int lor_sv_split_once(LorStringView view, LorStringView delimiter,
+int lor_sv_split(LorStringView view, LorStringView delimiter,
                       LorStringView *before, LorStringView *after);
 
-// Character-delimiter form of `lor_sv_split_once`.
-int lor_sv_split_once_char(LorStringView view, char delimiter, LorStringView *before,
+// Character-delimiter form of `lor_sv_split`.
+int lor_sv_split_char(LorStringView view, char delimiter, LorStringView *before,
                            LorStringView *after);
 
 /* Removes the next delimiter-separated part from `view`.
@@ -861,17 +860,6 @@ int lor_sv_print(LorStringView view);
 typedef char *LorString;
 
 #define LOR_STRING_INIT NULL
-
-// Initializes an empty string without allocating.
-void lor_string_init(LorString *string);
-
-/* Initializes `string` with a copy of `view`.
-
-   On failure, `string` is left empty and can be safely deinitialized. */
-LorStatus lor_string_init_view(LorString *string, LorStringView view);
-
-// NUL-terminated C-string form of `lor_string_init_view`.
-LorStatus lor_string_init_cstr(LorString *string, const char *text);
 
 // Releases owned storage and resets `string` to `LOR_STRING_INIT`.
 void lor_string_deinit(LorString *string);
@@ -909,13 +897,17 @@ const char *lor_string_cstr(LorString string);
    The string is unchanged on failure. */
 LorStatus lor_string_reserve(LorString *string, size_t capacity);
 
-// Replaces the contents with `view`. The string is unchanged on failure.
+/* Replaces the contents with `view`, allocating when `string` is empty.
+
+   The string is unchanged on failure. */
 LorStatus lor_string_assign(LorString *string, LorStringView view);
 
 // NUL-terminated C-string form of `lor_string_assign`.
 LorStatus lor_string_assign_cstr(LorString *string, const char *text);
 
-// Appends `view`. The string is unchanged on failure.
+/* Appends `view`, allocating when `string` is empty.
+
+   The string is unchanged on failure. */
 LorStatus lor_string_append(LorString *string, LorStringView view);
 
 // NUL-terminated C-string form of `lor_string_append`.
@@ -3208,6 +3200,14 @@ static size_t lor_leak__record_size(const LorLeakRecord *record) {
 #define lor_leak__untrack(kind, ptr) ((void)0)
 #endif
 
+int lor_leakcheck_is_enabled(void) {
+#if defined(LOR_LEAKCHECK)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 LorLeakStats lor_leakcheck_stats(void) {
     LorLeakStats stats = {0};
 #if defined(LOR_LEAKCHECK)
@@ -3516,7 +3516,10 @@ static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
     (void)file;
     (void)line;
 #endif
-    if (arena == NULL) return 0;
+    if (arena == NULL || arena->blocks != NULL ||
+        arena->backend != LOR_ARENA_BACKEND_HEAP || arena->block_size != 0 ||
+        arena->reserve_size != 0 || arena->commit_size != 0)
+        return 0;
 
     arena->blocks = NULL;
     arena->backend = config.backend;
@@ -3548,19 +3551,11 @@ static int lor_arena__init_internal(LorArena *arena, LorArenaConfig config,
 }
 
 #if defined(LOR_LEAKCHECK)
-int lor_arena_init_debug(LorArena *arena, const char *file, int line) {
-    return lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, file, line);
-}
-
 int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
                                 const char *file, int line) {
     return lor_arena__init_internal(arena, config, 1, file, line);
 }
 #endif
-
-int lor_arena_init(LorArena *arena) {
-    return lor_arena__init_internal(arena, (LorArenaConfig){0}, 1, NULL, 0);
-}
 
 int lor_arena_init_config(LorArena *arena, LorArenaConfig config) {
     return lor_arena__init_internal(arena, config, 1, NULL, 0);
@@ -4238,7 +4233,7 @@ int lor_sv_find_char(LorStringView view, char needle, size_t *index) {
     return 1;
 }
 
-int lor_sv_split_once(LorStringView view, LorStringView delimiter,
+int lor_sv_split(LorStringView view, LorStringView delimiter,
                       LorStringView *before, LorStringView *after) {
     size_t index = 0;
     int found = delimiter.size != 0 && lor_sv_find(view, delimiter, &index);
@@ -4254,9 +4249,9 @@ int lor_sv_split_once(LorStringView view, LorStringView delimiter,
     return found;
 }
 
-int lor_sv_split_once_char(LorStringView view, char delimiter,
+int lor_sv_split_char(LorStringView view, char delimiter,
                            LorStringView *before, LorStringView *after) {
-    return lor_sv_split_once(view, lor_sv_from_parts(&delimiter, 1), before,
+    return lor_sv_split(view, lor_sv_from_parts(&delimiter, 1), before,
                              after);
 }
 
@@ -4270,7 +4265,7 @@ int lor_sv_chop(LorStringView *view, LorStringView delimiter,
 
     LorStringView before;
     LorStringView after;
-    int found = lor_sv_split_once(*view, delimiter, &before, &after);
+    int found = lor_sv_split(*view, delimiter, &before, &after);
     if (part != NULL) *part = before;
 
     if (found) {
@@ -4364,23 +4359,6 @@ static LorStatus lor_string__growth_capacity(size_t current, size_t required,
     if (result == SIZE_MAX) return LOR_STATUS_OVERFLOW;
     *capacity = result;
     return LOR_STATUS_OK;
-}
-
-void lor_string_init(LorString *string) {
-    if (string != NULL) *string = LOR_STRING_INIT;
-}
-
-LorStatus lor_string_init_view(LorString *string, LorStringView view) {
-    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-    *string = LOR_STRING_INIT;
-    return lor_string_assign(string, view);
-}
-
-LorStatus lor_string_init_cstr(LorString *string, const char *text) {
-    if (string == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-    *string = LOR_STRING_INIT;
-    if (text == NULL) return LOR_STATUS_INVALID_ARGUMENT;
-    return lor_string_assign(string, lor_sv_from_cstr(text));
 }
 
 void lor_string_deinit(LorString *string) {
@@ -6572,15 +6550,15 @@ static LorStatus lor_cli__capture_default(LorCliOptionInternal *option) {
     case LOR_CLI_VALUE_STRING: {
         LorStringView value = *(LorStringView *)option->destination;
         if (!lor_sv_is_valid(value) || value.size == 0) return LOR_STATUS_OK;
-        return lor_string_init_view(&option->default_text, value);
+        return lor_string_assign(&option->default_text, value);
     }
     case LOR_CLI_VALUE_INT:
         snprintf(buffer, sizeof(buffer), "%" PRId64,
                  *(int64_t *)option->destination);
-        return lor_string_init_cstr(&option->default_text, buffer);
+        return lor_string_assign_cstr(&option->default_text, buffer);
     case LOR_CLI_VALUE_DOUBLE:
         snprintf(buffer, sizeof(buffer), "%.17g", *(double *)option->destination);
-        return lor_string_init_cstr(&option->default_text, buffer);
+        return lor_string_assign_cstr(&option->default_text, buffer);
     default:
         return LOR_STATUS_OK;
     }
@@ -7295,7 +7273,6 @@ int lor_cli_print_help(const LorCli *cli) {
 #define AUTO_SCRATCH LOR_AUTO_SCRATCH
 #define AUTO_MMAP LOR_AUTO_MMAP
 #define AUTO_FILE LOR_AUTO_FILE
-#define arena_init lor_arena_init
 #define arena_init_config lor_arena_init_config
 #define arena_deinit lor_arena_deinit
 #define arena_reset lor_arena_reset
@@ -7315,6 +7292,7 @@ int lor_cli_print_help(const LorCli *cli) {
 #define page_size lor_page_size
 #define mmap_file lor_mmap_file
 #define mmap_unmap lor_mmap_unmap
+#define leakcheck_is_enabled lor_leakcheck_is_enabled
 #define leakcheck_stats lor_leakcheck_stats
 #define leakcheck_count lor_leakcheck_count
 #define leakcheck_report lor_leakcheck_report
@@ -7355,15 +7333,12 @@ int lor_cli_print_help(const LorCli *cli) {
 #define sv_chop_right lor_sv_chop_right
 #define sv_find lor_sv_find
 #define sv_find_char lor_sv_find_char
-#define sv_split_once lor_sv_split_once
-#define sv_split_once_char lor_sv_split_once_char
+#define sv_split lor_sv_split
+#define sv_split_char lor_sv_split_char
 #define sv_chop lor_sv_chop
 #define sv_chop_char lor_sv_chop_char
 #define sv_fprint lor_sv_fprint
 #define sv_print lor_sv_print
-#define string_init lor_string_init
-#define string_init_view lor_string_init_view
-#define string_init_cstr lor_string_init_cstr
 #define string_deinit lor_string_deinit
 #define string_clear lor_string_clear
 #define string_size lor_string_size
@@ -7666,8 +7641,6 @@ int lor_cli_print_help(const LorCli *cli) {
    implementation needs to define and call the real functions. */
 #if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS) && \
     !defined(LOR_SINGLE_HEADER_BUILD)
-#undef lor_arena_init
-#define lor_arena_init(arena) lor_arena_init_debug((arena), __FILE__, __LINE__)
 #undef lor_arena_init_config
 #define lor_arena_init_config(arena, ...) \
     lor_arena_init_config_debug((arena), __VA_ARGS__, __FILE__, __LINE__)

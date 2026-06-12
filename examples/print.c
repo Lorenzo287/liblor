@@ -28,7 +28,7 @@ int main(void) {
     lor_print(view);
 
     LorString owned = LOR_STRING_INIT;
-    lor_string_init_cstr(&owned, "owned string");
+    lor_string_assign_cstr(&owned, "owned string");
     lor_print(owned, lor_string_view(owned));
 
     int *numbers = LOR_ARRAY_INIT;

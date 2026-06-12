@@ -6,8 +6,9 @@ These conventions keep liblor modules consistent.
 
 - Borrowed values use view types such as `LorStringView`. They never free or
   extend the referenced storage.
-- Owned values use explicit `init` / `deinit` lifetimes and document whether
-  zero initialization is valid.
+- Owned values document their initializer state and matching `deinit`
+  operation. Some types require explicit initialization; NULL-handle
+  containers may allocate lazily through their mutating operations.
 - Independently owned objects use the C heap unless an API explicitly accepts
   an arena.
 - Ownership transfer must be explicit in the function name or documentation.

@@ -85,11 +85,11 @@ int lor_sv_find_char(LorStringView view, char needle, size_t *index);
    On success, writes the bytes before and after the delimiter and returns
    non-zero. When not found, writes `view` to `before`, an empty view to
    `after`, and returns zero. */
-int lor_sv_split_once(LorStringView view, LorStringView delimiter,
+int lor_sv_split(LorStringView view, LorStringView delimiter,
                       LorStringView *before, LorStringView *after);
 
-// Character-delimiter form of `lor_sv_split_once`.
-int lor_sv_split_once_char(LorStringView view, char delimiter, LorStringView *before,
+// Character-delimiter form of `lor_sv_split`.
+int lor_sv_split_char(LorStringView view, char delimiter, LorStringView *before,
                            LorStringView *after);
 
 /* Removes the next delimiter-separated part from `view`.
@@ -121,17 +121,6 @@ int lor_sv_print(LorStringView view);
 typedef char *LorString;
 
 #define LOR_STRING_INIT NULL
-
-// Initializes an empty string without allocating.
-void lor_string_init(LorString *string);
-
-/* Initializes `string` with a copy of `view`.
-
-   On failure, `string` is left empty and can be safely deinitialized. */
-LorStatus lor_string_init_view(LorString *string, LorStringView view);
-
-// NUL-terminated C-string form of `lor_string_init_view`.
-LorStatus lor_string_init_cstr(LorString *string, const char *text);
 
 // Releases owned storage and resets `string` to `LOR_STRING_INIT`.
 void lor_string_deinit(LorString *string);
@@ -169,13 +158,17 @@ const char *lor_string_cstr(LorString string);
    The string is unchanged on failure. */
 LorStatus lor_string_reserve(LorString *string, size_t capacity);
 
-// Replaces the contents with `view`. The string is unchanged on failure.
+/* Replaces the contents with `view`, allocating when `string` is empty.
+
+   The string is unchanged on failure. */
 LorStatus lor_string_assign(LorString *string, LorStringView view);
 
 // NUL-terminated C-string form of `lor_string_assign`.
 LorStatus lor_string_assign_cstr(LorString *string, const char *text);
 
-// Appends `view`. The string is unchanged on failure.
+/* Appends `view`, allocating when `string` is empty.
+
+   The string is unchanged on failure. */
 LorStatus lor_string_append(LorString *string, LorStringView view);
 
 // NUL-terminated C-string form of `lor_string_append`.

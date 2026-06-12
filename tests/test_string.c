@@ -87,14 +87,14 @@ static int test_view_find_split_and_chop(void) {
 
     LorStringView before;
     LorStringView after;
-    CHECK(lor_sv_split_once(text, SV("::"), &before, &after));
+    CHECK(lor_sv_split(text, SV("::"), &before, &after));
     CHECK(lor_sv_equal(before, SV("one")));
     CHECK(lor_sv_equal(after, SV("two::three")));
 
-    CHECK(!lor_sv_split_once(text, SV("--"), &before, &after));
+    CHECK(!lor_sv_split(text, SV("--"), &before, &after));
     CHECK(lor_sv_equal(before, text));
     CHECK(lor_sv_is_empty(after));
-    CHECK(!lor_sv_split_once(text, (LorStringView)LOR_STRING_VIEW_INIT, &before,
+    CHECK(!lor_sv_split(text, (LorStringView)LOR_STRING_VIEW_INIT, &before,
                              &after));
     CHECK(lor_sv_equal(before, text));
 
@@ -169,14 +169,14 @@ static int test_owned_string_basics(void) {
 static int test_owned_string_binary_and_self_append(void) {
     const char binary[] = {'a', '\0', 'b'};
     LorString string = LOR_STRING_INIT;
-    CHECK(lor_string_init_view(&string, lor_sv_from_parts(binary, sizeof(binary))) ==
+    CHECK(lor_string_assign(&string, lor_sv_from_parts(binary, sizeof(binary))) ==
           LOR_STATUS_OK);
     CHECK(lor_string_size(string) == sizeof(binary));
     CHECK(memcmp(string, binary, sizeof(binary)) == 0);
     CHECK(string[lor_string_size(string)] == '\0');
     lor_string_deinit(&string);
 
-    CHECK(lor_string_init_cstr(&string, "1234567890abcdef") == LOR_STATUS_OK);
+    CHECK(lor_string_assign_cstr(&string, "1234567890abcdef") == LOR_STATUS_OK);
     CHECK(lor_string_size(string) == 16);
     LorStringView self = lor_string_view(string);
     CHECK(lor_string_append(&string, self) == LOR_STATUS_OK);
@@ -194,8 +194,8 @@ static int test_owned_string_binary_and_self_append(void) {
 static int test_owned_string_failures(void) {
     LorString string = LOR_STRING_INIT;
     CHECK(lor_string_append(NULL, SV("x")) == LOR_STATUS_INVALID_ARGUMENT);
-    CHECK(lor_string_init_cstr(NULL, "x") == LOR_STATUS_INVALID_ARGUMENT);
-    CHECK(lor_string_init_cstr(&string, NULL) == LOR_STATUS_INVALID_ARGUMENT);
+    CHECK(lor_string_assign(NULL, SV("x")) == LOR_STATUS_INVALID_ARGUMENT);
+    CHECK(lor_string_assign_cstr(&string, NULL) == LOR_STATUS_INVALID_ARGUMENT);
     CHECK(string == NULL);
     CHECK(lor_string_append_cstr(&string, NULL) == LOR_STATUS_INVALID_ARGUMENT);
 

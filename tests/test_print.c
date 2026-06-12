@@ -78,7 +78,7 @@ static int test_views_null_strings_and_config(void) {
     CHECK(fclose(file) == 0);
 
     LorString string = LOR_STRING_INIT;
-    CHECK(lor_string_init_cstr(&string, "owned") == LOR_STATUS_OK);
+    CHECK(lor_string_assign_cstr(&string, "owned") == LOR_STATUS_OK);
     file = tmpfile();
     CHECK(file != NULL);
     CHECK(lor_fprint(file, string, lor_string_view(string)) == LOR_STATUS_OK);

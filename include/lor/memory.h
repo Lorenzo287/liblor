@@ -67,16 +67,12 @@ typedef struct LorScratch {
 #define LOR_ARENA_MARK_INIT {NULL, 0u}
 #define LOR_SCRATCH_INIT {NULL, LOR_ARENA_MARK_INIT}
 
-/* Initializes `arena` with the default heap-backed configuration.
-
-   Passing `NULL` fails and returns zero. A zero-initialized arena can also be
-   used lazily by calling `lor_arena_alloc` without an explicit init call. */
-int lor_arena_init(LorArena *arena);
-
 /* Initializes `arena` with explicit configuration.
 
-   Fields left as zero use the same defaults as `lor_arena_init`. Use
-   `LOR_ARENA_BACKEND_VIRTUAL` to reserve virtual memory and commit it on demand. */
+   `arena` must be in the `LOR_ARENA_INIT` state. Fields left as zero use the
+   default heap-arena values. Use `LOR_ARENA_BACKEND_VIRTUAL` to reserve virtual
+   memory and commit it on demand. Returns zero for invalid arguments,
+   configuration, or arena state. */
 int lor_arena_init_config(LorArena *arena, LorArenaConfig config);
 
 /* Releases all storage owned by `arena` and resets it to `LOR_ARENA_INIT`.
@@ -158,10 +154,12 @@ size_t lor_arena_committed(const LorArena *arena);
    The memory module automatically provisions 2 pre-initialized thread-local arenas 
    for you to use without any manual setup. 
 
-   `conflict` may name an arena whose live allocations must not be overwritten
-   by the new scratch scope. This is specifically needed when a nested helper
-   requires temporary memory but must output its final results to the calling
-   scope's active arena. Passing `NULL` allows either scratch arena.
+   Nested scopes may safely reuse an arena: the inner mark preserves allocations
+   made before the inner scope began. `conflict` is needed when the inner scope
+   allocates a result into a caller-provided scratch arena and that result must
+   survive `lor_scratch_end`. Without the conflict, selecting the result arena
+   would cause the result to be rewound with the inner temporary allocations.
+   Passing `NULL` allows either scratch arena.
 
    Returns `LOR_SCRATCH_INIT` when no scratch arena is available or initialization fails. */
 LorScratch lor_scratch_begin(const LorArena *conflict);
@@ -211,6 +209,10 @@ typedef struct LorLeakStats {
     size_t mmap_bytes;
 } LorLeakStats;
 
+/* Returns non-zero when the linked memory implementation was compiled with
+   `LOR_LEAKCHECK`, otherwise returns zero. */
+int lor_leakcheck_is_enabled(void);
+
 /* Returns current leakcheck counters.
 
    In normal builds, all counters are zero. Leakcheck tracking is process-global
@@ -243,9 +245,6 @@ void lor_free_debug(void *ptr, const char *file, int line);
 
 // Leakcheck wrapper for `strdup` with explicit source location metadata.
 char *lor_strdup_debug(const char *text, const char *file, int line);
-
-// Leakcheck-tracked form of `lor_arena_init` with explicit source location.
-int lor_arena_init_debug(LorArena *arena, const char *file, int line);
 
 // Leakcheck-tracked form of `lor_arena_init_config`.
 int lor_arena_init_config_debug(LorArena *arena, LorArenaConfig config,
@@ -348,8 +347,6 @@ static inline void LOR_MAYBE_UNUSED lor_memory_cleanup_file_(void *file) {
    implementation needs to define and call the real functions. */
 #if defined(LOR_LEAKCHECK) && !defined(LOR_MEMORY_NO_LOCATION_MACROS) && \
     !defined(LOR_SINGLE_HEADER_BUILD)
-#undef lor_arena_init
-#define lor_arena_init(arena) lor_arena_init_debug((arena), __FILE__, __LINE__)
 #undef lor_arena_init_config
 #define lor_arena_init_config(arena, ...) \
     lor_arena_init_config_debug((arena), __VA_ARGS__, __FILE__, __LINE__)

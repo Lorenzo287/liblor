@@ -45,6 +45,8 @@ static int test_lazy_arena_leak_location(void) {
 }
 
 int main(void) {
+    CHECK(leakcheck_is_enabled());
+
     Arena arena = ARENA_INIT;
     int *values = (int *)arena_alloc_array_zero(&arena, 4, sizeof(*values));
     CHECK(values != NULL);

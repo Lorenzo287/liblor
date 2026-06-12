@@ -44,7 +44,6 @@ static void test_auto_mmap(void) {
         fputs("auto mmap test", f);
         fclose(f);
     }
-
     {
         // LOR_AUTO_MMAP automatically calls lor_mmap_unmap() at scope exit.
         LOR_AUTO_MMAP LorMmap map = lor_mmap_file(dummy_path, LOR_MMAP_READ);
@@ -53,7 +52,6 @@ static void test_auto_mmap(void) {
         }
         // lor_mmap_unmap(&map) is called automatically here.
     }
-    
     remove(dummy_path);
 }
 

@@ -184,15 +184,15 @@ static LorStatus lor_cli__capture_default(LorCliOptionInternal *option) {
     case LOR_CLI_VALUE_STRING: {
         LorStringView value = *(LorStringView *)option->destination;
         if (!lor_sv_is_valid(value) || value.size == 0) return LOR_STATUS_OK;
-        return lor_string_init_view(&option->default_text, value);
+        return lor_string_assign(&option->default_text, value);
     }
     case LOR_CLI_VALUE_INT:
         snprintf(buffer, sizeof(buffer), "%" PRId64,
                  *(int64_t *)option->destination);
-        return lor_string_init_cstr(&option->default_text, buffer);
+        return lor_string_assign_cstr(&option->default_text, buffer);
     case LOR_CLI_VALUE_DOUBLE:
         snprintf(buffer, sizeof(buffer), "%.17g", *(double *)option->destination);
-        return lor_string_init_cstr(&option->default_text, buffer);
+        return lor_string_assign_cstr(&option->default_text, buffer);
     default:
         return LOR_STATUS_OK;
     }

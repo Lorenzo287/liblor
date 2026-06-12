@@ -11,7 +11,7 @@ int main(void) {
 
         LorStringView key;
         LorStringView value;
-        if (lor_sv_split_once_char(field, '=', &key, &value)) {
+        if (lor_sv_split_char(field, '=', &key, &value)) {
             key = lor_sv_trim(key);
             value = lor_sv_trim(value);
             lor_sv_print(key);

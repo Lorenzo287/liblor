@@ -14,7 +14,7 @@ int main(void) {
     StringView input = sv_from_cstr("name=liblor");
     StringView key;
     StringView value;
-    CHECK(sv_split_once_char(input, '=', &key, &value));
+    CHECK(sv_split_char(input, '=', &key, &value));
     CHECK(sv_equal(key, ((StringView)SV_LITERAL("name"))));
     CHECK(sv_equal(value, ((StringView)SV_LITERAL("liblor"))));
 

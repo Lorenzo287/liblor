@@ -3,6 +3,58 @@
 liblor supports standard C strings, borrowed string views, and owned dynamic
 strings as complementary representations.
 
+## Choosing A Representation
+
+The three forms are intended to work as a pipeline rather than compete:
+
+- Use C strings at interoperability boundaries such as `argv`, environment
+  variables, libc, and operating-system APIs.
+- Convert borrowed input to `LorStringView` for allocation-free parsing,
+  searching, trimming, and slicing.
+- Introduce `LorString` only when the program must own, replace, or extend
+  bytes.
+- Pass a non-`NULL` `LorString` directly to read-only C string APIs when the
+  content is text without relevant embedded NUL bytes.
+
+Views are the native byte-range input to owned-string operations because they
+are more general than C strings: a view can represent a complete string, a
+slice, non-NUL-terminated data, or bytes containing embedded NUL characters.
+The `_cstr` functions are convenience forms for common NUL-terminated input:
+
+```c
+lor_string_append(&output, view);
+lor_string_append_cstr(&output, text);
+```
+
+The second call is conceptually equivalent to converting `text` with
+`lor_sv_from_cstr` and passing the resulting view.
+
+A typical flow parses borrowed C input, builds an owned result, then returns to
+a C API:
+
+```c
+LorStringView input = lor_sv_from_cstr("name = liblor");
+LorStringView key;
+LorStringView value;
+
+if (!lor_sv_split_char(input, '=', &key, &value)) return;
+value = lor_sv_trim(value);
+
+LorString message = LOR_STRING_INIT;
+if (lor_string_append_cstr(&message, "project: ") != LOR_STATUS_OK ||
+    lor_string_append(&message, value) != LOR_STATUS_OK) {
+    lor_string_deinit(&message);
+    return;
+}
+
+puts(message);
+lor_string_deinit(&message);
+```
+
+This keeps borrowed parsing cheap, allocates only for the new result, and
+preserves ordinary C interoperability at both ends. See
+`examples/string_interop.c` for a complete version of this pattern.
+
 ## String Views
 
 `LorStringView` is a pointer plus byte length. It does not allocate, own its
@@ -14,7 +66,7 @@ LorStringView input = lor_sv_from_cstr("name = liblor");
 LorStringView key;
 LorStringView value;
 
-if (lor_sv_split_once_char(input, '=', &key, &value)) {
+if (lor_sv_split_char(input, '=', &key, &value)) {
     key = lor_sv_trim(key);
     value = lor_sv_trim(value);
 }
@@ -52,6 +104,24 @@ private header immediately before the returned pointer. Its contents are
 binary-safe, while an extra trailing NUL byte makes every non-`NULL` string
 compatible with read-only C string APIs.
 
+Initialize a new owner with `LOR_STRING_INIT`. No separate initialization
+function is required. Both assignment and append allocate automatically when
+the handle is empty:
+
+```c
+LorString assigned = LOR_STRING_INIT;
+lor_string_assign_cstr(&assigned, "initial value");
+
+LorString built = LOR_STRING_INIT;
+lor_string_append_cstr(&built, "first");
+lor_string_append_cstr(&built, " second");
+```
+
+`lor_string_assign` replaces the complete value, while `lor_string_append`
+extends the existing value. Their `_cstr` forms accept NUL-terminated input;
+the view forms copy an exact byte range and therefore preserve embedded NUL
+bytes. Assignment reuses existing capacity when possible.
+
 ```c
 LorString text = LOR_STRING_INIT;
 
@@ -75,6 +145,14 @@ passed to an API that does not accept `NULL`.
 Do not pass a `LorString` to `free`, write beyond `lor_string_size(text)`, or
 retain pointers and views across operations that may grow it. Release it with
 `lor_string_deinit(&text)`, which also resets the handle to `NULL`.
+
+The owned-string lifecycle is:
+
+- `LOR_STRING_INIT`: empty owner with no allocation.
+- `lor_string_assign`: create or replace the value.
+- `lor_string_append`: create or extend the value.
+- `lor_string_clear`: remove contents while retaining capacity.
+- `lor_string_deinit`: release capacity and return to the initializer state.
 
 On GCC and Clang, `LOR_AUTO_STRING` calls `lor_string_deinit` automatically at
 scope exit:

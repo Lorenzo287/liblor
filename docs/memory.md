@@ -30,8 +30,13 @@ Arena allocation calls are ordinary C functions. Use the `_zero` variants when
 the returned memory should be zeroed.
 
 ```c
+LorArena arena = LOR_ARENA_INIT;
 int *values = lor_arena_alloc_array_zero(&arena, count, sizeof(*values));
 ```
+
+Default heap arenas require no explicit initialization. Their configuration is
+established lazily by the first allocation. Always begin an arena in the
+`LOR_ARENA_INIT` state and eventually call `lor_arena_deinit`.
 
 `lor_arena_mark` returns the current position inside an arena. Allocate through
 the same arena as usual, then call `lor_arena_rewind` with that mark. Marks are
@@ -54,11 +59,38 @@ to create a dedicated arena.
 `LorScratch` is the scope handle and exposes the selected arena for normal
 `lor_arena_*` allocations.
 
-Pass a conflicting arena when nested scratch work must avoid reusing an arena
-whose allocations are still live. Since the library provides 2 scratch arenas,
-passing an output arena as the conflict guarantees the library will hand you
-the _other_ scratch arena, allowing you to safely build messy temporary
-structures without overwriting the clean data you intend to return.
+Nested scratch work does not inherently require a conflict. If an inner scope
+reuses the outer scope's arena, its mark is taken after the outer allocations,
+so ending the inner scope preserves those earlier allocations and discards only
+the inner ones.
+
+A conflict is needed when a helper uses scratch memory for temporary work but
+also allocates a result into a caller-provided scratch arena that must remain
+valid after the helper returns. If the helper selected that same arena for its
+own scratch scope, the result would be allocated after the helper's mark and
+`lor_scratch_end` would rewind it along with the temporary allocations. Pass
+the result arena as the conflict so the helper receives the other thread-local
+scratch arena:
+
+```c
+char *copy_result(LorArena *result_arena, const char *source) {
+    LorScratch scratch = lor_scratch_begin(result_arena);
+    if (scratch.arena == NULL) return NULL;
+
+    char *temporary = lor_arena_strdup(scratch.arena, source);
+    char *result =
+        temporary != NULL ? lor_arena_strdup(result_arena, temporary) : NULL;
+
+    lor_scratch_end(scratch);
+    return result;
+}
+```
+
+If every allocation made after the inner scope begins is temporary and may be
+discarded when that scope ends, pass `NULL`; reusing the outer scratch arena is
+safe in that case.
+
+The general scratch pattern remains:
 
 ```c
 LorScratch scratch = lor_scratch_begin(NULL);
@@ -75,6 +107,7 @@ lor_scratch_end(scratch);
 Virtual arenas use explicit configuration through `lor_arena_init_config`:
 
 ```c
+LorArena arena = LOR_ARENA_INIT;
 if (!lor_arena_init_config(&arena,
                            (LorArenaConfig){
                                .backend = LOR_ARENA_BACKEND_VIRTUAL,
@@ -84,6 +117,10 @@ if (!lor_arena_init_config(&arena,
     /* invalid config or initialization failed */
 }
 ```
+
+`lor_arena_init_config` is only for a new arena in the `LOR_ARENA_INIT` state;
+it does not reconfigure an active arena. Deinitialize an arena before
+initializing it again with a different configuration.
 
 `lor_page_size()` returns the host operating system page size or a conservative
 fallback. It can be used to config the backend to use multiples of the OS pages
@@ -148,6 +185,23 @@ arena lifetimes, and active mmap mappings. It does not own or clean up
 resources; it only reports resources whose matching release/deinit/free/unmap
 call was not made.
 Arena leak reports use the arena's current committed backing bytes.
+
+Leakcheck query and reporting calls may be left in program code unconditionally:
+
+```c
+printf("tracked resources: %zu\n", lor_leakcheck_count());
+(void)lor_leakcheck_report(stderr);
+```
+
+In builds without `LOR_LEAKCHECK`, these calls are silent: counts and statistics
+are zero, and reports write nothing. This allows development instrumentation to
+remain in source without changing release-build output.
+
+`lor_leakcheck_is_enabled()` returns non-zero when the linked memory
+implementation was compiled with `LOR_LEAKCHECK`. Use it when a program needs
+to display the current mode or reject a run that requires tracking. Unlike a
+preprocessor check in an application source file, it reports the mode compiled
+into `src/memory.c`, which helps expose mismatched flags in multi-file builds.
 
 `lor_leakcheck_stats()` returns a `LorLeakStats` structure with current
 allocation counts and byte totals. `lor_leakcheck_count()` returns the number

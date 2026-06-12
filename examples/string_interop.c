@@ -13,7 +13,7 @@ int main(void) {
 
     LorStringView key;
     LorStringView value;
-    if (!lor_sv_split_once_char(project_field, '=', &key, &value)) return 1;
+    if (!lor_sv_split_char(project_field, '=', &key, &value)) return 1;
 
     key = lor_sv_trim(key);
     value = lor_sv_trim(value);
@@ -26,7 +26,7 @@ int main(void) {
 
     // Borrowed view -> owned dynamic string.
     LorString message = LOR_STRING_INIT;
-    if (lor_string_init_view(&message, value) != LOR_STATUS_OK ||
+    if (lor_string_assign(&message, value) != LOR_STATUS_OK ||
         lor_string_append_cstr(&message, " library") != LOR_STATUS_OK) {
         lor_string_deinit(&message);
         return 1;
