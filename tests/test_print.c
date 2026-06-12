@@ -165,7 +165,8 @@ static int test_liblor_containers(void) {
     CHECK(lor_fprint(file, lor_print_array(numbers), lor_print_array(views),
                      lor_print_set(set), lor_print_set(empty_set),
                      lor_print_map(map),
-                     lor_print_array_with(points, print_point)) == LOR_STATUS_OK);
+                     lor_print_array_custom(points, print_point)) ==
+          LOR_STATUS_OK);
     static const char expected[] =
         "[1, 2, 3] [\"alpha\", \"line\\n\"] {4, 7} set() "
         "{\"one\": 1, \"two\": 2} [Point(2,7)]\n";

@@ -55,7 +55,7 @@ int main(void) {
 
     Point *points = LOR_ARRAY_INIT;
     lor_array_push(points, point);
-    lor_print("custom array", lor_print_array_with(points, print_point));
+    lor_print("custom array", lor_print_array_custom(points, print_point));
 
     LorArena arena = LOR_ARENA_INIT;
     lor_arena_alloc(&arena, 32);

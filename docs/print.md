@@ -98,12 +98,13 @@ For application-defined element types, provide a callback:
 
 ```c
 Point *points = LOR_ARRAY_INIT;
-lor_print(lor_print_array_with(points, print_point));
+lor_print(lor_print_array_custom(points, print_point));
 ```
 
-The corresponding forms are `lor_print_set_with` and
-`lor_print_map_as_with`. A `NULL` callback keeps automatic formatting for that
-map side, so custom keys and automatic values can be mixed.
+The corresponding forms are `lor_print_set_custom` and
+`lor_print_map_as_custom`. When `lor_typeof` is available,
+`lor_print_map_custom` infers the entry type. A `NULL` callback keeps automatic
+formatting for that map side, so custom keys and automatic values can be mixed.
 
 Typed object pointers are intentionally not guessed. Wrap them explicitly:
 

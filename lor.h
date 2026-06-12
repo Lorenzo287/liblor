@@ -1951,30 +1951,31 @@ LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
 /* Container wrappers retain information that a raw typed pointer does not.
 
    Built-in scalar types, C strings, string views, and concrete liblor value
-   structs are inferred automatically. Use the `_with` forms when elements,
+   structs are inferred automatically. Use the `_custom` forms when elements,
    keys, or values are application-defined structures. */
-#define lor_print_array_with(array, function)                                 \
+#define lor_print_array_custom(array, function)                               \
     lor_print_sequence_value(LOR_PRINT_ARRAY, (array), lor_array_size(array), \
                              sizeof *(array), lor_type_kind(*(array)), (function))
-#define lor_print_array(array) lor_print_array_with((array), NULL)
-#define lor_print_set_with(set, function)                             \
+#define lor_print_array(array) lor_print_array_custom((array), NULL)
+#define lor_print_set_custom(set, function)                           \
     lor_print_sequence_value(LOR_PRINT_SET, (set), lor_set_size(set), \
                              sizeof *(set), lor_type_kind(*(set)), (function))
-#define lor_print_set(set) lor_print_set_with((set), NULL)
+#define lor_print_set(set) lor_print_set_custom((set), NULL)
 
-#define lor_print_map_as_with(map, type, key_function, value_function)     \
+#define lor_print_map_as_custom(map, type, key_function, value_function)   \
     lor_print_map_value((map), lor_map_size(map), sizeof(type),            \
                         offsetof(type, key), sizeof(((type *)0)->key),     \
                         lor_type_kind(((type *)0)->key), (key_function),   \
                         offsetof(type, value), sizeof(((type *)0)->value), \
                         lor_type_kind(((type *)0)->value), (value_function))
-#define lor_print_map_as(map, type) lor_print_map_as_with((map), type, NULL, NULL)
+#define lor_print_map_as(map, type) \
+    lor_print_map_as_custom((map), type, NULL, NULL)
 #if LOR_HAS_TYPEOF
 #define LOR_HAS_PRINT_MAP_AUTO 1
-#define lor_print_map_with(map, key_function, value_function)        \
-    lor_print_map_as_with((map), lor_typeof(*(map)), (key_function), \
-                          (value_function))
-#define lor_print_map(map) lor_print_map_with((map), NULL, NULL)
+#define lor_print_map_custom(map, key_function, value_function)        \
+    lor_print_map_as_custom((map), lor_typeof(*(map)), (key_function), \
+                            (value_function))
+#define lor_print_map(map) lor_print_map_custom((map), NULL, NULL)
 #else
 #define LOR_HAS_PRINT_MAP_AUTO 0
 #endif
@@ -7560,14 +7561,14 @@ int lor_cli_print_help(const LorCli *cli) {
 #define print_pointer lor_print_pointer
 #define print_custom lor_print_custom
 #define print_array lor_print_array
-#define print_array_with lor_print_array_with
+#define print_array_custom lor_print_array_custom
 #define print_set lor_print_set
-#define print_set_with lor_print_set_with
+#define print_set_custom lor_print_set_custom
 #define print_map_as lor_print_map_as
-#define print_map_as_with lor_print_map_as_with
+#define print_map_as_custom lor_print_map_as_custom
 #define HAS_PRINT_MAP_AUTO LOR_HAS_PRINT_MAP_AUTO
 #define print_map lor_print_map
-#define print_map_with lor_print_map_with
+#define print_map_custom lor_print_map_custom
 #define end lor_end
 #define end_view lor_end_view
 #define fprint_with lor_fprint_with
