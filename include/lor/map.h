@@ -133,31 +133,39 @@ void lor_map_deinit(void *map_ref);
 /* Typed portable operations.
 
    `lor_map_set`, `find`, `contains`, and `remove` take lvalues of the exact
-   entry or key type. The `_as` forms construct C99 compound literals. */
+   entry or key type. In C, the `_as` forms construct C99 compound literals. */
 #define lor_map_init(map, config) \
     lor_map_init_raw(&(map), sizeof *(map), sizeof(map)->key, (config))
 #define lor_map_reserve(map, capacity) \
     lor_map_reserve_raw(&(map), sizeof *(map), sizeof(map)->key, (capacity))
 #define lor_map_set(map, entry) \
     lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &(entry))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_set_as(map, type, ...) \
     lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
 #define lor_map_put_as(map, type, key_value, value_value) \
     lor_map_set_as(map, type, .key = (key_value), .value = (value_value))
+#endif
 #define lor_map_find(map, key_value) \
     lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
 #define lor_map_find_const(map, key_value) \
     lor_map_find_const_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_find_as(map, type, ...) \
     lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#endif
 #define lor_map_contains(map, key_value) \
     lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_contains_as(map, type, ...)                      \
     lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#endif
 #define lor_map_remove(map, key_value) \
     lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_remove_as(map, type, ...) \
     lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#endif
 
 /* GCC/Clang convenience operations.
 

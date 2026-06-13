@@ -2,6 +2,7 @@
 
 #define LOR_IMPLEMENTATION
 #define LOR_ENABLE_PRINT
+// #define LOR_LEAKCHECK
 #include "../lor.h"
 
 #define SV(str) LOR_SV_LITERAL(str)
@@ -28,21 +29,22 @@ int main(void) {
     lor_print_with(csv, "ciao", "come", "va", "tutto", "bene");
 
     lor_print("\n=== LIBLOR TYPES ===");
-    // liblor objects that have a dedicated type (everything but typed pointers
-    // like array, map, set ecc) can be printed directly
+    // liblor objects that have a dedicated type can be printed directly
+	// (basically every object excluding typed pointers like array, map, set) 
     LorStringView sv = SV("arena type:");
     LorArena arena = {NULL, LOR_ARENA_BACKEND_HEAP, LOR_KIB(64), 0u, 0u};
-	LorRandom state = LOR_RANDOM_INIT;
+    LorRandom state = LOR_RANDOM_INIT;
     lor_print(sv, arena, "\n", state);
+    lor_arena_deinit(&arena);
 
     lor_print("\n=== COLLECTIONS ===");
     int *numbers = LOR_ARRAY_INIT;
-    lor_array_push(numbers, (int){10});
+    lor_array_push_as(numbers, int, 10);
     lor_array_push_as(numbers, int, 20);
-    lor_array_push_auto(numbers, 30);
+    lor_array_push_as(numbers, int, 30);
 
-    typedef LOR_MAP_ENTRY(LorStringView, int) Score;
-    Score *empty_map = LOR_MAP_INIT;
+    typedef LOR_MAP_ENTRY(LorStringView, int) key_val;
+    key_val *empty_map = LOR_MAP_INIT;
 
     int *empty_set = LOR_SET_INIT;
 
@@ -51,6 +53,27 @@ int main(void) {
     lor_print(lor_print_array(numbers));
     lor_print(lor_print_map(empty_map));
     lor_print(lor_print_set(empty_set));
+
+    // not recommended, just to show how the internals work
+    if (0) {
+        lor_print("\n=== INTERNALS ===");
+        // NOTE: this is a TAGGED UNION
+        LorPrintValue print_arr = lor_print_array(numbers);
+        if (print_arr.kind == LOR_PRINT_ARRAY) {           // tag
+            LorPrintSequence seq = print_arr.as.sequence;  // union value
+            lor_print("elemements of kind:", lor_type_kind_name(seq.element_kind));
+            for (size_t i = 0; i < seq.count; i++) {
+                int *elem_ptr = (int *)seq.data;
+                elem_ptr += i;
+                lor_print(*elem_ptr, lor_end(" "));
+            }
+            lor_print("");
+        }
+    }
+
+    lor_array_deinit(&numbers);
+    lor_map_deinit(&empty_map);
+    lor_set_deinit(&empty_set);
 
     lor_print("\n=== CUSTOM TYPE ===");
     // must provide a callback in case of a custom type
@@ -61,6 +84,8 @@ int main(void) {
     lor_array_push(points, p);
     lor_array_push(points, ((Point){5, 7}));
     lor_print(lor_print_array_custom(points, print_point));
+    lor_array_deinit(&points);
 
+	lor_leakcheck_report(stdout);
     return 0;
 }

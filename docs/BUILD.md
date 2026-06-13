@@ -1,7 +1,9 @@
 # Building liblor
 
 The repository Makefile builds the multi-file library, generated single header,
-tests, and examples. Generated output is stored under `.build/`.
+tests, and examples. Generated output is stored under `.build/`. Development
+tests require Clang/Clang++ and GCC/G++ so the supported C++ declaration and C
+ABI boundary is checked with both compiler families.
 
 ## Development
 
@@ -15,8 +17,8 @@ tests, and examples. Generated output is stored under `.build/`.
   then run the leak-check tests.
 - `make clean`: remove `.build/`.
 
-The Makefile discovers `src/*.c`, `tests/test_*.c`, `examples/*.c`,
-`examples_sh/*.c`, and `include/lor/*.h` automatically.
+The Makefile discovers `src/*.c`, `tests/test_*.c`, `tests/test_*.cpp`,
+`examples/*.c`, `examples_sh/*.c`, and `include/lor/*.h` automatically.
 
 ## Single Header
 

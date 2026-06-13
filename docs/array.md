@@ -25,8 +25,9 @@ The handle supports normal indexing and pointer iteration. It must begin as
 
 ## Typed Operations
 
-The function-like macros infer the element size from `sizeof *(array)` and
-forward to checked implementation functions:
+The following function-like macros infer the element size from `sizeof *(array)`
+and forward to checked implementation functions. The macros exist only to
+simplify the API syntax:
 
 - `lor_array_reserve(array, capacity)`
 - `lor_array_resize(array, size)`
@@ -40,8 +41,23 @@ forward to checked implementation functions:
 - `lor_array_insert_as(array, index, type, ...)`
 - `lor_array_shrink_to_fit(array)`
 
+## Push Forms
+
 There are three push forms with different portability and convenience
 tradeoffs.
+
+All three eventually call `lor_array_append_raw`, which in this case copies
+one element (the same function is used by `lor_array_append` ecc to copy many) 
+from a source address to the destination array simply by knowing its size:
+
+```c
+lor_array_append_raw(&array, sizeof *array, source_pointer, 1);
+```
+
+The function backend knows only the element size and source bytes. It cannot
+receive an arbitrary C expression, infer its type, or perform a conversion by
+itself. A push wrapper must therefore provide the address of an object whose
+stored representation matches the array element type.
 
 `lor_array_push` is fully portable and accepts an lvalue: a named object or a
 compound literal whose address C can take. The value must have the array's
@@ -52,7 +68,23 @@ conversion:
 int value = 10;
 lor_array_push(numbers, value);
 lor_array_push(points, ((Point){.x = 1, .y = 2}));
+
+// this is not allowed!
+lor_array_push(numbers, 10);
 ```
+
+The literal `10` is an rvalue rather than an object with an address, so the
+macro expansion `&(10)` is invalid C. Similarly, passing an lvalue of a
+different type is unsafe even when C would normally convert it during
+assignment:
+
+```c
+short value = 10;
+lor_array_push(numbers, value); // Wrong when numbers is int *.
+```
+
+No assignment occurs here; the backend would attempt to copy `sizeof(int)`
+bytes starting at a `short`.
 
 An extra pair of parentheses is needed around a compound literal containing
 commas because it is passed as one macro argument.
@@ -65,6 +97,9 @@ variadic initializer naturally accepts commas:
 lor_array_push_as(numbers, int, 20);
 lor_array_push_as(points, Point, .x = 3, .y = 4);
 ```
+
+This form creates an addressable compound literal of the named type and passes
+its address to the same backend.
 
 `lor_array_push_auto` is available when `LOR_HAS_ARRAY_PUSH_AUTO` is nonzero.
 It uses liblor's feature-gated `lor_typeof` and statement-expression helpers to

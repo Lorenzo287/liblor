@@ -10,6 +10,13 @@
 #define LOR_HAS_GENERIC_SELECTION 0
 #endif
 
+// C99 compound literals are not part of C++.
+#if !defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define LOR_HAS_COMPOUND_LITERALS 1
+#else
+#define LOR_HAS_COMPOUND_LITERALS 0
+#endif
+
 /* Type declaration helper.
 
    GCC and Clang provide `__typeof__` in C11 mode. C23 provides standard

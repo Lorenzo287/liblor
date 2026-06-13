@@ -85,23 +85,29 @@ int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
 /* Typed portable operations.
 
    `lor_set_add`, `contains`, and `remove` take lvalues of the exact key type.
-   The `_as` forms construct C99 compound literals. */
+   In C, the `_as` forms construct C99 compound literals. */
 #define lor_set_init(set, config) \
     lor_set_init_raw(&(set), sizeof *(set), (config))
 #define lor_set_reserve(set, capacity) \
     lor_set_reserve_raw(&(set), sizeof *(set), (capacity))
 #define lor_set_add(set, key_value) \
     lor_set_add_raw(&(set), sizeof *(set), &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_set_add_as(set, type, ...) \
     lor_set_add_raw(&(set), sizeof *(set), &(type){__VA_ARGS__})
+#endif
 #define lor_set_contains(set, key_value) \
     lor_set_contains_raw((set), sizeof *(set), &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_set_contains_as(set, type, ...) \
     lor_set_contains_raw((set), sizeof *(set), &(type){__VA_ARGS__})
+#endif
 #define lor_set_remove(set, key_value) \
     lor_set_remove_raw((set), sizeof *(set), &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_set_remove_as(set, type, ...) \
     lor_set_remove_raw((set), sizeof *(set), &(type){__VA_ARGS__})
+#endif
 #define lor_set_union(result, a, b) \
     lor_set_union_raw(&(result), sizeof *(result), (a), (b))
 #define lor_set_intersection(result, a, b) \

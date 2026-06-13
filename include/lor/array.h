@@ -90,7 +90,8 @@ void lor_array_deinit(void *array_ref);
 
    `lor_array_push` takes an lvalue of the exact element type so its address
    can be copied portably.
-   Use `lor_array_push_as` for literals and inline aggregate initialization.
+   In C, use `lor_array_push_as` for literals and inline aggregate
+   initialization.
    When supported, `lor_array_push_auto` accepts any assignable expression and
    infers the destination element type with `lor_typeof`. */
 #define lor_array_reserve(array, capacity) \
@@ -103,8 +104,10 @@ void lor_array_deinit(void *array_ref);
     lor_array_append_array_raw(&(array), sizeof *(array), (source), sizeof *(source))
 #define lor_array_push(array, value) \
     lor_array_append_raw(&(array), sizeof *(array), &(value), 1u)
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_array_push_as(array, type, ...) \
     lor_array_append_raw(&(array), sizeof *(array), &(type){__VA_ARGS__}, 1u)
+#endif
 #if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_ARRAY_PUSH_AUTO 1
 #define lor_array_push_auto(array, value)                                       \
@@ -119,8 +122,10 @@ void lor_array_deinit(void *array_ref);
     lor_array_insert_raw(&(array), sizeof *(array), (index), (elements), (count))
 #define lor_array_insert(array, index, value) \
     lor_array_insert_raw(&(array), sizeof *(array), (index), &(value), 1u)
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_array_insert_as(array, index, type, ...)                               \
     lor_array_insert_raw(&(array), sizeof *(array), (index), &(type){__VA_ARGS__}, 1u)
+#endif
 #define lor_array_last(array) \
     (lor_array_size(array) != 0 ? &(array)[lor_array_size(array) - 1u] : NULL)
 #define lor_array_shrink_to_fit(array) \

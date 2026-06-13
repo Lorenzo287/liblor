@@ -282,8 +282,14 @@ def emit_strip_prefix_aliases(modules: list[dict]) -> str:
     for module in modules:
         out.append(f"#ifdef {module_enabled_condition(module)}")
         for group in ("types", "macros", "functions"):
-            for canonical, alias in module["symbols"].get(group, []):
+            for symbol in module["symbols"].get(group, []):
+                canonical, alias = symbol[:2]
+                condition = symbol[2] if len(symbol) > 2 else None
+                if condition is not None:
+                    out.append(f"#if {condition}")
                 out.append(f"#define {alias} {canonical}")
+                if condition is not None:
+                    out.append("#endif")
         out.append("#endif")
     out.append("#endif")
     return "\n".join(out) + "\n"

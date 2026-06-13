@@ -103,9 +103,10 @@
                 "types": [],
                 "macros": [
                     ["LOR_HAS_GENERIC_SELECTION", "HAS_GENERIC_SELECTION"],
+                    ["LOR_HAS_COMPOUND_LITERALS", "HAS_COMPOUND_LITERALS"],
                     ["LOR_HAS_TYPEOF", "HAS_TYPEOF"],
                     ["LOR_HAS_STATEMENT_EXPRESSIONS", "HAS_STATEMENT_EXPRESSIONS"],
-                    ["lor_typeof", "type_of"]
+                    ["lor_typeof", "type_of", "LOR_HAS_TYPEOF"]
                 ]
             }
         },
@@ -154,8 +155,8 @@
                     ["LOR_TYPE_MMAP", "TYPE_MMAP"],
                     ["LOR_TYPE_LEAK_STATS", "TYPE_LEAK_STATS"],
                     ["LOR_TYPE_RANDOM", "TYPE_RANDOM"],
-                    ["lor_type_kind", "type_kind"],
-                    ["lor_type_name", "type_name"]
+                    ["lor_type_kind", "type_kind", "LOR_HAS_GENERIC_SELECTION"],
+                    ["lor_type_name", "type_name", "LOR_HAS_GENERIC_SELECTION"]
                 ]
             }
         },
@@ -172,12 +173,12 @@
                 "macros": [
                     ["LOR_HAS_NUMERIC_AS", "HAS_NUMERIC_AS"],
                     ["LOR_HAS_NUMERIC_AUTO", "HAS_NUMERIC_AUTO"],
-                    ["lor_min_as", "min_as"],
-                    ["lor_max_as", "max_as"],
-                    ["lor_clamp_as", "clamp_as"],
-                    ["lor_min", "min_value"],
-                    ["lor_max", "max_value"],
-                    ["lor_clamp", "clamp_value"]
+                    ["lor_min_as", "min_as", "LOR_HAS_NUMERIC_AS"],
+                    ["lor_max_as", "max_as", "LOR_HAS_NUMERIC_AS"],
+                    ["lor_clamp_as", "clamp_as", "LOR_HAS_NUMERIC_AS"],
+                    ["lor_min", "min_value", "LOR_HAS_NUMERIC_AUTO"],
+                    ["lor_max", "max_value", "LOR_HAS_NUMERIC_AUTO"],
+                    ["lor_clamp", "clamp_value", "LOR_HAS_NUMERIC_AUTO"]
                 ]
             }
         },
@@ -357,24 +358,24 @@
                     ["LOR_PRINT_END", "PRINT_END"],
                     ["LOR_PRINT_CONFIG_INIT", "PRINT_CONFIG_INIT"],
                     ["LOR_HAS_GENERIC_PRINT", "HAS_GENERIC_PRINT"],
-                    ["lor_print_value", "print_value"],
+                    ["lor_print_value", "print_value", "LOR_HAS_GENERIC_PRINT"],
                     ["lor_print_pointer", "print_pointer"],
                     ["lor_print_custom", "print_custom"],
-                    ["lor_print_array", "print_array"],
-                    ["lor_print_array_custom", "print_array_custom"],
-                    ["lor_print_set", "print_set"],
-                    ["lor_print_set_custom", "print_set_custom"],
-                    ["lor_print_map_as", "print_map_as"],
-                    ["lor_print_map_as_custom", "print_map_as_custom"],
+                    ["lor_print_array", "print_array", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print_array_custom", "print_array_custom", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print_set", "print_set", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print_set_custom", "print_set_custom", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print_map_as", "print_map_as", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print_map_as_custom", "print_map_as_custom", "LOR_HAS_GENERIC_PRINT"],
                     ["LOR_HAS_PRINT_MAP_AUTO", "HAS_PRINT_MAP_AUTO"],
-                    ["lor_print_map", "print_map"],
-                    ["lor_print_map_custom", "print_map_custom"],
+                    ["lor_print_map", "print_map", "LOR_HAS_PRINT_MAP_AUTO"],
+                    ["lor_print_map_custom", "print_map_custom", "LOR_HAS_PRINT_MAP_AUTO"],
                     ["lor_end", "end"],
                     ["lor_end_view", "end_view"],
-                    ["lor_fprint_with", "fprint_with"],
-                    ["lor_print_with", "print_with"],
-                    ["lor_fprint", "fprint"],
-                    ["lor_print", "print"]
+                    ["lor_fprint_with", "fprint_with", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print_with", "print_with", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_fprint", "fprint", "LOR_HAS_GENERIC_PRINT"],
+                    ["lor_print", "print", "LOR_HAS_GENERIC_PRINT"]
                 ]
             }
         },
@@ -413,12 +414,12 @@
                     ["lor_array_append", "array_append"],
                     ["lor_array_append_array", "array_append_array"],
                     ["lor_array_push", "array_push"],
-                    ["lor_array_push_as", "array_push_as"],
+                    ["lor_array_push_as", "array_push_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["LOR_HAS_ARRAY_PUSH_AUTO", "HAS_ARRAY_PUSH_AUTO"],
-                    ["lor_array_push_auto", "array_push_auto"],
+                    ["lor_array_push_auto", "array_push_auto", "LOR_HAS_ARRAY_PUSH_AUTO"],
                     ["lor_array_insert_many", "array_insert_many"],
                     ["lor_array_insert", "array_insert"],
-                    ["lor_array_insert_as", "array_insert_as"],
+                    ["lor_array_insert_as", "array_insert_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_array_last", "array_last"],
                     ["lor_array_shrink_to_fit", "array_shrink_to_fit"],
                     ["LOR_AUTO_ARRAY", "AUTO_ARRAY"]
@@ -471,20 +472,20 @@
                     ["lor_map_init", "map_init"],
                     ["lor_map_reserve", "map_reserve"],
                     ["lor_map_set", "map_set"],
-                    ["lor_map_set_as", "map_set_as"],
-                    ["lor_map_put_as", "map_put_as"],
+                    ["lor_map_set_as", "map_set_as", "LOR_HAS_COMPOUND_LITERALS"],
+                    ["lor_map_put_as", "map_put_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_map_find", "map_find"],
                     ["lor_map_find_const", "map_find_const"],
-                    ["lor_map_find_as", "map_find_as"],
+                    ["lor_map_find_as", "map_find_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_map_contains", "map_contains"],
-                    ["lor_map_contains_as", "map_contains_as"],
+                    ["lor_map_contains_as", "map_contains_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_map_remove", "map_remove"],
-                    ["lor_map_remove_as", "map_remove_as"],
+                    ["lor_map_remove_as", "map_remove_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["LOR_HAS_MAP_AUTO", "HAS_MAP_AUTO"],
-                    ["lor_map_put_auto", "map_put_auto"],
-                    ["lor_map_find_auto", "map_find_auto"],
-                    ["lor_map_contains_auto", "map_contains_auto"],
-                    ["lor_map_remove_auto", "map_remove_auto"],
+                    ["lor_map_put_auto", "map_put_auto", "LOR_HAS_MAP_AUTO"],
+                    ["lor_map_find_auto", "map_find_auto", "LOR_HAS_MAP_AUTO"],
+                    ["lor_map_contains_auto", "map_contains_auto", "LOR_HAS_MAP_AUTO"],
+                    ["lor_map_remove_auto", "map_remove_auto", "LOR_HAS_MAP_AUTO"],
                     ["LOR_AUTO_MAP", "AUTO_MAP"]
                 ]
             }
@@ -533,11 +534,11 @@
                     ["lor_set_init", "set_init"],
                     ["lor_set_reserve", "set_reserve"],
                     ["lor_set_add", "set_add"],
-                    ["lor_set_add_as", "set_add_as"],
+                    ["lor_set_add_as", "set_add_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_set_contains", "set_contains"],
-                    ["lor_set_contains_as", "set_contains_as"],
+                    ["lor_set_contains_as", "set_contains_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_set_remove", "set_remove"],
-                    ["lor_set_remove_as", "set_remove_as"],
+                    ["lor_set_remove_as", "set_remove_as", "LOR_HAS_COMPOUND_LITERALS"],
                     ["lor_set_union", "set_union"],
                     ["lor_set_intersection", "set_intersection"],
                     ["lor_set_difference", "set_difference"],
@@ -549,9 +550,9 @@
                     ["lor_set_is_proper_superset", "set_is_proper_superset"],
                     ["lor_set_is_disjoint", "set_is_disjoint"],
                     ["LOR_HAS_SET_AUTO", "HAS_SET_AUTO"],
-                    ["lor_set_add_auto", "set_add_auto"],
-                    ["lor_set_contains_auto", "set_contains_auto"],
-                    ["lor_set_remove_auto", "set_remove_auto"],
+                    ["lor_set_add_auto", "set_add_auto", "LOR_HAS_SET_AUTO"],
+                    ["lor_set_contains_auto", "set_contains_auto", "LOR_HAS_SET_AUTO"],
+                    ["lor_set_remove_auto", "set_remove_auto", "LOR_HAS_SET_AUTO"],
                     ["LOR_AUTO_SET", "AUTO_SET"]
                 ]
             }

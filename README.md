@@ -46,8 +46,18 @@ This avoids collisions with generic names like `memory.h`, `string.h`, or
 ## Compatibility
 
 liblor targets standard C on Windows and Unix-like systems. Public headers keep
-C++ include compatibility with `extern "C"` guards, and platform-specific code
-should stay isolated behind small `_WIN32` / Unix branches.
+C++ declaration and C ABI compatibility with `extern "C"` guards. Compile
+liblor itself as C, then include its headers and link the resulting library
+from C++. The ordinary function API and typed lvalue macros are available;
+C-only conveniences based on compound literals, `_Generic`, `typeof`, or
+statement expressions are not exposed to C++.
+
+liblor does not currently provide a native C++ wrapper API. In particular,
+compile the single-header implementation in a C translation unit rather than
+defining `LOR_IMPLEMENTATION` in C++ code.
+
+Platform-specific code should stay isolated behind small `_WIN32` / Unix
+branches.
 
 ## Single Header
 

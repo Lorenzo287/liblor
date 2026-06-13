@@ -1,11 +1,15 @@
 ifeq ($(origin CC),default)
 CC := clang
 endif
+ifeq ($(origin CXX),default)
+CXX := clang++
+endif
 
 .DEFAULT_GOAL := all
 
 CPPFLAGS ?= -Iinclude
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic
+CXXFLAGS ?= -std=c++17 -Wall -Wextra -Wpedantic
 
 override BUILD_ROOT := .build
 BUILD_PROFILE ?= default
@@ -13,6 +17,7 @@ override BUILD_DIR := $(BUILD_ROOT)/$(BUILD_PROFILE)
 PYTHON ?= python
 
 STRICT_CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -Werror
+STRICT_CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -Werror
 RELEASE_CC ?= $(CC)
 RELEASE_LTO ?=
 
@@ -85,6 +90,8 @@ LIB_TEST_SRCS := $(filter-out $(SINGLE_HEADER_TEST_SRCS),$(TEST_SRCS))
 LIB_TEST_BINS := $(patsubst tests/%.c,$(BUILD_DIR)/%$(EXE),$(LIB_TEST_SRCS))
 SINGLE_HEADER_TEST_BINS := $(patsubst tests/%.c,$(BUILD_DIR)/%$(EXE),$(SINGLE_HEADER_TEST_SRCS))
 TEST_BINS := $(LIB_TEST_BINS) $(SINGLE_HEADER_TEST_BINS)
+CPP_TEST_SRCS := $(wildcard tests/test_*.cpp)
+CPP_TEST_BINS := $(patsubst tests/%.cpp,$(BUILD_DIR)/%$(EXE),$(CPP_TEST_SRCS))
 
 EXAMPLE_SRCS := $(wildcard examples/*.c)
 EXAMPLE_SH_SRCS := $(wildcard examples_sh/*.c)
@@ -104,24 +111,27 @@ MKDIR_BUILD = mkdir -p $(BUILD_DIR)
 
 all: $(LIB_OBJS) single-header
 
-test: $(TEST_BINS)
+test: $(TEST_BINS) $(CPP_TEST_BINS)
 	@for test in $(TEST_BINS); do ./$$test || exit $$?; done
+	@for test in $(CPP_TEST_BINS); do ./$$test || exit $$?; done
 
 examples: $(EXAMPLE_BINS) $(EXAMPLE_SH_BINS)
 
 single-header: $(SINGLE_HEADER)
 
 gcc:
-	$(MAKE) BUILD_PROFILE=gcc CC=gcc all
+	$(MAKE) BUILD_PROFILE=gcc CC=gcc CXX=g++ all
 
 leakcheck:
 	$(MAKE) BUILD_PROFILE=clang-leakcheck CC=clang \
 		CPPFLAGS="$(CPPFLAGS) -DLOR_LEAKCHECK" CFLAGS="$(STRICT_CFLAGS)" test
 
 check:
-	$(MAKE) BUILD_PROFILE=clang-strict CC=clang CFLAGS="$(STRICT_CFLAGS)" \
+	$(MAKE) BUILD_PROFILE=clang-strict CC=clang CXX=clang++ \
+		CFLAGS="$(STRICT_CFLAGS)" CXXFLAGS="$(STRICT_CXXFLAGS)" \
 		test examples
-	$(MAKE) BUILD_PROFILE=gcc-strict CC=gcc CFLAGS="$(STRICT_CFLAGS)" \
+	$(MAKE) BUILD_PROFILE=gcc-strict CC=gcc CXX=g++ \
+		CFLAGS="$(STRICT_CFLAGS)" CXXFLAGS="$(STRICT_CXXFLAGS)" \
 		test examples
 	$(MAKE) leakcheck
 
@@ -176,6 +186,9 @@ $(SINGLE_HEADER_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(SI
 
 $(LIB_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@
+
+$(CPP_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.cpp $(LIB_OBJS) $(PUBLIC_HEADERS) $(SINGLE_HEADER) | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@
 
 $(EXAMPLE_BINS): $(BUILD_DIR)/example_%$(EXE): examples/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@

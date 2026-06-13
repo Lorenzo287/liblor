@@ -318,6 +318,13 @@ LorStatus lor_channel_receive_until_raw(LorChannel *channel, void *value,
 #define LOR_HAS_GENERIC_SELECTION 0
 #endif
 
+// C99 compound literals are not part of C++.
+#if !defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define LOR_HAS_COMPOUND_LITERALS 1
+#else
+#define LOR_HAS_COMPOUND_LITERALS 0
+#endif
+
 /* Type declaration helper.
 
    GCC and Clang provide `__typeof__` in C11 mode. C23 provides standard
@@ -1218,7 +1225,8 @@ void lor_array_deinit(void *array_ref);
 
    `lor_array_push` takes an lvalue of the exact element type so its address
    can be copied portably.
-   Use `lor_array_push_as` for literals and inline aggregate initialization.
+   In C, use `lor_array_push_as` for literals and inline aggregate
+   initialization.
    When supported, `lor_array_push_auto` accepts any assignable expression and
    infers the destination element type with `lor_typeof`. */
 #define lor_array_reserve(array, capacity) \
@@ -1231,8 +1239,10 @@ void lor_array_deinit(void *array_ref);
     lor_array_append_array_raw(&(array), sizeof *(array), (source), sizeof *(source))
 #define lor_array_push(array, value) \
     lor_array_append_raw(&(array), sizeof *(array), &(value), 1u)
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_array_push_as(array, type, ...) \
     lor_array_append_raw(&(array), sizeof *(array), &(type){__VA_ARGS__}, 1u)
+#endif
 #if LOR_HAS_TYPEOF && LOR_HAS_STATEMENT_EXPRESSIONS
 #define LOR_HAS_ARRAY_PUSH_AUTO 1
 #define lor_array_push_auto(array, value)                                       \
@@ -1247,8 +1257,10 @@ void lor_array_deinit(void *array_ref);
     lor_array_insert_raw(&(array), sizeof *(array), (index), (elements), (count))
 #define lor_array_insert(array, index, value) \
     lor_array_insert_raw(&(array), sizeof *(array), (index), &(value), 1u)
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_array_insert_as(array, index, type, ...)                               \
     lor_array_insert_raw(&(array), sizeof *(array), (index), &(type){__VA_ARGS__}, 1u)
+#endif
 #define lor_array_last(array) \
     (lor_array_size(array) != 0 ? &(array)[lor_array_size(array) - 1u] : NULL)
 #define lor_array_shrink_to_fit(array) \
@@ -1401,31 +1413,39 @@ void lor_map_deinit(void *map_ref);
 /* Typed portable operations.
 
    `lor_map_set`, `find`, `contains`, and `remove` take lvalues of the exact
-   entry or key type. The `_as` forms construct C99 compound literals. */
+   entry or key type. In C, the `_as` forms construct C99 compound literals. */
 #define lor_map_init(map, config) \
     lor_map_init_raw(&(map), sizeof *(map), sizeof(map)->key, (config))
 #define lor_map_reserve(map, capacity) \
     lor_map_reserve_raw(&(map), sizeof *(map), sizeof(map)->key, (capacity))
 #define lor_map_set(map, entry) \
     lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &(entry))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_set_as(map, type, ...) \
     lor_map_set_raw(&(map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
 #define lor_map_put_as(map, type, key_value, value_value) \
     lor_map_set_as(map, type, .key = (key_value), .value = (value_value))
+#endif
 #define lor_map_find(map, key_value) \
     lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
 #define lor_map_find_const(map, key_value) \
     lor_map_find_const_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_find_as(map, type, ...) \
     lor_map_find_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#endif
 #define lor_map_contains(map, key_value) \
     lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_contains_as(map, type, ...)                      \
     lor_map_contains_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#endif
 #define lor_map_remove(map, key_value) \
     lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_map_remove_as(map, type, ...) \
     lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
+#endif
 
 /* GCC/Clang convenience operations.
 
@@ -1558,23 +1578,29 @@ int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
 /* Typed portable operations.
 
    `lor_set_add`, `contains`, and `remove` take lvalues of the exact key type.
-   The `_as` forms construct C99 compound literals. */
+   In C, the `_as` forms construct C99 compound literals. */
 #define lor_set_init(set, config) \
     lor_set_init_raw(&(set), sizeof *(set), (config))
 #define lor_set_reserve(set, capacity) \
     lor_set_reserve_raw(&(set), sizeof *(set), (capacity))
 #define lor_set_add(set, key_value) \
     lor_set_add_raw(&(set), sizeof *(set), &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_set_add_as(set, type, ...) \
     lor_set_add_raw(&(set), sizeof *(set), &(type){__VA_ARGS__})
+#endif
 #define lor_set_contains(set, key_value) \
     lor_set_contains_raw((set), sizeof *(set), &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_set_contains_as(set, type, ...) \
     lor_set_contains_raw((set), sizeof *(set), &(type){__VA_ARGS__})
+#endif
 #define lor_set_remove(set, key_value) \
     lor_set_remove_raw((set), sizeof *(set), &(key_value))
+#if LOR_HAS_COMPOUND_LITERALS
 #define lor_set_remove_as(set, type, ...) \
     lor_set_remove_raw((set), sizeof *(set), &(type){__VA_ARGS__})
+#endif
 #define lor_set_union(result, a, b) \
     lor_set_union_raw(&(result), sizeof *(result), (a), (b))
 #define lor_set_intersection(result, a, b) \
@@ -7239,9 +7265,12 @@ int lor_cli_print_help(const LorCli *cli) {
 #endif
 #ifdef LOR_ENABLE_FEATURES
 #define HAS_GENERIC_SELECTION LOR_HAS_GENERIC_SELECTION
+#define HAS_COMPOUND_LITERALS LOR_HAS_COMPOUND_LITERALS
 #define HAS_TYPEOF LOR_HAS_TYPEOF
 #define HAS_STATEMENT_EXPRESSIONS LOR_HAS_STATEMENT_EXPRESSIONS
+#if LOR_HAS_TYPEOF
 #define type_of lor_typeof
+#endif
 #endif
 #ifdef LOR_ENABLE_MEMORY
 #define ArenaBackend LorArenaBackend
@@ -7381,19 +7410,35 @@ int lor_cli_print_help(const LorCli *cli) {
 #define TYPE_MMAP LOR_TYPE_MMAP
 #define TYPE_LEAK_STATS LOR_TYPE_LEAK_STATS
 #define TYPE_RANDOM LOR_TYPE_RANDOM
+#if LOR_HAS_GENERIC_SELECTION
 #define type_kind lor_type_kind
+#endif
+#if LOR_HAS_GENERIC_SELECTION
 #define type_name lor_type_name
+#endif
 #define type_kind_name lor_type_kind_name
 #endif
 #ifdef LOR_ENABLE_NUMERIC
 #define HAS_NUMERIC_AS LOR_HAS_NUMERIC_AS
 #define HAS_NUMERIC_AUTO LOR_HAS_NUMERIC_AUTO
+#if LOR_HAS_NUMERIC_AS
 #define min_as lor_min_as
+#endif
+#if LOR_HAS_NUMERIC_AS
 #define max_as lor_max_as
+#endif
+#if LOR_HAS_NUMERIC_AS
 #define clamp_as lor_clamp_as
+#endif
+#if LOR_HAS_NUMERIC_AUTO
 #define min_value lor_min
+#endif
+#if LOR_HAS_NUMERIC_AUTO
 #define max_value lor_max
+#endif
+#if LOR_HAS_NUMERIC_AUTO
 #define clamp_value lor_clamp
+#endif
 #endif
 #ifdef LOR_ENABLE_ARRAY
 #define ARRAY_INIT LOR_ARRAY_INIT
@@ -7402,12 +7447,18 @@ int lor_cli_print_help(const LorCli *cli) {
 #define array_append lor_array_append
 #define array_append_array lor_array_append_array
 #define array_push lor_array_push
+#if LOR_HAS_COMPOUND_LITERALS
 #define array_push_as lor_array_push_as
+#endif
 #define HAS_ARRAY_PUSH_AUTO LOR_HAS_ARRAY_PUSH_AUTO
+#if LOR_HAS_ARRAY_PUSH_AUTO
 #define array_push_auto lor_array_push_auto
+#endif
 #define array_insert_many lor_array_insert_many
 #define array_insert lor_array_insert
+#if LOR_HAS_COMPOUND_LITERALS
 #define array_insert_as lor_array_insert_as
+#endif
 #define array_last lor_array_last
 #define array_shrink_to_fit lor_array_shrink_to_fit
 #define AUTO_ARRAY LOR_AUTO_ARRAY
@@ -7442,20 +7493,38 @@ int lor_cli_print_help(const LorCli *cli) {
 #define map_init lor_map_init
 #define map_reserve lor_map_reserve
 #define map_set lor_map_set
+#if LOR_HAS_COMPOUND_LITERALS
 #define map_set_as lor_map_set_as
+#endif
+#if LOR_HAS_COMPOUND_LITERALS
 #define map_put_as lor_map_put_as
+#endif
 #define map_find lor_map_find
 #define map_find_const lor_map_find_const
+#if LOR_HAS_COMPOUND_LITERALS
 #define map_find_as lor_map_find_as
+#endif
 #define map_contains lor_map_contains
+#if LOR_HAS_COMPOUND_LITERALS
 #define map_contains_as lor_map_contains_as
+#endif
 #define map_remove lor_map_remove
+#if LOR_HAS_COMPOUND_LITERALS
 #define map_remove_as lor_map_remove_as
+#endif
 #define HAS_MAP_AUTO LOR_HAS_MAP_AUTO
+#if LOR_HAS_MAP_AUTO
 #define map_put_auto lor_map_put_auto
+#endif
+#if LOR_HAS_MAP_AUTO
 #define map_find_auto lor_map_find_auto
+#endif
+#if LOR_HAS_MAP_AUTO
 #define map_contains_auto lor_map_contains_auto
+#endif
+#if LOR_HAS_MAP_AUTO
 #define map_remove_auto lor_map_remove_auto
+#endif
 #define AUTO_MAP LOR_AUTO_MAP
 #define map_config_bytes lor_map_config_bytes
 #define map_config_string_view lor_map_config_string_view
@@ -7484,11 +7553,17 @@ int lor_cli_print_help(const LorCli *cli) {
 #define set_init lor_set_init
 #define set_reserve lor_set_reserve
 #define set_add lor_set_add
+#if LOR_HAS_COMPOUND_LITERALS
 #define set_add_as lor_set_add_as
+#endif
 #define set_contains lor_set_contains
+#if LOR_HAS_COMPOUND_LITERALS
 #define set_contains_as lor_set_contains_as
+#endif
 #define set_remove lor_set_remove
+#if LOR_HAS_COMPOUND_LITERALS
 #define set_remove_as lor_set_remove_as
+#endif
 #define set_union lor_set_union
 #define set_intersection lor_set_intersection
 #define set_difference lor_set_difference
@@ -7500,9 +7575,15 @@ int lor_cli_print_help(const LorCli *cli) {
 #define set_is_proper_superset lor_set_is_proper_superset
 #define set_is_disjoint lor_set_is_disjoint
 #define HAS_SET_AUTO LOR_HAS_SET_AUTO
+#if LOR_HAS_SET_AUTO
 #define set_add_auto lor_set_add_auto
+#endif
+#if LOR_HAS_SET_AUTO
 #define set_contains_auto lor_set_contains_auto
+#endif
+#if LOR_HAS_SET_AUTO
 #define set_remove_auto lor_set_remove_auto
+#endif
 #define AUTO_SET LOR_AUTO_SET
 #define set_config_bytes lor_set_config_bytes
 #define set_config_string_view lor_set_config_string_view
@@ -7557,24 +7638,50 @@ int lor_cli_print_help(const LorCli *cli) {
 #define PRINT_END LOR_PRINT_END
 #define PRINT_CONFIG_INIT LOR_PRINT_CONFIG_INIT
 #define HAS_GENERIC_PRINT LOR_HAS_GENERIC_PRINT
+#if LOR_HAS_GENERIC_PRINT
 #define print_value lor_print_value
+#endif
 #define print_pointer lor_print_pointer
 #define print_custom lor_print_custom
+#if LOR_HAS_GENERIC_PRINT
 #define print_array lor_print_array
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print_array_custom lor_print_array_custom
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print_set lor_print_set
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print_set_custom lor_print_set_custom
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print_map_as lor_print_map_as
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print_map_as_custom lor_print_map_as_custom
+#endif
 #define HAS_PRINT_MAP_AUTO LOR_HAS_PRINT_MAP_AUTO
+#if LOR_HAS_PRINT_MAP_AUTO
 #define print_map lor_print_map
+#endif
+#if LOR_HAS_PRINT_MAP_AUTO
 #define print_map_custom lor_print_map_custom
+#endif
 #define end lor_end
 #define end_view lor_end_view
+#if LOR_HAS_GENERIC_PRINT
 #define fprint_with lor_fprint_with
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print_with lor_print_with
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define fprint lor_fprint
+#endif
+#if LOR_HAS_GENERIC_PRINT
 #define print lor_print
+#endif
 #define fprint_values lor_fprint_values
 #endif
 #ifdef LOR_ENABLE_CLI
