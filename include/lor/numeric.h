@@ -8,9 +8,9 @@
 /* Numeric minimum, maximum, and clamp helpers.
 
    The inferred forms use the common arithmetic type of their arguments and
-   evaluate each argument exactly once. GCC and Clang use `lor_typeof` plus a
-   statement expression. Other C11 compilers use `_Generic` dispatch to inline
-   functions with the same single-evaluation guarantee.
+   evaluate each argument exactly once. GCC, Clang, and TCC use `lor_typeof`
+   plus a statement expression. Other C11 compilers use `_Generic` dispatch to
+   inline functions with the same single-evaluation guarantee.
 
    The explicit `_as` forms are the standard C11 alternative when callers want
    to choose the result type. C++ translation units do not expose these C
@@ -71,8 +71,9 @@ LOR_NUMERIC__DEFINE(long double, long_double)
         long long: lor_numeric__##operation##_long_long,                  \
         unsigned long long: lor_numeric__##operation##_unsigned_long_long, \
         float: lor_numeric__##operation##_float,                          \
-        double: lor_numeric__##operation##_double,                        \
-        long double: lor_numeric__##operation##_long_double)
+        LOR_GENERIC_LONG_DOUBLE_CASE(                                     \
+            lor_numeric__##operation##_long_double)                       \
+        double: lor_numeric__##operation##_double)
 
 #define lor_min_as(type, a, b) \
     LOR_NUMERIC__SELECT((type){0}, min)((type)(a), (type)(b))

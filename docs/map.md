@@ -119,7 +119,8 @@ a C99 compound literal and supports entries with fields beyond `key` and
 `lor_map_contains(map, key)` returns non-zero when a key is present.
 `lor_map_remove(map, key)` removes an entry and returns non-zero.
 
-On GCC and Clang, `LOR_HAS_MAP_AUTO` enables inferred convenience operations:
+On GCC, Clang, and TCC, `LOR_HAS_MAP_AUTO` enables inferred convenience
+operations:
 
 ```c
 #if LOR_HAS_MAP_AUTO

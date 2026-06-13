@@ -311,11 +311,24 @@ LorStatus lor_channel_receive_until_raw(LorChannel *channel, void *value,
 
 // === features: declarations ===
 #ifdef LOR_ENABLE_FEATURES
-// Standard C11 generic selection.
-#if !defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+/* C11 generic selection.
+
+   TCC implements `_Generic` while reporting C99 through `__STDC_VERSION__`. */
+#if !defined(__cplusplus) && \
+    ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L) || \
+     defined(__TINYC__))
 #define LOR_HAS_GENERIC_SELECTION 1
 #else
 #define LOR_HAS_GENERIC_SELECTION 0
+#endif
+
+/* Native MSVC and Windows TCC represent `long double` as `double`, so listing
+   both in one generic association is a constraint violation. */
+#if (defined(_MSC_VER) && !defined(__clang__)) || \
+    (defined(__TINYC__) && defined(_WIN32))
+#define LOR_GENERIC_LONG_DOUBLE_CASE(result)
+#else
+#define LOR_GENERIC_LONG_DOUBLE_CASE(result) long double: result,
 #endif
 
 // C99 compound literals are not part of C++.
@@ -327,11 +340,17 @@ LorStatus lor_channel_receive_until_raw(LorChannel *channel, void *value,
 
 /* Type declaration helper.
 
-   GCC and Clang provide `__typeof__` in C11 mode. C23 provides standard
-   `typeof`. */
+   GCC and Clang provide `__typeof__`, MSVC provides it starting with version
+   19.39, TCC provides GNU `typeof`, and C23 provides standard `typeof`. */
 #if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
 #define LOR_HAS_TYPEOF 1
 #define lor_typeof(value) __typeof__(value)
+#elif !defined(__cplusplus) && defined(_MSC_VER) && _MSC_VER >= 1939
+#define LOR_HAS_TYPEOF 1
+#define lor_typeof(value) __typeof__(value)
+#elif !defined(__cplusplus) && defined(__TINYC__)
+#define LOR_HAS_TYPEOF 1
+#define lor_typeof(value) typeof(value)
 #elif !defined(__cplusplus) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 202311L
 #define LOR_HAS_TYPEOF 1
@@ -340,8 +359,9 @@ LorStatus lor_channel_receive_until_raw(LorChannel *channel, void *value,
 #define LOR_HAS_TYPEOF 0
 #endif
 
-// Statement expressions are a separate GCC/Clang extension.
-#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+// Statement expressions are a separate GCC, Clang, and TCC extension.
+#if !defined(__cplusplus) && \
+    (defined(__GNUC__) || defined(__clang__) || defined(__TINYC__))
 #define LOR_HAS_STATEMENT_EXPRESSIONS 1
 #else
 #define LOR_HAS_STATEMENT_EXPRESSIONS 0
@@ -987,8 +1007,8 @@ const char *lor_type_kind_name(LorTypeKind kind);
         long long: LOR_TYPE_LONG_LONG,                   \
         unsigned long long: LOR_TYPE_UNSIGNED_LONG_LONG, \
         float: LOR_TYPE_FLOAT,                           \
+        LOR_GENERIC_LONG_DOUBLE_CASE(LOR_TYPE_LONG_DOUBLE) \
         double: LOR_TYPE_DOUBLE,                         \
-        long double: LOR_TYPE_LONG_DOUBLE,               \
         char *: LOR_TYPE_CSTRING,                        \
         const char *: LOR_TYPE_CSTRING,                  \
         volatile char *: LOR_TYPE_CSTRING,               \
@@ -1019,9 +1039,9 @@ const char *lor_type_kind_name(LorTypeKind kind);
 /* Numeric minimum, maximum, and clamp helpers.
 
    The inferred forms use the common arithmetic type of their arguments and
-   evaluate each argument exactly once. GCC and Clang use `lor_typeof` plus a
-   statement expression. Other C11 compilers use `_Generic` dispatch to inline
-   functions with the same single-evaluation guarantee.
+   evaluate each argument exactly once. GCC, Clang, and TCC use `lor_typeof`
+   plus a statement expression. Other C11 compilers use `_Generic` dispatch to
+   inline functions with the same single-evaluation guarantee.
 
    The explicit `_as` forms are the standard C11 alternative when callers want
    to choose the result type. C++ translation units do not expose these C
@@ -1082,8 +1102,9 @@ LOR_NUMERIC__DEFINE(long double, long_double)
         long long: lor_numeric__##operation##_long_long,                  \
         unsigned long long: lor_numeric__##operation##_unsigned_long_long, \
         float: lor_numeric__##operation##_float,                          \
-        double: lor_numeric__##operation##_double,                        \
-        long double: lor_numeric__##operation##_long_double)
+        LOR_GENERIC_LONG_DOUBLE_CASE(                                     \
+            lor_numeric__##operation##_long_double)                       \
+        double: lor_numeric__##operation##_double)
 
 #define lor_min_as(type, a, b) \
     LOR_NUMERIC__SELECT((type){0}, min)((type)(a), (type)(b))
@@ -1447,7 +1468,7 @@ void lor_map_deinit(void *map_ref);
     lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
 #endif
 
-/* GCC/Clang convenience operations.
+/* GCC/Clang/TCC convenience operations.
 
    These infer destination types, evaluate each supplied expression once, and
    perform normal assignment conversion into temporary key/value objects. */
@@ -1940,7 +1961,10 @@ LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
    order within the generated initializer. Up to 16 arguments are supported.
    Unsupported values fail to compile; wrap object pointers with
    `lor_print_pointer` and user-defined types with `lor_print_custom`. */
-#if LOR_HAS_GENERIC_SELECTION
+/* TCC supports `_Generic`, but its expression-depth limit is too low for this
+   nested variadic convenience layer. The explicit tagged-value API remains
+   available. */
+#if LOR_HAS_GENERIC_SELECTION && !defined(__TINYC__)
 #define LOR_HAS_GENERIC_PRINT 1
 #define lor_print_value(value)                        \
     _Generic((value),                                 \
@@ -1957,8 +1981,8 @@ LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
         long long: lor_print_value_signed,            \
         unsigned long long: lor_print_value_unsigned, \
         float: lor_print_value_floating,              \
+        LOR_GENERIC_LONG_DOUBLE_CASE(lor_print_value_floating) \
         double: lor_print_value_floating,             \
-        long double: lor_print_value_floating,        \
         char *: lor_print_value_cstring,              \
         const char *: lor_print_value_cstring,        \
         void *: lor_print_pointer,                    \

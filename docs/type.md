@@ -46,8 +46,15 @@ Other typedefs map to their compatible C type. Unlisted structures, unions,
 arrays that do not decay, and typed pointers return `LOR_TYPE_OTHER`.
 
 `LOR_HAS_GENERIC_SELECTION` is nonzero when the convenience macros are
-available. C++ code can always use `LorTypeKind` and
+available. This includes C11-or-newer GCC, Clang, and MSVC modes. TCC is
+detected explicitly because it supports `_Generic` while reporting C99 through
+`__STDC_VERSION__`. C++ code can always use `LorTypeKind` and
 `lor_type_kind_name` directly.
+
+Native MSVC and Windows TCC represent `long double` as `double`. On those
+targets, generic type inspection consequently reports `LOR_TYPE_DOUBLE` for
+both types; listing separate associations would violate `_Generic`'s
+compatible-type rules.
 
 Project-specific type names remain straightforward without making liblor own a
 global type registry:
@@ -70,13 +77,16 @@ lor_typeof(point) copy = point;
 #endif
 ```
 
-In C11 mode this uses the GCC/Clang `__typeof__` extension. C23 implementations
-may provide standard `typeof`. Check `LOR_HAS_TYPEOF`; portable APIs must retain
-an explicit-type alternative.
+GCC and Clang use `__typeof__`. MSVC uses `__typeof__` when version 19.39 or
+newer is available. TCC uses its GNU-compatible `typeof`, while C23
+implementations may provide standard `typeof`. Check `LOR_HAS_TYPEOF`; portable
+APIs must retain an explicit-type alternative.
 
 The capability macros and `lor_typeof` declaration helper are declared by
 `lor/features.h`, which can be included without the richer type-name module.
 `LOR_HAS_STATEMENT_EXPRESSIONS` is separate because inferred container helpers
-need both features. `lor_array_push_auto`, the map auto operations, and the set
-auto operations use this shared convention. Their `_as` and lvalue forms remain
+need both features. GCC, Clang, and TCC provide statement expressions; MSVC
+does not. Therefore modern MSVC can use `lor_typeof` and helpers that require
+only type inference, but not the current array, map, set, or numeric automatic
+macros built with statement expressions. Their `_as` and lvalue forms remain
 the portable alternatives.

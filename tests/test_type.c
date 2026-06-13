@@ -41,7 +41,12 @@ static int test_type_kinds_and_names(void) {
     CHECK(lor_type_kind(1ull) == LOR_TYPE_UNSIGNED_LONG_LONG);
     CHECK(lor_type_kind(1.0f) == LOR_TYPE_FLOAT);
     CHECK(lor_type_kind(1.0) == LOR_TYPE_DOUBLE);
+#if (defined(_MSC_VER) && !defined(__clang__)) || \
+    (defined(__TINYC__) && defined(_WIN32))
+    CHECK(lor_type_kind(1.0l) == LOR_TYPE_DOUBLE);
+#else
     CHECK(lor_type_kind(1.0l) == LOR_TYPE_LONG_DOUBLE);
+#endif
     CHECK(lor_type_kind("text") == LOR_TYPE_CSTRING);
     CHECK(lor_type_kind(text) == LOR_TYPE_CSTRING);
     CHECK(lor_type_kind(string) == LOR_TYPE_CSTRING);

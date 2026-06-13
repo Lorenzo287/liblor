@@ -9,10 +9,10 @@ double high = lor_max(2, 3.5);
 size_t index = lor_clamp(position, 0u, count);
 ```
 
-Each argument is evaluated exactly once. On GCC and Clang, the inferred forms
-use `lor_typeof` and statement expressions. Other C11 compilers use `_Generic`
-to select a typed inline function. `LOR_HAS_NUMERIC_AUTO` reports whether these
-forms are available.
+Each argument is evaluated exactly once. On GCC, Clang, and TCC, the inferred
+forms use `lor_typeof` and statement expressions. Other C11 compilers use
+`_Generic` to select a typed inline function. `LOR_HAS_NUMERIC_AUTO` reports
+whether these forms are available.
 
 The common arithmetic type of the arguments becomes the result type, following
 the usual C conversion rules. Use the standard C11 explicit forms when the

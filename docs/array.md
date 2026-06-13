@@ -35,7 +35,8 @@ simplify the API syntax:
 - `lor_array_append_array(array, source)`
 - `lor_array_push(array, value)`
 - `lor_array_push_as(array, type, ...)`
-- `lor_array_push_auto(array, value)` on GCC and Clang
+- `lor_array_push_auto(array, value)` when `typeof` and statement expressions
+  are available, including GCC, Clang, and TCC
 - `lor_array_insert_many(array, index, elements, count)`
 - `lor_array_insert(array, index, value)`
 - `lor_array_insert_as(array, index, type, ...)`

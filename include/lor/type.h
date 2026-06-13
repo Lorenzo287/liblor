@@ -65,8 +65,8 @@ const char *lor_type_kind_name(LorTypeKind kind);
         long long: LOR_TYPE_LONG_LONG,                   \
         unsigned long long: LOR_TYPE_UNSIGNED_LONG_LONG, \
         float: LOR_TYPE_FLOAT,                           \
+        LOR_GENERIC_LONG_DOUBLE_CASE(LOR_TYPE_LONG_DOUBLE) \
         double: LOR_TYPE_DOUBLE,                         \
-        long double: LOR_TYPE_LONG_DOUBLE,               \
         char *: LOR_TYPE_CSTRING,                        \
         const char *: LOR_TYPE_CSTRING,                  \
         volatile char *: LOR_TYPE_CSTRING,               \

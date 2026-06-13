@@ -167,7 +167,7 @@ void lor_map_deinit(void *map_ref);
     lor_map_remove_raw((map), sizeof *(map), sizeof(map)->key, &(type){__VA_ARGS__})
 #endif
 
-/* GCC/Clang convenience operations.
+/* GCC/Clang/TCC convenience operations.
 
    These infer destination types, evaluate each supplied expression once, and
    perform normal assignment conversion into temporary key/value objects. */
