@@ -11,6 +11,7 @@
 #include "lor/set.h"
 #include "lor/status.h"
 #include "lor/string.h"
+#include "lor/trace.h"
 #include "lor/type.h"
 
 #include <cassert>

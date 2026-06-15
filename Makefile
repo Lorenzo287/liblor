@@ -86,10 +86,12 @@ LIB_OBJS := $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(LIB_SRCS))
 TEST_SRCS := $(wildcard tests/test_*.c)
 TEST_HEADERS := $(wildcard tests/*.h)
 SINGLE_HEADER_TEST_SRCS := $(wildcard tests/test_single_header*.c)
-LIB_TEST_SRCS := $(filter-out $(SINGLE_HEADER_TEST_SRCS),$(TEST_SRCS))
+TRACE_AUTO_TEST_SRC := tests/test_trace_auto.c
+LIB_TEST_SRCS := $(filter-out $(SINGLE_HEADER_TEST_SRCS) $(TRACE_AUTO_TEST_SRC),$(TEST_SRCS))
 LIB_TEST_BINS := $(patsubst tests/%.c,$(BUILD_DIR)/%$(EXE),$(LIB_TEST_SRCS))
 SINGLE_HEADER_TEST_BINS := $(patsubst tests/%.c,$(BUILD_DIR)/%$(EXE),$(SINGLE_HEADER_TEST_SRCS))
-TEST_BINS := $(LIB_TEST_BINS) $(SINGLE_HEADER_TEST_BINS)
+TRACE_AUTO_TEST_BIN := $(BUILD_DIR)/test_trace_auto$(EXE)
+TEST_BINS := $(LIB_TEST_BINS) $(SINGLE_HEADER_TEST_BINS) $(TRACE_AUTO_TEST_BIN)
 CPP_TEST_SRCS := $(wildcard tests/test_*.cpp)
 CPP_TEST_BINS := $(patsubst tests/%.cpp,$(BUILD_DIR)/%$(EXE),$(CPP_TEST_SRCS))
 
@@ -186,6 +188,16 @@ $(SINGLE_HEADER_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(SI
 
 $(LIB_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.c $(TEST_HEADERS) $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@
+
+ifeq ($(OS),Windows_NT)
+TRACE_AUTO_LIBS := -ldbghelp
+else
+TRACE_AUTO_LIBS :=
+endif
+
+$(TRACE_AUTO_TEST_BIN): $(TRACE_AUTO_TEST_SRC) src/trace.c $(TEST_HEADERS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) -DLOR_TRACE_AUTO \
+		-finstrument-functions src/trace.c $< $(TRACE_AUTO_LIBS) -o $@
 
 $(CPP_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.cpp $(LIB_OBJS) $(PUBLIC_HEADERS) $(SINGLE_HEADER) | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@

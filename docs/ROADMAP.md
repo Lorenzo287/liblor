@@ -46,6 +46,11 @@ portability, and documentation for the existing module set.
 - [x] Add structured task groups and buffered/unbuffered channels.
 - [x] Keep build tooling and C REPL experiments outside liblor's scope.
 
+## Post-v1 Work
+
+- [x] Add buffered manual tracing, Chrome Trace JSON output, and optional
+      GCC/Clang automatic function instrumentation.
+
 ## Version 1 Scope
 
 ### Foundation

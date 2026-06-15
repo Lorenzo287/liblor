@@ -15,6 +15,7 @@
 #include "lor/set.h"          // IWYU pragma: export
 #include "lor/status.h"       // IWYU pragma: export
 #include "lor/string.h"       // IWYU pragma: export
+#include "lor/trace.h"        // IWYU pragma: export
 #include "lor/type.h"         // IWYU pragma: export
 
 #endif

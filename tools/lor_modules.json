@@ -622,6 +622,63 @@
             }
         },
         {
+            "name": "trace",
+            "enable_macro": "LOR_ENABLE_TRACE",
+            "dependencies": [
+                "status"
+            ],
+            "header": "include/lor/trace.h",
+            "source": "src/trace.c",
+            "symbols": {
+                "functions": [
+                    ["lor_trace_init_file", "trace_init_file"],
+                    ["lor_trace_finish", "trace_finish"],
+                    ["lor_trace_deinit", "trace_deinit"],
+                    ["lor_trace_thread_init", "trace_thread_init"],
+                    ["lor_trace_thread_finish", "trace_thread_finish"],
+                    ["lor_trace_thread_deinit", "trace_thread_deinit"],
+                    ["lor_trace_thread_flush", "trace_thread_flush"],
+                    ["lor_trace_thread_stats", "trace_thread_stats"],
+                    ["lor_trace_begin", "trace_begin"],
+                    ["lor_trace_end", "trace_end"],
+                    ["lor_trace_instant", "trace_instant"],
+                    ["lor_trace_counter", "trace_counter"],
+                    ["lor_trace_scope_begin", "trace_scope_begin"],
+                    ["lor_trace_scope_end", "trace_scope_end"],
+                    ["lor_trace_auto_bind", "trace_auto_bind"],
+                    ["lor_trace_auto_unbind", "trace_auto_unbind"],
+                    ["lor_trace_auto_enable", "trace_auto_enable"],
+                    ["lor_trace_auto_disable", "trace_auto_disable"],
+                    ["lor_trace_auto_is_enabled", "trace_auto_is_enabled"]
+                ],
+                "types": [
+                    ["LorTraceBufferMode", "TraceBufferMode"],
+                    ["LorTraceConfig", "TraceConfig"],
+                    ["LorTrace", "Trace"],
+                    ["LorTraceThread", "TraceThread"],
+                    ["LorTraceThreadStats", "TraceThreadStats"],
+                    ["LorTraceScope", "TraceScope"]
+                ],
+                "macros": [
+                    ["LOR_TRACE_DEFAULT_BUFFER_SIZE", "TRACE_DEFAULT_BUFFER_SIZE"],
+                    ["LOR_TRACE_MIN_BUFFER_SIZE", "TRACE_MIN_BUFFER_SIZE"],
+                    ["LOR_TRACE_BUFFER_FLUSH", "TRACE_BUFFER_FLUSH"],
+                    ["LOR_TRACE_BUFFER_DROP", "TRACE_BUFFER_DROP"],
+                    ["LOR_TRACE_CONFIG_INIT", "TRACE_CONFIG_INIT"],
+                    ["LOR_TRACE_INIT", "TRACE_INIT"],
+                    ["LOR_TRACE_THREAD_INIT", "TRACE_THREAD_INIT"],
+                    ["LOR_TRACE_AUTO_SUPPORTED", "TRACE_AUTO_SUPPORTED"],
+                    ["LOR_TRACE_SCOPE_SUPPORTED", "TRACE_SCOPE_SUPPORTED"],
+                    ["LOR_TRACE_BEGIN", "TRACE_BEGIN"],
+                    ["LOR_TRACE_END", "TRACE_END"],
+                    ["LOR_TRACE_INSTANT", "TRACE_INSTANT"],
+                    ["LOR_TRACE_COUNTER", "TRACE_COUNTER"],
+                    ["LOR_TRACE_SCOPE", "TRACE_SCOPE", "LOR_TRACE_SCOPE_SUPPORTED"],
+                    ["LOR_TRACE_FUNCTION", "TRACE_FUNCTION", "LOR_TRACE_SCOPE_SUPPORTED"]
+                ]
+            }
+        },
+        {
             "name": "random",
             "enable_macro": "LOR_ENABLE_RANDOM",
             "dependencies": [

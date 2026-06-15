@@ -39,3 +39,8 @@ publishing their work and ideas.
 - Xander Gouws for EasyArgs and its compact approach to command-line parsing,
   which alongside Python's `argparse` and Go's `flag` package inspired liblor's
   metadata-driven CLI parsing interface.
+- Phillip Trudeau-Tavara, Colin Davidson, and the
+  [Spall](https://github.com/colrdavidson/spall) contributors for demonstrating
+  a compact buffered tracing design, per-thread event streams, and practical
+  GCC/Clang function-instrumentation hooks. These ideas informed liblor's trace
+  module; liblor uses its own recorder and Chrome Trace JSON output.

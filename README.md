@@ -21,6 +21,7 @@ Current modules include:
 - `lor/random.h`: explicit-state PCG32 generation and system entropy.
 - `lor/cli.h`: function-based command-line parsing with generated help.
 - `lor/concurrency.h`: native threads, task groups, synchronization, and channels.
+- `lor/trace.h`: buffered manual tracing and optional compiler-driven function tracing.
 - `lor/features.h`: compiler capability checks used by optional conveniences.
 - `lor/status.h`: small shared failure statuses.
 
@@ -30,7 +31,7 @@ See [API Conventions](docs/API-CONVENTIONS.md),
 [Sets](docs/set.md), [Numeric Helpers](docs/numeric.md),
 [Generic Printing](docs/print.md), [Type Helpers](docs/type.md),
 [Random Numbers](docs/random.md), [Command-Line Parsing](docs/cli.md)
-and [Concurrency](docs/concurrency.md).
+and [Concurrency](docs/concurrency.md), and [Tracing](docs/trace.md).
 
 Public headers live under `include/lor/` so users can add `include/` to their
 compiler path and write namespaced includes such as `#include "lor/memory.h"`.
