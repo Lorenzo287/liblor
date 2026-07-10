@@ -12,6 +12,7 @@ $RECYCLE.BIN/
 # Editor and IDE local state
 GEMINI.md
 CLAUDE.md
+copy_lib.ps1
 .vs/
 .vscode/
 .idea/

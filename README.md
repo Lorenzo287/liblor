@@ -3,46 +3,35 @@
 liblor is a personal C library for bringing higher-level programming tools to C.
 The goal is a cohesive set of small, readable, portable utilities for everyday C code.
 
-## Layout
+## Modules
 
-liblor is a normal multi-file library first. A generated single-header release
-is present as an alternative.
+- [Memory](docs/memory.md): arenas, scratch scopes, mmap, cleanup helpers, and opt-in leak checking.
+- [Strings](docs/string.md): borrowed string views and owned dynamic strings.
+- [Dynamic Arrays](docs/array.md): typed-pointer dynamic arrays with checked growth.
+- [Hash Maps](docs/map.md): typed hash maps with configurable key ownership.
+- [Sets](docs/set.md): typed hash sets with mathematical operations.
+- [Numeric Helpers](docs/numeric.md): single-evaluation minimum, maximum, and clamp helpers.
+- [Generic Printing](docs/print.md): type-directed scalar, liblor object, and container printing.
+- [Type Helpers](docs/type.md): C11 names for built-in and concrete liblor value types.
+- [Random Numbers](docs/random.md): explicit-state PCG32 generation and system entropy.
+- [Command-Line Parsing](docs/cli.md): function-based command-line parsing with generated help.
+- [Concurrency](docs/concurrency.md): native threads, task groups, synchronization, and channels.
+- [Tracing](docs/trace.md): buffered manual tracing and optional compiler-driven function tracing.
 
-Current modules include:
+Internals:
 
-- `lor/memory.h`: arenas, scratch scopes, mmap, cleanup helpers, and opt-in leak checking.
-- `lor/string.h`: borrowed string views and owned dynamic strings.
-- `lor/array.h`: typed-pointer dynamic arrays with checked growth.
-- `lor/map.h`: typed hash maps with configurable key ownership.
-- `lor/set.h`: typed hash sets with Python-style mathematical operations.
-- `lor/numeric.h`: single-evaluation minimum, maximum, and clamp helpers.
-- `lor/print.h`: type-directed scalar, liblor object, and container printing.
-- `lor/type.h`: C11 names for built-in and concrete liblor value types.
-- `lor/random.h`: explicit-state PCG32 generation and system entropy.
-- `lor/cli.h`: function-based command-line parsing with generated help.
-- `lor/concurrency.h`: native threads, task groups, synchronization, and channels.
-- `lor/trace.h`: buffered manual tracing and optional compiler-driven function tracing.
-- `lor/features.h`: compiler capability checks used by optional conveniences.
+- `lor/features.h`: compiler capability checks used by other modules.
 - `lor/status.h`: small shared failure statuses.
-
-See [API Conventions](docs/API-CONVENTIONS.md),
-[Memory](docs/memory.md), [Strings](docs/string.md),
-[Dynamic Arrays](docs/array.md), [Hash Maps](docs/map.md),
-[Sets](docs/set.md), [Numeric Helpers](docs/numeric.md),
-[Generic Printing](docs/print.md), [Type Helpers](docs/type.md),
-[Random Numbers](docs/random.md), [Command-Line Parsing](docs/cli.md)
-and [Concurrency](docs/concurrency.md), and [Tracing](docs/trace.md).
-
-Public headers live under `include/lor/` so users can add `include/` to their
-compiler path and write namespaced includes such as `#include "lor/memory.h"`.
-This avoids collisions with generic names like `memory.h`, `string.h`, or
-`error.h`.
 
 ## Conventions
 
 - `lor_` for public functions.
 - `LorName` for public types.
 - `LOR_NAME` for public constants and feature macros.
+
+The lor prefix is strippable in the single header version.
+See [API Conventions](docs/API-CONVENTIONS.md) for additional information
+about ownership, lifetime, failure.
 
 ## Compatibility
 
@@ -57,10 +46,12 @@ liblor does not currently provide a native C++ wrapper API. In particular,
 compile the single-header implementation in a C translation unit rather than
 defining `LOR_IMPLEMENTATION` in C++ code.
 
-Platform-specific code should stay isolated behind small `_WIN32` / Unix
-branches.
-
 ## Single Header
+
+liblor is a normal multi-file library first. Public headers live under
+`include/lor/` so users can add `include/` to their compiler path and write
+namespaced includes such as `#include "lor/memory.h"` to avoid collisions.
+A generated single-header release is present as an alternative.
 
 Generate `lor.h` with:
 

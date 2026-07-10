@@ -36,9 +36,6 @@ publishing their work and ideas.
   for documenting a portable approach to Windows memory mapping.
 - [MagicalBait](https://github.com/Magicalbat) for allocator, scratch-memory,
   and random-number experiments.
-- Xander Gouws for EasyArgs and its compact approach to command-line parsing,
-  which alongside Python's `argparse` and Go's `flag` package inspired liblor's
-  metadata-driven CLI parsing interface.
 - Phillip Trudeau-Tavara, Colin Davidson, and the
   [Spall](https://github.com/colrdavidson/spall) contributors for demonstrating
   a compact buffered tracing design, per-thread event streams, and practical
