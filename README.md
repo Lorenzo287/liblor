@@ -23,74 +23,6 @@ Internals:
 - `lor/features.h`: compiler capability checks used by other modules.
 - `lor/status.h`: small shared failure statuses.
 
-## Conventions
-
-- `lor_` for public functions.
-- `LorName` for public types.
-- `LOR_NAME` for public constants and feature macros.
-
-The lor prefix is strippable in the single header version.
-See [API Conventions](docs/API-CONVENTIONS.md) for additional information
-about ownership, lifetime, failure.
-
-## Compatibility
-
-liblor targets standard C on Windows and Unix-like systems. Public headers keep
-C++ declaration and C ABI compatibility with `extern "C"` guards. Compile
-liblor itself as C, then include its headers and link the resulting library
-from C++. The ordinary function API and typed lvalue macros are available;
-C-only conveniences based on compound literals, `_Generic`, `typeof`, or
-statement expressions are not exposed to C++.
-
-### Language And Compiler Features
-
-liblor detects capabilities rather than relying only on compiler names. This
-is the practical summary for C translation units. The complete library is
-built and tested as C11; the C99 row describes consumer code using the public
-headers with a separately built library, not a complete C99 implementation
-build.
-
-| C mode or compiler | Additional conveniences |
-| --- | --- |
-| C99 | Compound-literal `_as` forms for arrays, maps, and sets. |
-| C11 or C17 | C99 conveniences plus `_Generic` type inspection, numeric helpers, and generic printing. |
-| C23 | C11 conveniences plus standard `typeof`, `lor_typeof`, and inferred map printing. Automatic array, map, and set expressions still require statement expressions. |
-| GCC or Clang | `__typeof__` and statement expressions enable the automatic array, map, set, and numeric forms. A C11-or-newer mode also enables the generic conveniences above. |
-| TCC | Provides compound literals, `_Generic`, `typeof`, and statement expressions, so the automatic container and numeric forms are available. Generic printing is disabled because TCC cannot expand its deeply nested expression. |
-| Native MSVC | A mode reporting C11 enables generic conveniences; version 19.39 or newer also provides `__typeof__`. MSVC has no statement expressions, so the automatic array, map, and set forms are unavailable. |
-
-The capabilities map to library features and portable alternatives as follows:
-
-| Required capability | Enabled library feature | Alternative when unavailable |
-| --- | --- | --- |
-| C99 compound literals (`LOR_HAS_COMPOUND_LITERALS`) | Array `push_as`/`insert_as` and map/set `_as` operations. | Pass a named lvalue to the ordinary typed macro, or call the corresponding `_raw` function. |
-| C11 `_Generic` (`LOR_HAS_GENERIC_SELECTION`) | `lor_type_kind`/`lor_type_name`, `lor_min_as`/`lor_max_as`/`lor_clamp_as`, the C11 numeric dispatch path, and generic printing except on TCC. | Use an explicit `LorTypeKind`, the tagged-value printing API, or normal C expressions. The numeric macro layer is unavailable if neither generic selection nor the compiler-extension path is present. |
-| `typeof` (`LOR_HAS_TYPEOF`) | `lor_typeof`; when generic printing is also available, inferred `lor_print_map`/`lor_print_map_custom`. | Write the type explicitly and, with generic printing, use `lor_print_map_as` or `lor_print_map_as_custom`. |
-| `typeof` plus statement expressions (`LOR_HAS_STATEMENT_EXPRESSIONS`) | `lor_array_push_auto`, map and set `_auto` operations, and the compiler-extension numeric path. | Use the C99 `_as` forms, named-lvalue forms, or raw functions. C11 numeric helpers remain available through `_Generic`. |
-
-The final API-specific checks are `LOR_HAS_ARRAY_PUSH_AUTO`,
-`LOR_HAS_MAP_AUTO`, `LOR_HAS_SET_AUTO`, `LOR_HAS_NUMERIC_AUTO`,
-`LOR_HAS_NUMERIC_AS`, `LOR_HAS_GENERIC_PRINT`, and
-`LOR_HAS_PRINT_MAP_AUTO`. Prefer these when conditionally using a convenience
-API; the lower-level capability macros are declared in `lor/features.h`.
-
-GCC and Clang also support liblor's `LOR_AUTO_*` scope cleanup and
-`LOR_TRACE_SCOPE` helpers through `__attribute__((cleanup))`; explicit release
-functions and trace begin/end calls are the portable alternatives. Their
-`-finstrument-functions` support can additionally enable automatic function
-tracing. These compiler-only conveniences do not affect availability of the
-underlying memory, container, or tracing modules. Check
-`LOR_CLEANUP_SUPPORTED`, `LOR_TRACE_SCOPE_SUPPORTED`, and
-`LOR_TRACE_AUTO_SUPPORTED` before depending on them.
-
-Native MSVC and Windows TCC represent `long double` as `double`, so generic
-type inspection, numeric dispatch, and printing treat them as the same type on
-those targets.
-
-liblor does not currently provide a native C++ wrapper API. In particular,
-compile the single-header implementation in a C translation unit rather than
-defining `LOR_IMPLEMENTATION` in C++ code.
-
 ## Single Header
 
 liblor is a normal multi-file library first. Public headers live under
@@ -131,6 +63,54 @@ make release
 Build output is written under `.build/`. See [Building](docs/BUILD.md) for
 tests, examples, compiler profiles, release artifacts, LTO, and single-header
 generation.
+
+## Conventions
+
+- `lor_` for public functions.
+- `LorName` for public types.
+- `LOR_NAME` for public constants and feature macros.
+
+The lor prefix is strippable in the single header version.
+See [API Conventions](docs/API-CONVENTIONS.md) for additional information
+about ownership, lifetime, failure.
+
+## Compatibility
+
+liblor targets C11 on Windows and Unix-like systems. Most of the API is
+compiler-independent; the table below covers optional conveniences that need
+a newer C version or a compiler extension. Requirements in the table assume a
+C translation unit. The C99 entry applies to consumer code linking a separately
+built C11 library, not to a complete C99 implementation build.
+
+### Feature Availability
+
+| If you want to use | You need | If it is unavailable |
+| --- | --- | --- |
+| Inline container values, such as `lor_array_push_as`, `lor_map_put_as`, or `lor_set_add_as` | C99 or newer. | Put the value in a named variable and use `lor_array_push`, `lor_map_set`, or `lor_set_add`; the `_raw` functions are also available. |
+| Inferred container expressions, such as `lor_array_push_auto` and map/set `_auto` operations | GCC, Clang, or TCC compiling C. | Use the `_as` forms or pass a named variable to the ordinary operation. |
+| `lor_min`, `lor_max`, and `lor_clamp` | Any C11-or-newer compiler, or GCC, Clang, or TCC compiler extensions. The explicit-type `_as` variants require C11 or TCC. | Use an ordinary C comparison or a small application helper. |
+| Automatic type names with `lor_type_kind` and `lor_type_name` | C11 or newer, or TCC. | Choose a `LorTypeKind` explicitly and pass it to `lor_type_kind_name`. |
+| Type inference with `lor_typeof` | GCC, Clang, TCC, native MSVC 19.39 or newer, or a C23 compiler. | Write the type explicitly. |
+| Generic `lor_print` calls | C11 or newer, except TCC. | Build `LorPrintValue` values explicitly and call `lor_fprint_values`. |
+| Inferred map printing with `lor_print_map` | C11-or-newer GCC or Clang, native MSVC 19.39 or newer in C11 mode, or a C23 compiler. | Use `lor_print_map_as` to name the entry type. Without generic printing, use `lor_fprint_values`. |
+| Automatic scope cleanup with `LOR_AUTO_FREE`, `LOR_AUTO_STRING`, `LOR_AUTO_ARRAY`, and the other `LOR_AUTO_*` declarations | GCC or Clang. | Call the matching release function explicitly, such as `free`, `lor_string_deinit`, or `lor_array_deinit`. |
+| Automatic trace scopes or whole-function tracing | GCC or Clang. Whole-function tracing also requires `LOR_TRACE_AUTO` and `-finstrument-functions`. | Use `lor_trace_begin`/`lor_trace_end` and the other manual tracing calls. |
+
+The underlying memory, string, container, printing, and tracing APIs remain
+available when an optional convenience is not. Each optional API exposes a
+feature check, such as `LOR_HAS_ARRAY_PUSH_AUTO`, `LOR_HAS_GENERIC_PRINT`, or
+`LOR_CLEANUP_SUPPORTED`; module documentation gives the relevant check and
+`lor/features.h` contains the shared compiler detection.
+
+### C++
+
+Public headers provide `extern "C"` guards so C++ programs can link to a
+library compiled as C. The ordinary function API and typed lvalue macros are
+available, but conveniences based on C compound literals, generic selection,
+or type inference are not exposed to C++. Compiler-specific cleanup and trace
+helpers retain their own feature checks. There is no native C++ wrapper API.
+Compile the single-header implementation in a C translation unit rather than
+defining `LOR_IMPLEMENTATION` in C++ code.
 
 ## License
 
