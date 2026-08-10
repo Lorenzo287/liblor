@@ -77,30 +77,37 @@ about ownership, lifetime, failure.
 ## Compatibility
 
 liblor targets C11 on Windows and Unix-like systems. Most of the API is
-compiler-independent; the table below covers optional conveniences that need
-a newer C version or a compiler extension. Requirements in the table assume a
-C translation unit. The C99 entry applies to consumer code linking a separately
-built C11 library, not to a complete C99 implementation build.
+compiler-independent. GCC or Clang in C11-or-newer mode supports the complete
+convenience API; automatic whole-function tracing is supported but remains
+opt-in. For other C configurations, only the exceptions below need attention.
 
-### Feature Availability
+### Missing Convenience Features
 
-| If you want to use | You need | If it is unavailable |
-| --- | --- | --- |
-| Inline container values, such as `lor_array_push_as`, `lor_map_put_as`, or `lor_set_add_as` | C99 or newer. | Put the value in a named variable and use `lor_array_push`, `lor_map_set`, or `lor_set_add`; the `_raw` functions are also available. |
-| Inferred container expressions, such as `lor_array_push_auto` and map/set `_auto` operations | GCC, Clang, or TCC compiling C. | Use the `_as` forms or pass a named variable to the ordinary operation. |
-| `lor_min`, `lor_max`, and `lor_clamp` | Any C11-or-newer compiler, or GCC, Clang, or TCC compiler extensions. The explicit-type `_as` variants require C11 or TCC. | Use an ordinary C comparison or a small application helper. |
-| Automatic type names with `lor_type_kind` and `lor_type_name` | C11 or newer, or TCC. | Choose a `LorTypeKind` explicitly and pass it to `lor_type_kind_name`. |
-| Type inference with `lor_typeof` | GCC, Clang, TCC, native MSVC 19.39 or newer, or a C23 compiler. | Write the type explicitly. |
-| Generic `lor_print` calls | C11 or newer, except TCC. | Build `LorPrintValue` values explicitly and call `lor_fprint_values`. |
-| Inferred map printing with `lor_print_map` | C11-or-newer GCC or Clang, native MSVC 19.39 or newer in C11 mode, or a C23 compiler. | Use `lor_print_map_as` to name the entry type. Without generic printing, use `lor_fprint_values`. |
-| Automatic scope cleanup with `LOR_AUTO_FREE`, `LOR_AUTO_STRING`, `LOR_AUTO_ARRAY`, and the other `LOR_AUTO_*` declarations | GCC or Clang. | Call the matching release function explicitly, such as `free`, `lor_string_deinit`, or `lor_array_deinit`. |
-| Automatic trace scopes or whole-function tracing | GCC or Clang. Whole-function tracing also requires `LOR_TRACE_AUTO` and `-finstrument-functions`. | Use `lor_trace_begin`/`lor_trace_end` and the other manual tracing calls. |
+| Configuration | What is not available |
+| --- | --- |
+| Native MSVC 19.39 or newer in C11 mode | Array, map, and set `_auto` operations; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
+| Earlier native MSVC in C11 mode | Everything missing above, plus `lor_typeof` and inferred `lor_print_map`. |
+| TCC | Generic `lor_print` and its container wrappers; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
+| Other C11 or C17 compilers without extensions | `lor_typeof`; array, map, and set `_auto` operations; inferred `lor_print_map`; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
+| C23 compilers without extensions | Array, map, and set `_auto` operations; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 
-The underlying memory, string, container, printing, and tracing APIs remain
-available when an optional convenience is not. Each optional API exposes a
-feature check, such as `LOR_HAS_ARRAY_PUSH_AUTO`, `LOR_HAS_GENERIC_PRINT`, or
-`LOR_CLEANUP_SUPPORTED`; module documentation gives the relevant check and
-`lor/features.h` contains the shared compiler detection.
+The portable replacements are straightforward:
+
+- replace container `_auto` operations with `_as` forms or named variables;
+- name types explicitly and use `lor_print_map_as` instead of inferred forms;
+- replace generic printing with the explicit `LorPrintValue` and
+  `lor_fprint_values` API;
+- call the matching release function instead of relying on `LOR_AUTO_*`;
+- use manual trace begin/end calls when automatic tracing is unavailable.
+
+C99 is supported only for consumer code linked to a separately built C11
+library. It retains the ordinary APIs and container `_as` forms, but not the
+C11 generic type and printing conveniences on a strictly conforming compiler.
+Compiler extensions may make additional conveniences available.
+
+The module documentation names the relevant `LOR_HAS_*` check for code that
+needs conditional compilation. `lor/features.h` contains the shared compiler
+detection.
 
 ### C++
 
