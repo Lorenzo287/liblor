@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "lor/features.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -280,12 +282,12 @@ LorMmap lor_mmap_file_debug(const char *path, LorMmapMode mode, const char *file
 
 /* Scope cleanup has to be a macro because C attributes are declaration syntax.
    Unsupported compilers leave LOR_AUTO_* empty, so code remains portable. */
-#if defined(__GNUC__) || defined(__clang__)
-#define LOR_CLEANUP_SUPPORTED 1
+#if LOR_HAS_CLEANUP_ATTRIBUTE
+#define LOR_CLEANUP_SUPPORTED LOR_HAS_CLEANUP_ATTRIBUTE
 #define LOR_CLEANUP(fn) __attribute__((cleanup(fn)))
 #define LOR_MAYBE_UNUSED __attribute__((unused))
 #else
-#define LOR_CLEANUP_SUPPORTED 0
+#define LOR_CLEANUP_SUPPORTED LOR_HAS_CLEANUP_ATTRIBUTE
 #define LOR_CLEANUP(fn)
 #define LOR_MAYBE_UNUSED
 #endif

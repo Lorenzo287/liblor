@@ -5,6 +5,11 @@ tests, and examples. Generated output is stored under `.build/`. Development
 tests require Clang/Clang++ and GCC/G++ so the supported C++ declaration and C
 ABI boundary is checked with both compiler families.
 
+Native MSVC source builds use `/std:c11`. The concurrency and trace modules
+also require `/experimental:c11atomics`; `/std:c11` alone does not enable the
+C11 atomic implementation. The repository Makefile does not currently provide
+an MSVC build profile.
+
 ## Development
 
 - `make` or `make all`: compile the multi-file library objects and regenerate

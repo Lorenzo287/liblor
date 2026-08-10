@@ -152,11 +152,11 @@ int lor_cli_fprint_help(const LorCli *cli, FILE *out);
 // stdout form of `lor_cli_fprint_help`.
 int lor_cli_print_help(const LorCli *cli);
 
-/* Scope-exit cleanup for parsers on GCC and Clang.
+/* Scope-exit cleanup for parsers on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_CLI` empty, so explicit
    `lor_cli_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_cli_cleanup_(LorCli *cli) {
     lor_cli_deinit(cli);
 }

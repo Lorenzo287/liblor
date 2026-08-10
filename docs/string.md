@@ -154,8 +154,8 @@ The owned-string lifecycle is:
 - `lor_string_clear`: remove contents while retaining capacity.
 - `lor_string_deinit`: release capacity and return to the initializer state.
 
-On GCC and Clang, `LOR_AUTO_STRING` calls `lor_string_deinit` automatically at
-scope exit:
+When `LOR_HAS_CLEANUP_ATTRIBUTE` is nonzero, `LOR_AUTO_STRING` calls
+`lor_string_deinit` automatically at scope exit:
 
 ```c
 LOR_AUTO_STRING LorString text = LOR_STRING_INIT;

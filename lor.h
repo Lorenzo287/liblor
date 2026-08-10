@@ -40,11 +40,16 @@
 #define LOR_ENABLE_STATUS
 #endif
 
+#ifdef LOR_ENABLE_MEMORY
+#define LOR_ENABLE_FEATURES
+#endif
+
 #ifdef LOR_ENABLE_RANDOM
 #define LOR_ENABLE_STATUS
 #endif
 
 #ifdef LOR_ENABLE_STRING
+#define LOR_ENABLE_FEATURES
 #define LOR_ENABLE_STATUS
 #endif
 
@@ -66,9 +71,9 @@
 #endif
 
 #ifdef LOR_ENABLE_MAP
+#define LOR_ENABLE_FEATURES
 #define LOR_ENABLE_STATUS
 #define LOR_ENABLE_STRING
-#define LOR_ENABLE_FEATURES
 #endif
 
 #ifdef LOR_ENABLE_SET
@@ -98,6 +103,7 @@
 #endif
 
 #ifdef LOR_ENABLE_TRACE
+#define LOR_ENABLE_FEATURES
 #define LOR_ENABLE_STATUS
 #endif
 
@@ -327,13 +333,33 @@ LorStatus lor_channel_receive_until_raw(LorChannel *channel, void *value,
 #define LOR_HAS_GENERIC_SELECTION 0
 #endif
 
-/* Native MSVC and Windows TCC represent `long double` as `double`, so listing
-   both in one generic association is a constraint violation. */
-#if (defined(_MSC_VER) && !defined(__clang__)) || \
-    (defined(__TINYC__) && defined(_WIN32))
+/* Windows TCC before 0.9.28 treats `long double` as compatible with `double`,
+   so listing both in one generic association is a constraint violation. */
+#if defined(__TINYC__) && __TINYC__ < 928 && defined(_WIN32)
 #define LOR_GENERIC_LONG_DOUBLE_CASE(result)
 #else
 #define LOR_GENERIC_LONG_DOUBLE_CASE(result) long double: result,
+#endif
+
+/* GCC, Clang, and current TCC implement the GNU scope cleanup attribute.
+   TCC 0.9.27 accepts the syntax but does not run the cleanup function. */
+#if defined(__GNUC__) || defined(__clang__) || \
+    (defined(__TINYC__) && __TINYC__ >= 928)
+#define LOR_HAS_CLEANUP_ATTRIBUTE 1
+#else
+#define LOR_HAS_CLEANUP_ATTRIBUTE 0
+#endif
+
+/* Native MSVC advertises C11 but its C runtime does not declare max_align_t.
+   Internal allocation headers use a scalar-type fallback in that case. */
+#if defined(_MSC_VER) && !defined(__clang__)
+#define LOR_HAS_MAX_ALIGN_T 0
+#elif defined(__cplusplus) && __cplusplus >= 201103L
+#define LOR_HAS_MAX_ALIGN_T 1
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define LOR_HAS_MAX_ALIGN_T 1
+#else
+#define LOR_HAS_MAX_ALIGN_T 0
 #endif
 
 // C99 compound literals are not part of C++.
@@ -379,6 +405,7 @@ LorStatus lor_channel_receive_until_raw(LorChannel *channel, void *value,
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -652,12 +679,12 @@ LorMmap lor_mmap_file_debug(const char *path, LorMmapMode mode, const char *file
 
 /* Scope cleanup has to be a macro because C attributes are declaration syntax.
    Unsupported compilers leave LOR_AUTO_* empty, so code remains portable. */
-#if defined(__GNUC__) || defined(__clang__)
-#define LOR_CLEANUP_SUPPORTED 1
+#if LOR_HAS_CLEANUP_ATTRIBUTE
+#define LOR_CLEANUP_SUPPORTED LOR_HAS_CLEANUP_ATTRIBUTE
 #define LOR_CLEANUP(fn) __attribute__((cleanup(fn)))
 #define LOR_MAYBE_UNUSED __attribute__((unused))
 #else
-#define LOR_CLEANUP_SUPPORTED 0
+#define LOR_CLEANUP_SUPPORTED LOR_HAS_CLEANUP_ATTRIBUTE
 #define LOR_CLEANUP(fn)
 #define LOR_MAYBE_UNUSED
 #endif
@@ -896,11 +923,11 @@ typedef char *LorString;
 // Releases owned storage and resets `string` to `LOR_STRING_INIT`.
 void lor_string_deinit(LorString *string);
 
-/* Scope-exit cleanup for `LorString` on GCC and Clang.
+/* Scope-exit cleanup for `LorString` on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_STRING` empty, so explicit
    `lor_string_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_string_cleanup_(LorString *string) {
     lor_string_deinit(string);
 }
@@ -1292,11 +1319,11 @@ void lor_array_deinit(void *array_ref);
 #define lor_array_shrink_to_fit(array) \
     lor_array_shrink_to_fit_raw(&(array), sizeof *(array))
 
-/* Scope-exit cleanup for dynamic arrays on GCC and Clang.
+/* Scope-exit cleanup for dynamic arrays on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_ARRAY` empty, so explicit
    `lor_array_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_array_cleanup_(void *array_ref) {
     lor_array_deinit(array_ref);
 }
@@ -1504,11 +1531,11 @@ void lor_map_deinit(void *map_ref);
 #define LOR_HAS_MAP_AUTO 0
 #endif
 
-/* Scope-exit cleanup for maps on GCC and Clang.
+/* Scope-exit cleanup for maps on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_MAP` empty, so explicit
    `lor_map_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_map_cleanup_(void *map_ref) {
     lor_map_deinit(map_ref);
 }
@@ -1669,11 +1696,11 @@ int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
 #define LOR_HAS_SET_AUTO 0
 #endif
 
-/* Scope-exit cleanup for sets on GCC and Clang.
+/* Scope-exit cleanup for sets on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_SET` empty, so explicit
    `lor_set_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_set_cleanup_(void *set_ref) {
     lor_set_deinit(set_ref);
 }
@@ -1966,10 +1993,10 @@ LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
    order within the generated initializer. Up to 16 arguments are supported.
    Unsupported values fail to compile; wrap object pointers with
    `lor_print_pointer` and user-defined types with `lor_print_custom`. */
-/* TCC supports `_Generic`, but its expression-depth limit is too low for this
-   nested variadic convenience layer. The explicit tagged-value API remains
-   available. */
-#if LOR_HAS_GENERIC_SELECTION && !defined(__TINYC__)
+/* TCC 0.9.27 has too little expression depth for this nested variadic layer.
+   Current TCC increases that limit and supports the complete macro. */
+#if LOR_HAS_GENERIC_SELECTION && \
+    (!defined(__TINYC__) || __TINYC__ >= 928)
 #define LOR_HAS_GENERIC_PRINT 1
 #define lor_print_value(value)                        \
     _Generic((value),                                 \
@@ -2247,11 +2274,11 @@ int lor_cli_fprint_help(const LorCli *cli, FILE *out);
 // stdout form of `lor_cli_fprint_help`.
 int lor_cli_print_help(const LorCli *cli);
 
-/* Scope-exit cleanup for parsers on GCC and Clang.
+/* Scope-exit cleanup for parsers on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_CLI` empty, so explicit
    `lor_cli_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_cli_cleanup_(LorCli *cli) {
     lor_cli_deinit(cli);
 }
@@ -2423,7 +2450,7 @@ void __cyg_profile_func_exit(void *function, void *caller);
 #define LOR_TRACE_COUNTER(thread, name, value) \
     lor_trace_counter((thread), (name), (value))
 
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 #define LOR_TRACE_SCOPE_SUPPORTED 1
 #define LOR_TRACE__JOIN_INNER(a, b) a##b
 #define LOR_TRACE__JOIN(a, b) LOR_TRACE__JOIN_INNER(a, b)
@@ -3254,7 +3281,7 @@ LorStatus lor_channel_receive_raw(LorChannel *channel, void *value,
 #include <unistd.h>
 #endif
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if LOR_HAS_MAX_ALIGN_T
 #include <stdalign.h>
 #define LOR_ARENA_MAX_ALIGNMENT alignof(max_align_t)
 #else
@@ -4112,7 +4139,24 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
                         create, FILE_ATTRIBUTE_NORMAL, NULL);
 
         if (file_handle == INVALID_HANDLE_VALUE) return map;
+#if defined(__TINYC__)
+        /* TCC's Windows import library omits GetFileSizeEx. GetFileSize returns
+           the same 64-bit value through its low result and high out-parameter. */
+        DWORD file_size_high = 0;
+        DWORD file_size_low = GetFileSize(file_handle, &file_size_high);
+        if (file_size_low == INVALID_FILE_SIZE && GetLastError() != NO_ERROR) {
+            CloseHandle(file_handle);
+            return map;
+        }
+        file_size.QuadPart = (LONGLONG)(((ULONGLONG)file_size_high << 32) |
+                                        (ULONGLONG)file_size_low);
+#else
         if (!GetFileSizeEx(file_handle, &file_size) || file_size.QuadPart <= 0) {
+            CloseHandle(file_handle);
+            return map;
+        }
+#endif
+        if (file_size.QuadPart <= 0) {
             CloseHandle(file_handle);
             return map;
         }
@@ -4776,7 +4820,7 @@ const char *lor_type_kind_name(LorTypeKind kind) {
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if LOR_HAS_MAX_ALIGN_T
 typedef max_align_t LorArrayAlignment;
 #else
 typedef union LorArrayAlignment {
@@ -5174,7 +5218,7 @@ void lor_array_deinit(void *array_ref) {
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if LOR_HAS_MAX_ALIGN_T
 typedef max_align_t LorMapAlignment;
 #else
 typedef union LorMapAlignment {
@@ -7436,6 +7480,16 @@ int lor_cli_print_help(const LorCli *cli) {
 #define LOR_TRACE__THREAD_LOCAL
 #endif
 
+#if LOR_HAS_MAX_ALIGN_T
+typedef max_align_t LorTraceAlignment;
+#else
+typedef union LorTraceAlignment {
+    void *pointer;
+    long double long_double;
+    long long long_long;
+} LorTraceAlignment;
+#endif
+
 typedef enum LorTraceRecordType {
     LOR_TRACE__RECORD_BEGIN = 1,
     LOR_TRACE__RECORD_END = 2,
@@ -7692,7 +7746,7 @@ static LOR_TRACE__NOINSTRUMENT size_t lor_trace__auto_name(LorTraceImpl *trace,
 #if defined(_WIN32) && defined(LOR_TRACE_AUTO)
     if (trace->symbols_ready) {
         union {
-            max_align_t alignment;
+            LorTraceAlignment alignment;
             unsigned char bytes[sizeof(SYMBOL_INFO) + MAX_SYM_NAME];
         } storage;
         memset(&storage, 0, sizeof(storage));
@@ -8300,6 +8354,8 @@ LOR_TRACE__NOINSTRUMENT void __cyg_profile_func_exit(void *function, void *calle
 #define HAS_COMPOUND_LITERALS LOR_HAS_COMPOUND_LITERALS
 #define HAS_TYPEOF LOR_HAS_TYPEOF
 #define HAS_STATEMENT_EXPRESSIONS LOR_HAS_STATEMENT_EXPRESSIONS
+#define HAS_CLEANUP_ATTRIBUTE LOR_HAS_CLEANUP_ATTRIBUTE
+#define HAS_MAX_ALIGN_T LOR_HAS_MAX_ALIGN_T
 #if LOR_HAS_TYPEOF
 #define type_of lor_typeof
 #endif

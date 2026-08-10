@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "lor/features.h"
 #include "lor/status.h"
 
 #ifdef __cplusplus
@@ -125,11 +126,11 @@ typedef char *LorString;
 // Releases owned storage and resets `string` to `LOR_STRING_INIT`.
 void lor_string_deinit(LorString *string);
 
-/* Scope-exit cleanup for `LorString` on GCC and Clang.
+/* Scope-exit cleanup for `LorString` on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_STRING` empty, so explicit
    `lor_string_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_string_cleanup_(LorString *string) {
     lor_string_deinit(string);
 }

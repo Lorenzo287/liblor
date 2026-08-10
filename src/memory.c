@@ -22,7 +22,7 @@
 #include <unistd.h>
 #endif
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if LOR_HAS_MAX_ALIGN_T
 #include <stdalign.h>
 #define LOR_ARENA_MAX_ALIGNMENT alignof(max_align_t)
 #else
@@ -880,7 +880,24 @@ static LorMmap lor_mmap__file_at(const char *path, LorMmapMode mode,
                         create, FILE_ATTRIBUTE_NORMAL, NULL);
 
         if (file_handle == INVALID_HANDLE_VALUE) return map;
+#if defined(__TINYC__)
+        /* TCC's Windows import library omits GetFileSizeEx. GetFileSize returns
+           the same 64-bit value through its low result and high out-parameter. */
+        DWORD file_size_high = 0;
+        DWORD file_size_low = GetFileSize(file_handle, &file_size_high);
+        if (file_size_low == INVALID_FILE_SIZE && GetLastError() != NO_ERROR) {
+            CloseHandle(file_handle);
+            return map;
+        }
+        file_size.QuadPart = (LONGLONG)(((ULONGLONG)file_size_high << 32) |
+                                        (ULONGLONG)file_size_low);
+#else
         if (!GetFileSizeEx(file_handle, &file_size) || file_size.QuadPart <= 0) {
+            CloseHandle(file_handle);
+            return map;
+        }
+#endif
+        if (file_size.QuadPart <= 0) {
             CloseHandle(file_handle);
             return map;
         }

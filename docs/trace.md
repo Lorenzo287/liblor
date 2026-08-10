@@ -62,7 +62,8 @@ stream. Different thread buffers may be flushed concurrently.
 
 ## Scope Cleanup
 
-GCC and Clang support a cleanup-based scope form:
+Compilers for which `LOR_HAS_CLEANUP_ATTRIBUTE` is nonzero support a
+cleanup-based scope form:
 
 ```c
 #if LOR_TRACE_SCOPE_SUPPORTED
@@ -108,10 +109,11 @@ resolve addresses when buffers are written. Link `dbghelp` as shown above.
 Unresolved addresses and all current non-Windows automatic events use
 hexadecimal names.
 
-Native MSVC does not provide the `__cyg_profile_func_enter` and
-`__cyg_profile_func_exit` hooks. Clang and GCC are supported when
-`LOR_TRACE_AUTO_SUPPORTED` is nonzero. Automatic instrumentation can produce
-large traces and changes program timing, so manual zones remain preferable for
-long-running or high-frequency code.
+liblor currently implements the `__cyg_profile_func_enter` and
+`__cyg_profile_func_exit` backend used by Clang and GCC. Native MSVC has
+different `/Gh` and `/GH` hooks, for which liblor does not yet provide a
+backend. Check `LOR_TRACE_AUTO_SUPPORTED`; automatic instrumentation can
+produce large traces and changes program timing, so manual zones remain
+preferable for long-running or high-frequency code.
 
 See `examples/trace.c`.

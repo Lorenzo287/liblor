@@ -51,10 +51,11 @@ detected explicitly because it supports `_Generic` while reporting C99 through
 `__STDC_VERSION__`. C++ code can always use `LorTypeKind` and
 `lor_type_kind_name` directly.
 
-Native MSVC and Windows TCC represent `long double` as `double`. On those
-targets, generic type inspection consequently reports `LOR_TYPE_DOUBLE` for
-both types; listing separate associations would violate `_Generic`'s
-compatible-type rules.
+Windows TCC before 0.9.28 treats `long double` as compatible with `double`, so
+generic type inspection reports `LOR_TYPE_DOUBLE` for both. Native MSVC and
+current TCC keep `long double` as a distinct language type even where it uses
+the same representation as `double`; liblor therefore reports
+`LOR_TYPE_LONG_DOUBLE` for it.
 
 Project-specific type names remain straightforward without making liblor own a
 global type registry:

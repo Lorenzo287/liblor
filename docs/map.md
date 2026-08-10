@@ -144,7 +144,8 @@ error state.
 `lor_map_deinit` also releases the dense storage and bucket index and resets the
 handle to `NULL`.
 
-On GCC and Clang, `LOR_AUTO_MAP` performs scope-exit cleanup:
+When `LOR_HAS_CLEANUP_ATTRIBUTE` is nonzero, `LOR_AUTO_MAP` performs
+scope-exit cleanup:
 
 ```c
 LOR_AUTO_MAP WordCount *counts = LOR_MAP_INIT;

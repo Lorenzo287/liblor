@@ -205,8 +205,11 @@ $(CPP_TEST_BINS): $(BUILD_DIR)/%$(EXE): tests/%.cpp $(LIB_OBJS) $(PUBLIC_HEADERS
 $(EXAMPLE_BINS): $(BUILD_DIR)/example_%$(EXE): examples/%.c $(LIB_OBJS) $(PUBLIC_HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(THREAD_FLAGS) $(LIB_OBJS) $< -o $@
 
+$(BUILD_DIR)/example_sh_trace$(EXE): EXAMPLE_SH_FLAGS := -finstrument-functions
+$(BUILD_DIR)/example_sh_trace$(EXE): EXAMPLE_SH_LIBS := $(TRACE_AUTO_LIBS)
+
 $(EXAMPLE_SH_BINS): $(BUILD_DIR)/example_sh_%$(EXE): examples_sh/%.c $(SINGLE_HEADER) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(THREAD_FLAGS) $< -o $@
+	$(CC) $(CFLAGS) $(THREAD_FLAGS) $(EXAMPLE_SH_FLAGS) $< $(EXAMPLE_SH_LIBS) -o $@
 
 $(SINGLE_HEADER): $(SINGLE_HEADER_INPUTS)
 	$(PYTHON) tools/gen_single_header.py --output $(SINGLE_HEADER)

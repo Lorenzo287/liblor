@@ -146,7 +146,8 @@ Pointers to elements become invalid after reserve, resize, append, or push when
 those operations grow the allocation. Appending elements from the same array is
 supported, including when growth reallocates it.
 
-On GCC and Clang, `LOR_AUTO_ARRAY` calls `lor_array_deinit` at scope exit:
+When `LOR_HAS_CLEANUP_ATTRIBUTE` is nonzero, `LOR_AUTO_ARRAY` calls
+`lor_array_deinit` at scope exit:
 
 ```c
 LOR_AUTO_ARRAY int *numbers = LOR_ARRAY_INIT;

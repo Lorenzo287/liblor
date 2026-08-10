@@ -128,5 +128,6 @@ lor_set_add_auto(numbers, 30);
 #endif
 ```
 
-On GCC and Clang, `LOR_AUTO_SET` releases the set at scope exit. All set
-storage and owned string-view keys participate in `LOR_LEAKCHECK`.
+When `LOR_HAS_CLEANUP_ATTRIBUTE` is nonzero, `LOR_AUTO_SET` releases the set at
+scope exit. All set storage and owned string-view keys participate in
+`LOR_LEAKCHECK`.

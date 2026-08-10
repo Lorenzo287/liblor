@@ -227,7 +227,7 @@ static int test_owned_string_leakcheck(void) {
 }
 
 static int test_owned_string_auto_cleanup(void) {
-#if defined(LOR_LEAKCHECK) && (defined(__GNUC__) || defined(__clang__))
+#if defined(LOR_LEAKCHECK) && LOR_HAS_CLEANUP_ATTRIBUTE
     size_t before = lor_leakcheck_count();
     {
         LOR_AUTO_STRING LorString string = LOR_STRING_INIT;

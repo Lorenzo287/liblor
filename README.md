@@ -87,7 +87,8 @@ opt-in. For other C configurations, only the exceptions below need attention.
 | --- | --- |
 | Native MSVC 19.39 or newer in C11 mode | Array, map, and set `_auto` operations; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 | Earlier native MSVC in C11 mode | Everything missing above, plus `lor_typeof` and inferred `lor_print_map`. |
-| TCC | Generic `lor_print` and its container wrappers; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
+| TCC 0.9.28 development (`__TINYC__ >= 928`) | Automatic whole-function tracing. |
+| TCC 0.9.27 | Generic `lor_print` and its container wrappers; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 | Other C11 or C17 compilers without extensions | `lor_typeof`; array, map, and set `_auto` operations; inferred `lor_print_map`; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 | C23 compilers without extensions | Array, map, and set `_auto` operations; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 
@@ -108,6 +109,22 @@ Compiler extensions may make additional conveniences available.
 The module documentation names the relevant `LOR_HAS_*` check for code that
 needs conditional compilation. `lor/features.h` contains the shared compiler
 detection.
+
+### Building The Library
+
+The repository build and full test matrix use GCC and Clang. The table above
+describes conveniences visible to consumer code; building every implementation
+module also requires C11 atomics and suitable platform headers.
+
+- Native MSVC can build the sources in C11 mode, but the concurrency and trace
+  modules additionally require `/experimental:c11atomics`. liblor supplies its
+  own alignment fallback because native MSVC does not declare `max_align_t`.
+- Current TCC on Windows can build the modules other than concurrency. Its
+  bundled Windows headers do not currently declare the `SRWLOCK` and
+  `CONDITION_VARIABLE` APIs used by that module.
+- TCC 0.9.27 also lacks `<stdatomic.h>`, so it cannot build the concurrency or
+  trace modules. Consumer code can instead link to a library built with GCC or
+  Clang, or select only compatible modules from the single header.
 
 ### C++
 

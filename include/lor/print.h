@@ -286,10 +286,10 @@ LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
    order within the generated initializer. Up to 16 arguments are supported.
    Unsupported values fail to compile; wrap object pointers with
    `lor_print_pointer` and user-defined types with `lor_print_custom`. */
-/* TCC supports `_Generic`, but its expression-depth limit is too low for this
-   nested variadic convenience layer. The explicit tagged-value API remains
-   available. */
-#if LOR_HAS_GENERIC_SELECTION && !defined(__TINYC__)
+/* TCC 0.9.27 has too little expression depth for this nested variadic layer.
+   Current TCC increases that limit and supports the complete macro. */
+#if LOR_HAS_GENERIC_SELECTION && \
+    (!defined(__TINYC__) || __TINYC__ >= 928)
 #define LOR_HAS_GENERIC_PRINT 1
 #define lor_print_value(value)                        \
     _Generic((value),                                 \

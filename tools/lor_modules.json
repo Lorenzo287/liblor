@@ -106,6 +106,8 @@
                     ["LOR_HAS_COMPOUND_LITERALS", "HAS_COMPOUND_LITERALS"],
                     ["LOR_HAS_TYPEOF", "HAS_TYPEOF"],
                     ["LOR_HAS_STATEMENT_EXPRESSIONS", "HAS_STATEMENT_EXPRESSIONS"],
+                    ["LOR_HAS_CLEANUP_ATTRIBUTE", "HAS_CLEANUP_ATTRIBUTE"],
+                    ["LOR_HAS_MAX_ALIGN_T", "HAS_MAX_ALIGN_T"],
                     ["lor_typeof", "type_of", "LOR_HAS_TYPEOF"]
                 ]
             }
@@ -185,6 +187,9 @@
         {
             "name": "memory",
             "enable_macro": "LOR_ENABLE_MEMORY",
+            "dependencies": [
+                "features"
+            ],
             "enabled_by": [
                 "LOR_LEAKCHECK"
             ],
@@ -256,6 +261,7 @@
             "name": "string",
             "enable_macro": "LOR_ENABLE_STRING",
             "dependencies": [
+                "features",
                 "status"
             ],
             "header": "include/lor/string.h",
@@ -625,6 +631,7 @@
             "name": "trace",
             "enable_macro": "LOR_ENABLE_TRACE",
             "dependencies": [
+                "features",
                 "status"
             ],
             "header": "include/lor/trace.h",

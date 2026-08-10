@@ -151,14 +151,15 @@ LorStatus lor_fprint_values(FILE *out, LorPrintConfig config,
 ```
 
 This function is available to C++, non-generic C code, generated code, and
-callers that need zero values. It is also the printing entry point for TCC:
-TCC supports `_Generic`, but its expression-depth limit is too low for liblor's
-nested variadic generic-print layer. It returns `LOR_STATUS_INVALID_ARGUMENT`
-for an invalid tagged value or view and `LOR_STATUS_SYSTEM_ERROR` for an output
+callers that need zero values. It is also the portable printing entry point for
+TCC 0.9.27, whose expression-depth limit is too low for liblor's nested
+variadic generic-print layer. It returns `LOR_STATUS_INVALID_ARGUMENT` for an
+invalid tagged value or view and `LOR_STATUS_SYSTEM_ERROR` for an output
 failure.
 
 `LOR_HAS_GENERIC_PRINT` indicates whether `lor_print`, `lor_fprint`, and their
-`_with` forms are available; it is zero on TCC. They require at least one
-argument and support up to 16. Each expression is evaluated once, but C does
-not define the evaluation order of initializer elements; do not make one print
-call depend on argument side-effect order.
+`_with` forms are available. It is zero on TCC 0.9.27 and nonzero on current
+TCC (`__TINYC__ >= 928`). The macros require at least one argument and support
+up to 16. Each expression is evaluated once, but C does not define the
+evaluation order of initializer elements; do not make one print call depend on
+argument side-effect order.

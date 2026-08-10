@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "lor/features.h"
 #include "lor/status.h"
 
 #ifdef __cplusplus
@@ -160,7 +161,7 @@ void __cyg_profile_func_exit(void *function, void *caller);
 #define LOR_TRACE_COUNTER(thread, name, value) \
     lor_trace_counter((thread), (name), (value))
 
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 #define LOR_TRACE_SCOPE_SUPPORTED 1
 #define LOR_TRACE__JOIN_INNER(a, b) a##b
 #define LOR_TRACE__JOIN(a, b) LOR_TRACE__JOIN_INNER(a, b)

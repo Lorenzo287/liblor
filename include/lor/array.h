@@ -131,11 +131,11 @@ void lor_array_deinit(void *array_ref);
 #define lor_array_shrink_to_fit(array) \
     lor_array_shrink_to_fit_raw(&(array), sizeof *(array))
 
-/* Scope-exit cleanup for dynamic arrays on GCC and Clang.
+/* Scope-exit cleanup for dynamic arrays on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_ARRAY` empty, so explicit
    `lor_array_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_array_cleanup_(void *array_ref) {
     lor_array_deinit(array_ref);
 }

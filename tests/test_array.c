@@ -200,9 +200,15 @@ static int test_array_structs_and_removal(void) {
 }
 
 static int test_array_alignment_and_failures(void) {
+#if LOR_HAS_MAX_ALIGN_T
     max_align_t *aligned = LOR_ARRAY_INIT;
     CHECK(lor_array_resize(aligned, 1) == LOR_STATUS_OK);
     CHECK((uintptr_t)aligned % _Alignof(max_align_t) == 0);
+#else
+    long double *aligned = LOR_ARRAY_INIT;
+    CHECK(lor_array_resize(aligned, 1) == LOR_STATUS_OK);
+    CHECK((uintptr_t)aligned % _Alignof(long double) == 0);
+#endif
     lor_array_deinit(&aligned);
 
     int *numbers = LOR_ARRAY_INIT;

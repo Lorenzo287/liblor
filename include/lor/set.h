@@ -150,11 +150,11 @@ int lor_set_is_disjoint_raw(const void *a, const void *b, size_t element_size);
 #define LOR_HAS_SET_AUTO 0
 #endif
 
-/* Scope-exit cleanup for sets on GCC and Clang.
+/* Scope-exit cleanup for sets on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_SET` empty, so explicit
    `lor_set_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_set_cleanup_(void *set_ref) {
     lor_set_deinit(set_ref);
 }

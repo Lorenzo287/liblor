@@ -43,6 +43,16 @@
 #define LOR_TRACE__THREAD_LOCAL
 #endif
 
+#if LOR_HAS_MAX_ALIGN_T
+typedef max_align_t LorTraceAlignment;
+#else
+typedef union LorTraceAlignment {
+    void *pointer;
+    long double long_double;
+    long long long_long;
+} LorTraceAlignment;
+#endif
+
 typedef enum LorTraceRecordType {
     LOR_TRACE__RECORD_BEGIN = 1,
     LOR_TRACE__RECORD_END = 2,
@@ -299,7 +309,7 @@ static LOR_TRACE__NOINSTRUMENT size_t lor_trace__auto_name(LorTraceImpl *trace,
 #if defined(_WIN32) && defined(LOR_TRACE_AUTO)
     if (trace->symbols_ready) {
         union {
-            max_align_t alignment;
+            LorTraceAlignment alignment;
             unsigned char bytes[sizeof(SYMBOL_INFO) + MAX_SYM_NAME];
         } storage;
         memset(&storage, 0, sizeof(storage));

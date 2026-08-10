@@ -84,8 +84,9 @@ help generation. Parsed strings are views into `argv`; copy them into a
 `LorString` if they must outlive that storage.
 
 `LorCli` owns its registered definitions and generated default text.
-`lor_cli_deinit` releases that storage and resets the parser. On GCC and Clang,
-`LOR_AUTO_CLI` provides scope-exit cleanup.
+`lor_cli_deinit` releases that storage and resets the parser. When
+`LOR_HAS_CLEANUP_ATTRIBUTE` is nonzero, `LOR_AUTO_CLI` provides scope-exit
+cleanup.
 
 Registration returns `LorStatus`. Parsing returns `LorCliResult`, because CLI
 errors need the failure category, argument index, offending token, and option

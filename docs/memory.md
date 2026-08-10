@@ -228,4 +228,6 @@ matching explicit release function when a local variable leaves scope:
 
 They are deterministic cleanup conveniences, not leak checking. Use them for
 local variables with obvious ownership; avoid them when ownership is transferred
-out of the scope.
+out of the scope. `LOR_CLEANUP_SUPPORTED` and
+`LOR_HAS_CLEANUP_ATTRIBUTE` report whether the active compiler supports them;
+this includes GCC, Clang, and current TCC (`__TINYC__ >= 928`).

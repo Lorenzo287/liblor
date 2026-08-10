@@ -198,11 +198,11 @@ void lor_map_deinit(void *map_ref);
 #define LOR_HAS_MAP_AUTO 0
 #endif
 
-/* Scope-exit cleanup for maps on GCC and Clang.
+/* Scope-exit cleanup for maps on compilers with cleanup attributes.
 
    Unsupported compilers leave `LOR_AUTO_MAP` empty, so explicit
    `lor_map_deinit` remains required for portable ownership paths. */
-#if defined(__GNUC__) || defined(__clang__)
+#if LOR_HAS_CLEANUP_ATTRIBUTE
 static inline void __attribute__((unused)) lor_map_cleanup_(void *map_ref) {
     lor_map_deinit(map_ref);
 }

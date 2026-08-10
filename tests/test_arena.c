@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if LOR_HAS_MAX_ALIGN_T
 #include <stdalign.h>
 #define TEST_MAX_ALIGNMENT alignof(max_align_t)
 #else

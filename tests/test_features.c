@@ -29,6 +29,14 @@
         temporary + 1;                 \
     })
 
+#if LOR_HAS_CLEANUP_ATTRIBUTE
+static int test_features_cleanup_count;
+
+static void test_features_cleanup_(int *value) {
+    test_features_cleanup_count += *value;
+}
+#endif
+
 int main(void) {
     int value = 41;
     lor_typeof(value) copy = value;
@@ -37,8 +45,7 @@ int main(void) {
         return 1;
     if (TEST_FEATURES_KIND(3.5) != 2)
         return 1;
-#if (defined(_MSC_VER) && !defined(__clang__)) || \
-    (defined(__TINYC__) && defined(_WIN32))
+#if defined(__TINYC__) && __TINYC__ < 928 && defined(_WIN32)
     if (TEST_FEATURES_KIND(3.5L) != 2)
         return 1;
 #else
@@ -47,6 +54,14 @@ int main(void) {
 #endif
     if (TEST_FEATURES_INCREMENT(copy) != 42)
         return 1;
+#if LOR_HAS_CLEANUP_ATTRIBUTE
+    {
+        int cleanup_value __attribute__((cleanup(test_features_cleanup_))) = 7;
+        (void)cleanup_value;
+    }
+    if (test_features_cleanup_count != 7)
+        return 1;
+#endif
 
     puts("test_features: ok");
     return 0;
