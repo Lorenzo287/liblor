@@ -78,8 +78,7 @@ about ownership, lifetime, failure.
 
 liblor targets C11 on Windows and Unix-like systems. Most of the API is
 compiler-independent. GCC or Clang in C11-or-newer mode supports the complete
-convenience API; automatic whole-function tracing is supported but remains
-opt-in. For other C configurations, only the exceptions below need attention.
+convenience API. For other C configurations, the exceptions below need attention.
 
 ### Missing Convenience Features
 
@@ -91,15 +90,6 @@ opt-in. For other C configurations, only the exceptions below need attention.
 | TCC 0.9.27 | Generic `lor_print` and its container wrappers; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 | Other C11 or C17 compilers without extensions | `lor_typeof`; array, map, and set `_auto` operations; inferred `lor_print_map`; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
 | C23 compilers without extensions | Array, map, and set `_auto` operations; `LOR_AUTO_*` cleanup; automatic trace scopes and whole-function tracing. |
-
-The portable replacements are straightforward:
-
-- replace container `_auto` operations with `_as` forms or named variables;
-- name types explicitly and use `lor_print_map_as` instead of inferred forms;
-- replace generic printing with the explicit `LorPrintValue` and
-  `lor_fprint_values` API;
-- call the matching release function instead of relying on `LOR_AUTO_*`;
-- use manual trace begin/end calls when automatic tracing is unavailable.
 
 C99 is supported only for consumer code linked to a separately built C11
 library. It retains the ordinary APIs and container `_as` forms, but not the
